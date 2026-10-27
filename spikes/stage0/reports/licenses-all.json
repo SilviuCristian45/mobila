@@ -1,0 +1,1561 @@
+{
+    "@alloc/quick-lru@5.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/aleclarson/quick-lru",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@alloc\\quick-lru",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@alloc\\quick-lru\\license"
+    },
+    "@babel/runtime@7.29.10": {
+        "licenses": "MIT",
+        "repository": "https://github.com/babel/babel",
+        "publisher": "The Babel Team",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@babel\\runtime",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@babel\\runtime\\LICENSE"
+    },
+    "@dimforge/rapier3d-compat@0.12.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/dimforge/rapier.js",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@dimforge\\rapier3d-compat",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@dimforge\\rapier3d-compat\\LICENSE"
+    },
+    "@esbuild/win32-x64@0.25.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/evanw/esbuild",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@esbuild\\win32-x64",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@esbuild\\win32-x64\\README.md"
+    },
+    "@img/colour@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lovell/colour",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@img\\colour",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@img\\colour\\LICENSE.md"
+    },
+    "@img/sharp-win32-x64@0.35.5": {
+        "licenses": "Apache-2.0 AND LGPL-3.0-or-later",
+        "repository": "https://github.com/lovell/sharp",
+        "publisher": "Lovell Fuller",
+        "email": "npm@lovell.info",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@img\\sharp-win32-x64",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@img\\sharp-win32-x64\\LICENSE"
+    },
+    "@isaacs/cliui@8.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/yargs/cliui",
+        "publisher": "Ben Coe",
+        "email": "ben@npmjs.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@isaacs\\cliui",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@isaacs\\cliui\\LICENSE.txt"
+    },
+    "@jridgewell/gen-mapping@0.3.13": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\gen-mapping",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\gen-mapping\\LICENSE"
+    },
+    "@jridgewell/remapping@2.3.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\remapping",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\remapping\\LICENSE"
+    },
+    "@jridgewell/resolve-uri@3.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/resolve-uri",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\resolve-uri",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\resolve-uri\\LICENSE"
+    },
+    "@jridgewell/sourcemap-codec@1.6.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\sourcemap-codec",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\sourcemap-codec\\LICENSE"
+    },
+    "@jridgewell/trace-mapping@0.3.31": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\trace-mapping",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@jridgewell\\trace-mapping\\LICENSE"
+    },
+    "@mediapipe/tasks-vision@0.10.17": {
+        "licenses": "Apache-2.0",
+        "publisher": "mediapipe@google.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@mediapipe\\tasks-vision",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@mediapipe\\tasks-vision\\README.md"
+    },
+    "@monogrid/gainmap-js@3.7.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/MONOGRID/gainmap-js",
+        "publisher": "MONOGRID",
+        "email": "gainmap@monogrid.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@monogrid\\gainmap-js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@monogrid\\gainmap-js\\LICENSE"
+    },
+    "@next/env@16.4.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/next.js",
+        "publisher": "Next.js Team",
+        "email": "support@vercel.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@next\\env",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@next\\env\\README.md"
+    },
+    "@next/swc-win32-x64-msvc@16.4.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/next.js",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@next\\swc-win32-x64-msvc",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@next\\swc-win32-x64-msvc\\README.md"
+    },
+    "@npmcli/fs@3.1.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/fs",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@npmcli\\fs",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@npmcli\\fs\\LICENSE.md"
+    },
+    "@pkgjs/parseargs@0.11.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pkgjs/parseargs",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@pkgjs\\parseargs",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@pkgjs\\parseargs\\LICENSE"
+    },
+    "@playwright/test@1.64.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/playwright",
+        "publisher": "Microsoft Corporation",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@playwright\\test",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@playwright\\test\\LICENSE",
+        "noticeFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@playwright\\test\\NOTICE"
+    },
+    "@react-three/drei@10.7.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/drei",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@react-three\\drei",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@react-three\\drei\\LICENSE"
+    },
+    "@react-three/fiber@9.8.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/react-three-fiber",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@react-three\\fiber",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@react-three\\fiber\\readme.md"
+    },
+    "@rollup/rollup-win32-x64-gnu@4.65.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/rollup/rollup",
+        "publisher": "Lukas Taegert-Atkinson",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@rollup\\rollup-win32-x64-gnu",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@rollup\\rollup-win32-x64-gnu\\README.md"
+    },
+    "@rollup/rollup-win32-x64-msvc@4.65.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/rollup/rollup",
+        "publisher": "Lukas Taegert-Atkinson",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@rollup\\rollup-win32-x64-msvc",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@rollup\\rollup-win32-x64-msvc\\README.md"
+    },
+    "@standard-schema/spec@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/standard-schema/standard-schema",
+        "publisher": "Colin McDonnell",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@standard-schema\\spec",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@standard-schema\\spec\\LICENSE"
+    },
+    "@swc/helpers@0.5.23": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/swc-project/swc",
+        "publisher": "강동윤",
+        "email": "kdy1997.dev@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@swc\\helpers",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@swc\\helpers\\LICENSE"
+    },
+    "@tailwindcss/node@4.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\node",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\node\\LICENSE"
+    },
+    "@tailwindcss/oxide-win32-x64-msvc@4.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc\\LICENSE"
+    },
+    "@tailwindcss/oxide@4.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\oxide",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\oxide\\LICENSE"
+    },
+    "@tailwindcss/postcss@4.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\postcss",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@tailwindcss\\postcss\\LICENSE"
+    },
+    "@tweenjs/tween.js@23.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tweenjs/tween.js",
+        "publisher": "tween.js contributors",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@tweenjs\\tween.js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@tweenjs\\tween.js\\LICENSE"
+    },
+    "@types/chai@5.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\chai",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\chai\\LICENSE"
+    },
+    "@types/deep-eql@4.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\deep-eql",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\deep-eql\\LICENSE"
+    },
+    "@types/draco3d@1.4.10": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\draco3d",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\draco3d\\LICENSE"
+    },
+    "@types/estree@1.0.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\estree",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\estree\\LICENSE"
+    },
+    "@types/node@22.20.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\node",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\node\\LICENSE"
+    },
+    "@types/offscreencanvas@2019.7.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\offscreencanvas",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\offscreencanvas\\LICENSE"
+    },
+    "@types/react-dom@19.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\react-dom",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\react-dom\\LICENSE"
+    },
+    "@types/react-reconciler@0.28.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\react-reconciler",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\react-reconciler\\LICENSE"
+    },
+    "@types/react-reconciler@0.34.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\react-konva\\node_modules\\@types\\react-reconciler",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\react-konva\\node_modules\\@types\\react-reconciler\\LICENSE"
+    },
+    "@types/react@19.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\react",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\react\\LICENSE"
+    },
+    "@types/stats.js@0.17.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\stats.js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\stats.js\\LICENSE"
+    },
+    "@types/three@0.186.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\three",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\three\\LICENSE"
+    },
+    "@types/webxr@0.5.24": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\webxr",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@types\\webxr\\LICENSE"
+    },
+    "@typescript/typescript-win32-x64@7.0.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/TypeScript",
+        "publisher": "Microsoft Corp.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@typescript\\typescript-win32-x64",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@typescript\\typescript-win32-x64\\LICENSE",
+        "noticeFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@typescript\\typescript-win32-x64\\NOTICE.txt"
+    },
+    "@use-gesture/core@10.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/use-gesture",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@use-gesture\\core",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@use-gesture\\core\\LICENSE"
+    },
+    "@use-gesture/react@10.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/use-gesture",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@use-gesture\\react",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@use-gesture\\react\\LICENSE"
+    },
+    "@vitest/expect@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\expect",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\expect\\LICENSE"
+    },
+    "@vitest/mocker@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\mocker",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\mocker\\LICENSE"
+    },
+    "@vitest/pretty-format@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\pretty-format",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\pretty-format\\LICENSE"
+    },
+    "@vitest/runner@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\runner",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\runner\\LICENSE"
+    },
+    "@vitest/snapshot@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\snapshot",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\snapshot\\LICENSE"
+    },
+    "@vitest/spy@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\spy",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\spy\\LICENSE"
+    },
+    "@vitest/utils@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\utils",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\@vitest\\utils\\LICENSE"
+    },
+    "abbrev@2.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/abbrev-js",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\abbrev",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\abbrev\\LICENSE"
+    },
+    "ansi-regex@5.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/ansi-regex",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\node_modules\\ansi-regex",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\node_modules\\ansi-regex\\license"
+    },
+    "ansi-regex@6.4.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/ansi-regex",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\ansi-regex",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\ansi-regex\\license"
+    },
+    "ansi-styles@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/ansi-styles",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\ansi-styles",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\ansi-styles\\license"
+    },
+    "ansi-styles@6.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/ansi-styles",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\wrap-ansi\\node_modules\\ansi-styles",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\wrap-ansi\\node_modules\\ansi-styles\\license"
+    },
+    "array-find-index@1.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/array-find-index",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\array-find-index",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\array-find-index\\license"
+    },
+    "assertion-error@2.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chaijs/assertion-error",
+        "publisher": "Jake Luer",
+        "email": "jake@qualiancy.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\assertion-error",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\assertion-error\\LICENSE"
+    },
+    "balanced-match@1.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/juliangruber/balanced-match",
+        "publisher": "Julian Gruber",
+        "email": "mail@juliangruber.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\balanced-match",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\balanced-match\\LICENSE.md"
+    },
+    "base64-js@1.5.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/beatgammit/base64-js",
+        "publisher": "T. Jameson Little",
+        "email": "t.jameson.little@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\base64-js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\base64-js\\LICENSE"
+    },
+    "baseline-browser-mapping@2.11.33": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/web-platform-dx/baseline-browser-mapping",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\baseline-browser-mapping",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\baseline-browser-mapping\\LICENSE.txt"
+    },
+    "bidi-js@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lojjic/bidi-js",
+        "publisher": "Jason Johnston",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\bidi-js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\bidi-js\\LICENSE.txt"
+    },
+    "brace-expansion@2.1.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/juliangruber/brace-expansion",
+        "publisher": "Julian Gruber",
+        "email": "mail@juliangruber.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\brace-expansion",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\brace-expansion\\LICENSE"
+    },
+    "buffer@6.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/feross/buffer",
+        "publisher": "Feross Aboukhadijeh",
+        "email": "feross@feross.org",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\buffer",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\buffer\\LICENSE"
+    },
+    "camera-controls@3.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/yomotsu/camera-controls",
+        "publisher": "Yomotsu",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\camera-controls",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\camera-controls\\LICENSE"
+    },
+    "caniuse-lite@1.0.30001819": {
+        "licenses": "CC-BY-4.0",
+        "repository": "https://github.com/browserslist/caniuse-lite",
+        "publisher": "Ben Briggs",
+        "email": "beneb.info@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\caniuse-lite",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\caniuse-lite\\LICENSE"
+    },
+    "chai@6.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chaijs/chai",
+        "publisher": "Jake Luer",
+        "email": "jake@alogicalparadox.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\chai",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\chai\\LICENSE"
+    },
+    "chalk@4.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/chalk",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\chalk",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\chalk\\license"
+    },
+    "client-only@0.0.1": {
+        "licenses": "MIT",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\client-only"
+    },
+    "color-convert@2.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Qix-/color-convert",
+        "publisher": "Heather Arthur",
+        "email": "fayearthur@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\color-convert",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\color-convert\\LICENSE"
+    },
+    "color-name@1.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/colorjs/color-name",
+        "publisher": "DY",
+        "email": "dfcreative@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\color-name",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\color-name\\LICENSE"
+    },
+    "convert-source-map@2.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/thlorenz/convert-source-map",
+        "publisher": "Thorsten Lorenz",
+        "email": "thlorenz@gmx.de",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\convert-source-map",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\convert-source-map\\LICENSE"
+    },
+    "cross-env@7.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/kentcdodds/cross-env",
+        "publisher": "Kent C. Dodds",
+        "email": "me@kentcdodds.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\cross-env",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\cross-env\\LICENSE"
+    },
+    "cross-spawn@7.0.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/moxystudio/node-cross-spawn",
+        "publisher": "André Cruz",
+        "email": "andre@moxy.studio",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\cross-spawn",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\cross-spawn\\LICENSE"
+    },
+    "csstype@3.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/frenic/csstype",
+        "publisher": "Fredrik Nicol",
+        "email": "fredrik.nicol@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\csstype",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\csstype\\LICENSE"
+    },
+    "debug@4.4.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/debug-js/debug",
+        "publisher": "Josh Junon",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\debug",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\debug\\LICENSE"
+    },
+    "detect-gpu@5.0.70": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/detect-gpu",
+        "publisher": "Tim van Scherpenzeel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\detect-gpu",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\detect-gpu\\LICENSE"
+    },
+    "detect-libc@2.1.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/lovell/detect-libc",
+        "publisher": "Lovell Fuller",
+        "email": "npm@lovell.info",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\detect-libc",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\detect-libc\\LICENSE"
+    },
+    "dexie@4.4.7": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/dexie/Dexie.js",
+        "publisher": "David Fahlander",
+        "email": "https://github.com/dfahlander",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\dexie",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\dexie\\LICENSE",
+        "noticeFile": "D:\\mobila\\spikes\\stage0\\node_modules\\dexie\\NOTICE"
+    },
+    "draco3d@1.5.9": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/google/draco",
+        "publisher": "Google Draco Team",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\draco3d",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\draco3d\\README.md"
+    },
+    "eastasianwidth@0.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/komagata/eastasianwidth",
+        "publisher": "Masaki Komagata",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\eastasianwidth",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\eastasianwidth\\README.md"
+    },
+    "emoji-regex@8.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mathiasbynens/emoji-regex",
+        "publisher": "Mathias Bynens",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\node_modules\\emoji-regex",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\node_modules\\emoji-regex\\LICENSE-MIT.txt"
+    },
+    "emoji-regex@9.2.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mathiasbynens/emoji-regex",
+        "publisher": "Mathias Bynens",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\emoji-regex",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\emoji-regex\\LICENSE-MIT.txt"
+    },
+    "enhanced-resolve@5.26.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/webpack/enhanced-resolve",
+        "publisher": "Tobias Koppers @sokra",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\enhanced-resolve",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\enhanced-resolve\\LICENSE"
+    },
+    "es-module-lexer@2.3.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/guybedford/es-module-lexer",
+        "publisher": "Guy Bedford",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\es-module-lexer",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\es-module-lexer\\LICENSE"
+    },
+    "esbuild@0.25.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/evanw/esbuild",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\esbuild",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\esbuild\\LICENSE.md"
+    },
+    "estree-walker@3.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Rich-Harris/estree-walker",
+        "publisher": "Rich Harris",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\estree-walker",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\estree-walker\\LICENSE"
+    },
+    "expect-type@1.4.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/mmkal/expect-type",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\expect-type",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\expect-type\\LICENSE"
+    },
+    "fake-indexeddb@6.2.6": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/dumbmatter/fakeIndexedDB",
+        "publisher": "Jeremy Scheff",
+        "email": "jdscheff@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\fake-indexeddb",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\fake-indexeddb\\LICENSE"
+    },
+    "fast-check@4.10.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/dubzzz/fast-check",
+        "publisher": "Nicolas DUBIEN",
+        "email": "github@dubien.org",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\fast-check",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\fast-check\\LICENSE"
+    },
+    "fdir@6.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/thecodrr/fdir",
+        "publisher": "thecodrr",
+        "email": "thecodrr@protonmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\fdir",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\fdir\\LICENSE"
+    },
+    "fflate@0.6.11": {
+        "licenses": "MIT",
+        "repository": "https://github.com/101arrowz/fflate",
+        "publisher": "Arjun Barrett",
+        "email": "arjunbarrett@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\three-stdlib\\node_modules\\fflate",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\three-stdlib\\node_modules\\fflate\\LICENSE"
+    },
+    "fflate@0.8.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/101arrowz/fflate",
+        "publisher": "Arjun Barrett",
+        "email": "arjunbarrett@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\fflate",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\fflate\\LICENSE"
+    },
+    "foreground-child@3.3.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/tapjs/foreground-child",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\foreground-child",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\foreground-child\\LICENSE"
+    },
+    "function-bind@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Raynos/function-bind",
+        "publisher": "Raynos",
+        "email": "raynos2@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\function-bind",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\function-bind\\LICENSE"
+    },
+    "glob@10.5.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/node-glob",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\glob",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\glob\\LICENSE"
+    },
+    "glsl-noise@0.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/hughsk/glsl-noise",
+        "publisher": "Ian McEwan, Ashima Arts, Stefan Gustavson",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\glsl-noise",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\glsl-noise\\LICENSE"
+    },
+    "graceful-fs@4.2.11": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/node-graceful-fs",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\graceful-fs",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\graceful-fs\\LICENSE"
+    },
+    "has-flag@4.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/has-flag",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\has-flag",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\has-flag\\license"
+    },
+    "hasown@2.0.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/inspect-js/hasOwn",
+        "publisher": "Jordan Harband",
+        "email": "ljharb@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\hasown",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\hasown\\LICENSE"
+    },
+    "hls.js@1.7.3": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/video-dev/hls.js",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\hls.js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\hls.js\\LICENSE"
+    },
+    "hosted-git-info@6.1.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/hosted-git-info",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\hosted-git-info",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\hosted-git-info\\LICENSE"
+    },
+    "ieee754@1.2.1": {
+        "licenses": "BSD-3-Clause",
+        "repository": "https://github.com/feross/ieee754",
+        "publisher": "Feross Aboukhadijeh",
+        "email": "feross@feross.org",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\ieee754",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\ieee754\\LICENSE"
+    },
+    "immediate@3.0.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/calvinmetcalf/immediate",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\immediate",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\immediate\\LICENSE.txt"
+    },
+    "immer@11.2.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/immerjs/immer",
+        "publisher": "Michel Weststrate",
+        "email": "info@michel.codes",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\immer",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\immer\\LICENSE"
+    },
+    "is-core-module@2.17.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/inspect-js/is-core-module",
+        "publisher": "Jordan Harband",
+        "email": "ljharb@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\is-core-module",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\is-core-module\\LICENSE"
+    },
+    "is-fullwidth-code-point@3.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/is-fullwidth-code-point",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\is-fullwidth-code-point",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\is-fullwidth-code-point\\license"
+    },
+    "is-promise@2.2.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/then/is-promise",
+        "publisher": "ForbesLindesay",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\is-promise",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\is-promise\\LICENSE"
+    },
+    "isexe@2.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/isexe",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\isexe",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\isexe\\LICENSE"
+    },
+    "its-fine@2.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/its-fine",
+        "publisher": "Cody Bennett",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\its-fine",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\its-fine\\LICENSE"
+    },
+    "jackspeak@3.4.3": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/jackspeak",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\jackspeak",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\jackspeak\\LICENSE.md"
+    },
+    "jiti@2.7.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/unjs/jiti",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\jiti",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\jiti\\LICENSE"
+    },
+    "json-parse-even-better-errors@3.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/npm/json-parse-even-better-errors",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\json-parse-even-better-errors",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\json-parse-even-better-errors\\LICENSE.md"
+    },
+    "konva@10.9.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/konvajs/konva",
+        "publisher": "Anton Lavrenov",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\konva",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\konva\\LICENSE"
+    },
+    "license-checker-rseidelsohn@4.4.2": {
+        "licenses": "BSD-3-Clause",
+        "repository": "https://github.com/RSeidelsohn/license-checker-rseidelsohn",
+        "publisher": "Roman Seidelsohn",
+        "email": "rseidelsohn@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\license-checker-rseidelsohn",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\license-checker-rseidelsohn\\LICENSE"
+    },
+    "lie@3.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/calvinmetcalf/lie",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\lie",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\lie\\license.md"
+    },
+    "lightningcss-win32-x64-msvc@1.32.0": {
+        "licenses": "MPL-2.0",
+        "repository": "https://github.com/parcel-bundler/lightningcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\lightningcss-win32-x64-msvc",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\lightningcss-win32-x64-msvc\\LICENSE"
+    },
+    "lightningcss@1.32.0": {
+        "licenses": "MPL-2.0",
+        "repository": "https://github.com/parcel-bundler/lightningcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\lightningcss",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\lightningcss\\LICENSE"
+    },
+    "lodash.clonedeep@4.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lodash/lodash",
+        "publisher": "John-David Dalton",
+        "email": "john.david.dalton@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\lodash.clonedeep",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\lodash.clonedeep\\LICENSE"
+    },
+    "lru-cache@10.4.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/node-lru-cache",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\path-scurry\\node_modules\\lru-cache",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\path-scurry\\node_modules\\lru-cache\\LICENSE"
+    },
+    "lru-cache@7.18.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/node-lru-cache",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\lru-cache",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\lru-cache\\LICENSE"
+    },
+    "maath@0.10.8": {
+        "licenses": "MIT",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\maath"
+    },
+    "magic-string@0.30.21": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Rich-Harris/magic-string",
+        "publisher": "Rich Harris",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\magic-string",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\magic-string\\LICENSE"
+    },
+    "meshline@3.3.1": {
+        "licenses": "MIT",
+        "publisher": "Jaume Sanchez",
+        "email": "the.spite@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\meshline",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\meshline\\LICENSE"
+    },
+    "meshoptimizer@1.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/zeux/meshoptimizer",
+        "publisher": "Arseny Kapoulkine",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\meshoptimizer",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\meshoptimizer\\LICENSE.md"
+    },
+    "minimatch@9.0.9": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/minimatch",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\minimatch",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\minimatch\\LICENSE"
+    },
+    "minipass@7.1.3": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\minipass",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\minipass\\LICENSE.md"
+    },
+    "mkdirp@1.0.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/isaacs/node-mkdirp",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\mkdirp",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\mkdirp\\LICENSE"
+    },
+    "ms@2.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/ms",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\ms",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\ms\\license.md"
+    },
+    "nanoid@3.3.20": {
+        "licenses": "MIT",
+        "repository": "https://github.com/ai/nanoid",
+        "publisher": "Andrey Sitnik",
+        "email": "andrey@sitnik.ru",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\nanoid",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\nanoid\\LICENSE"
+    },
+    "next@16.4.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/next.js",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\next",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\next\\license.md"
+    },
+    "nopt@7.2.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/nopt",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\nopt",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\nopt\\LICENSE"
+    },
+    "normalize-package-data@5.0.0": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/npm/normalize-package-data",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\normalize-package-data",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\normalize-package-data\\LICENSE"
+    },
+    "npm-normalize-package-bin@3.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-normalize-package-bin",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\npm-normalize-package-bin",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\npm-normalize-package-bin\\LICENSE"
+    },
+    "obug@2.2.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sxzz/obug",
+        "publisher": "Kevin Deng",
+        "email": "sxzz@sxzz.moe",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\obug",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\obug\\LICENSE"
+    },
+    "package-json-from-dist@1.0.1": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/package-json-from-dist",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\package-json-from-dist",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\package-json-from-dist\\LICENSE.md"
+    },
+    "path-key@3.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/path-key",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\path-key",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\path-key\\license"
+    },
+    "path-scurry@1.11.1": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/path-scurry",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\path-scurry",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\path-scurry\\LICENSE.md"
+    },
+    "pathe@2.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/unjs/pathe",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\pathe",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\pathe\\LICENSE"
+    },
+    "picocolors@1.1.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/alexeyraspopov/picocolors",
+        "publisher": "Alexey Raspopov",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\picocolors",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\picocolors\\LICENSE"
+    },
+    "picomatch@4.0.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/micromatch/picomatch",
+        "publisher": "Jon Schlinkert",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\picomatch",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\picomatch\\LICENSE"
+    },
+    "playwright-core@1.64.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/playwright",
+        "publisher": "Microsoft Corporation",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\playwright-core",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\playwright-core\\LICENSE",
+        "noticeFile": "D:\\mobila\\spikes\\stage0\\node_modules\\playwright-core\\NOTICE"
+    },
+    "playwright@1.64.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/playwright",
+        "publisher": "Microsoft Corporation",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\playwright",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\playwright\\LICENSE",
+        "noticeFile": "D:\\mobila\\spikes\\stage0\\node_modules\\playwright\\NOTICE"
+    },
+    "postcss@8.5.23": {
+        "licenses": "MIT",
+        "repository": "https://github.com/postcss/postcss",
+        "publisher": "Andrey Sitnik",
+        "email": "andrey@sitnik.es",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\next\\node_modules\\postcss",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\next\\node_modules\\postcss\\LICENSE"
+    },
+    "postcss@8.5.32": {
+        "licenses": "MIT",
+        "repository": "https://github.com/postcss/postcss",
+        "publisher": "Andrey Sitnik",
+        "email": "andrey@sitnik.es",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\postcss",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\postcss\\LICENSE"
+    },
+    "potpack@1.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/mapbox/potpack",
+        "publisher": "Vladimir Agafonkin",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\potpack",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\potpack\\LICENSE"
+    },
+    "promise-worker-transferable@1.0.4": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/terikon/promise-worker-transferable",
+        "publisher": "Roman Viskin",
+        "email": "npm@terikon.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\promise-worker-transferable",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\promise-worker-transferable\\LICENSE"
+    },
+    "pure-rand@8.4.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/dubzzz/pure-rand",
+        "publisher": "Nicolas DUBIEN",
+        "email": "github@dubien.org",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\pure-rand",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\pure-rand\\LICENSE"
+    },
+    "react-dom@19.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/react/react",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\react-dom",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\react-dom\\LICENSE"
+    },
+    "react-konva@19.3.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/konvajs/react-konva",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\react-konva",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\react-konva\\LICENSE"
+    },
+    "react-reconciler@0.34.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/react/react",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\react-reconciler",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\react-reconciler\\LICENSE"
+    },
+    "react-use-measure@2.1.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/react-use-measure",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\react-use-measure",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\react-use-measure\\LICENSE"
+    },
+    "react@19.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/react/react",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\react",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\react\\LICENSE"
+    },
+    "read-installed-packages@2.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/Semigradsky/read-installed",
+        "publisher": "Dmitry Semigradsky",
+        "email": "semigradskyd@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\read-installed-packages",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\read-installed-packages\\LICENSE"
+    },
+    "read-package-json@6.0.4": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/read-package-json",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\read-package-json",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\read-package-json\\LICENSE"
+    },
+    "require-from-string@2.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/floatdrop/require-from-string",
+        "publisher": "Vsevolod Strukchinsky",
+        "email": "floatdrop@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\require-from-string",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\require-from-string\\license"
+    },
+    "rollup@4.65.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/rollup/rollup",
+        "publisher": "Rich Harris",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\rollup",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\rollup\\LICENSE.md"
+    },
+    "scheduler@0.28.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/react/react",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\scheduler",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\scheduler\\LICENSE"
+    },
+    "semver@7.8.5": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/node-semver",
+        "publisher": "GitHub Inc.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\semver",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\semver\\LICENSE"
+    },
+    "sharp@0.35.5": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/lovell/sharp",
+        "publisher": "Lovell Fuller",
+        "email": "npm@lovell.info",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\sharp",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\sharp\\LICENSE"
+    },
+    "shebang-command@2.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/kevva/shebang-command",
+        "publisher": "Kevin Mårtensson",
+        "email": "kevinmartensson@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\shebang-command",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\shebang-command\\license"
+    },
+    "shebang-regex@3.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/shebang-regex",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\shebang-regex",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\shebang-regex\\license"
+    },
+    "siginfo@2.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/emilbayes/siginfo",
+        "publisher": "Emil Bay",
+        "email": "github@tixz.dk",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\siginfo",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\siginfo\\LICENSE"
+    },
+    "signal-exit@4.1.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/tapjs/signal-exit",
+        "publisher": "Ben Coe",
+        "email": "ben@npmjs.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\signal-exit",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\signal-exit\\LICENSE.txt"
+    },
+    "slide@1.1.6": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/slide-flow-control",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\slide",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\slide\\LICENSE"
+    },
+    "source-map-js@1.2.2": {
+        "licenses": "BSD-3-Clause",
+        "repository": "https://github.com/7rulnik/source-map-js",
+        "publisher": "Valentin 7rulnik Semirulnik",
+        "email": "v7rulnik@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\source-map-js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\source-map-js\\LICENSE"
+    },
+    "spdx-compare@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/kemitchell/spdx-compare.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-compare",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-compare\\LICENSE.md"
+    },
+    "spdx-correct@3.2.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/jslicense/spdx-correct.js",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-correct",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-correct\\LICENSE"
+    },
+    "spdx-exceptions@2.5.0": {
+        "licenses": "CC-BY-3.0",
+        "repository": "https://github.com/kemitchell/spdx-exceptions.json",
+        "publisher": "The Linux Foundation",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-exceptions",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-exceptions\\README.md"
+    },
+    "spdx-expression-parse@3.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jslicense/spdx-expression-parse.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-expression-parse",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-expression-parse\\LICENSE"
+    },
+    "spdx-license-ids@3.0.24": {
+        "licenses": "CC0-1.0",
+        "repository": "https://github.com/jslicense/spdx-license-ids",
+        "publisher": "Shinnosuke Watanabe",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-license-ids",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-license-ids\\README.md"
+    },
+    "spdx-ranges@2.1.1": {
+        "licenses": "(MIT AND CC-BY-3.0)",
+        "repository": "https://github.com/kemitchell/spdx-ranges.js",
+        "publisher": "The Linux Foundation",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-ranges",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-ranges\\LICENSE.md"
+    },
+    "spdx-satisfies@5.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/kemitchell/spdx-satisfies.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-satisfies",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\spdx-satisfies\\LICENSE"
+    },
+    "stackback@0.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/shtylman/node-stackback",
+        "publisher": "Roman Shtylman",
+        "email": "shtylman@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\stackback",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\stackback\\README.md"
+    },
+    "stats-gl@2.4.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/RenaudRohlinger/stats-gl",
+        "publisher": "Renaud ROHLINGER",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\stats-gl",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\stats-gl\\README.md"
+    },
+    "stats.js@0.17.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mrdoob/stats.js",
+        "publisher": "mrdoob",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\stats.js",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\stats.js\\LICENSE"
+    },
+    "std-env@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/unjs/std-env",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\std-env",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\std-env\\LICENCE"
+    },
+    "string-width@4.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/string-width",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\license"
+    },
+    "string-width@5.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/string-width",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width\\license"
+    },
+    "strip-ansi@6.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/strip-ansi",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\node_modules\\strip-ansi",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\string-width-cjs\\node_modules\\strip-ansi\\license"
+    },
+    "strip-ansi@7.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/strip-ansi",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\strip-ansi",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\strip-ansi\\license"
+    },
+    "styled-jsx@5.1.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/styled-jsx",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\styled-jsx",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\styled-jsx\\license.md"
+    },
+    "supports-color@7.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/supports-color",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\supports-color",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\supports-color\\license"
+    },
+    "suspend-react@0.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/suspend-react",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\suspend-react",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\suspend-react\\LICENSE"
+    },
+    "tailwindcss@4.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tailwindcss",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tailwindcss\\LICENSE"
+    },
+    "tapable@2.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/webpack/tapable",
+        "publisher": "Tobias Koppers @sokra",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tapable",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tapable\\LICENSE"
+    },
+    "three-mesh-bvh@0.8.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/gkjohnson/three-mesh-bvh",
+        "publisher": "Garrett Johnson",
+        "email": "garrett.kjohnson@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\three-mesh-bvh",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\three-mesh-bvh\\LICENSE"
+    },
+    "three-stdlib@2.36.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/three-stdlib",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\three-stdlib",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\three-stdlib\\LICENSE"
+    },
+    "three@0.170.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mrdoob/three.js",
+        "publisher": "mrdoob",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\stats-gl\\node_modules\\three",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\stats-gl\\node_modules\\three\\LICENSE"
+    },
+    "three@0.186.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mrdoob/three.js",
+        "publisher": "mrdoob",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\three",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\three\\LICENSE"
+    },
+    "tinybench@2.9.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tinylibs/tinybench",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tinybench",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tinybench\\LICENSE"
+    },
+    "tinyexec@1.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tinylibs/tinyexec",
+        "publisher": "James Garbutt",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tinyexec",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tinyexec\\LICENSE"
+    },
+    "tinyglobby@0.2.17": {
+        "licenses": "MIT",
+        "repository": "https://github.com/SuperchupuDev/tinyglobby",
+        "publisher": "Superchupu",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tinyglobby",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tinyglobby\\LICENSE"
+    },
+    "tinyrainbow@3.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tinylibs/tinyrainbow",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tinyrainbow",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tinyrainbow\\LICENCE"
+    },
+    "treeify@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/notatestuser/treeify",
+        "publisher": "Luke Plaster",
+        "email": "notatestuser@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\treeify",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\treeify\\LICENSE"
+    },
+    "troika-three-text@0.52.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/protectwise/troika",
+        "publisher": "Jason Johnston",
+        "email": "jason.johnston@protectwise.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\troika-three-text",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\troika-three-text\\LICENSE"
+    },
+    "troika-three-utils@0.52.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/protectwise/troika",
+        "publisher": "Jason Johnston",
+        "email": "jason.johnston@protectwise.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\troika-three-utils",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\troika-three-utils\\LICENSE"
+    },
+    "troika-worker-utils@0.52.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/protectwise/troika",
+        "publisher": "Jason Johnston",
+        "email": "jason.johnston@protectwise.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\troika-worker-utils",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\troika-worker-utils\\LICENSE"
+    },
+    "tslib@2.8.1": {
+        "licenses": "0BSD",
+        "repository": "https://github.com/Microsoft/tslib",
+        "publisher": "Microsoft Corp.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tslib",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tslib\\LICENSE.txt"
+    },
+    "tunnel-rat@0.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/tunnel-rat",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tunnel-rat",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tunnel-rat\\LICENSE"
+    },
+    "typescript@7.0.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/TypeScript",
+        "publisher": "Microsoft Corp.",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\typescript",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\typescript\\LICENSE",
+        "noticeFile": "D:\\mobila\\spikes\\stage0\\node_modules\\typescript\\NOTICE.txt"
+    },
+    "undici-types@6.21.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodejs/undici",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\undici-types",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\undici-types\\LICENSE"
+    },
+    "use-sync-external-store@1.7.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/react/react",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\use-sync-external-store",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\use-sync-external-store\\LICENSE"
+    },
+    "utility-types@3.11.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/piotrwitek/utility-types",
+        "publisher": "Piotr Witek",
+        "email": "piotrek.witek@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\utility-types",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\utility-types\\LICENSE"
+    },
+    "validate-npm-package-license@3.0.4": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/kemitchell/validate-npm-package-license.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\validate-npm-package-license",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\validate-npm-package-license\\LICENSE"
+    },
+    "vite@6.4.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitejs/vite",
+        "publisher": "Evan You",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\vite",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\vite\\LICENSE.md"
+    },
+    "vitest@4.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vitest-dev/vitest",
+        "publisher": "Anthony Fu",
+        "email": "anthonyfu117@hotmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\vitest",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\vitest\\LICENSE.md"
+    },
+    "webgl-constants@1.1.1": {
+        "licenses": "MIT*",
+        "publisher": "Tim van Scherpenzeel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\webgl-constants",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\webgl-constants\\LICENSE"
+    },
+    "webgl-sdf-generator@1.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lojjic/webgl-sdf-generator",
+        "publisher": "Jason Johnston",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\webgl-sdf-generator",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\webgl-sdf-generator\\LICENSE.txt"
+    },
+    "which@2.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/node-which",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\which",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\which\\LICENSE"
+    },
+    "why-is-node-running@2.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mafintosh/why-is-node-running",
+        "publisher": "Mathias Buus",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\why-is-node-running",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\why-is-node-running\\LICENSE"
+    },
+    "wrap-ansi@7.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/wrap-ansi",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\wrap-ansi-cjs",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\wrap-ansi-cjs\\license"
+    },
+    "wrap-ansi@8.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/wrap-ansi",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\wrap-ansi",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\wrap-ansi\\license"
+    },
+    "zod@4.6.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/colinhacks/zod",
+        "publisher": "Colin McDonnell",
+        "email": "zod@colinhacks.com",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\zod",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\zod\\LICENSE"
+    },
+    "zustand@4.5.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/zustand",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\tunnel-rat\\node_modules\\zustand",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\tunnel-rat\\node_modules\\zustand\\LICENSE"
+    },
+    "zustand@5.0.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pmndrs/zustand",
+        "publisher": "Paul Henschel",
+        "path": "D:\\mobila\\spikes\\stage0\\node_modules\\zustand",
+        "licenseFile": "D:\\mobila\\spikes\\stage0\\node_modules\\zustand\\LICENSE"
+    }
+}
+

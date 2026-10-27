@@ -1,0 +1,61 @@
+{
+  "$comment": "Politica de licențe (docs/ARCHITECTURE.md §10.2). Orice licență care nu e în `allowed` și nu are o excepție explicită face `pnpm license:check` să eșueze. Excepțiile sunt revizuite manual; fiecare are motiv și domeniu.",
+  "allowed": [
+    "MIT",
+    "MIT-0",
+    "ISC",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "CC0-1.0",
+    "Unlicense",
+    "BlueOak-1.0.0",
+    "OFL-1.1"
+  ],
+  "denied": [
+    "GPL",
+    "AGPL",
+    "LGPL",
+    "SSPL",
+    "BUSL",
+    "CC-BY-NC",
+    "CC-BY-ND",
+    "UNLICENSED",
+    "UNKNOWN",
+    "PROPRIETARY",
+    "COMMERCIAL"
+  ],
+  "exceptions": [
+    {
+      "package": "@img/sharp-*",
+      "licenses": ["Apache-2.0 AND LGPL-3.0-or-later", "LGPL-3.0-or-later"],
+      "scope": "unealtă de build (dependență opțională a Next.js pentru optimizarea imaginilor)",
+      "reason": "LGPL provine din libvips, legat dinamic de binarul sharp. Nu se folosește: `images.unoptimized: true`, iar `out/` nu conține codul. Dacă se activează vreodată optimizarea de imagini la build, excepția se reevaluează."
+    },
+    {
+      "package": "lightningcss*",
+      "licenses": ["MPL-2.0"],
+      "scope": "unealtă de build (Tailwind CSS 4)",
+      "reason": "MPL-2.0 este copyleft la nivel de fișier și se aplică doar modificărilor acestor fișiere; unealta procesează CSS și nu se distribuie în `out/`."
+    },
+    {
+      "package": "axe-core",
+      "licenses": ["MPL-2.0"],
+      "scope": "unealtă de dezvoltare (eslint-plugin-jsx-a11y)",
+      "reason": "MPL-2.0, folosit doar la lint; nu se distribuie."
+    },
+    {
+      "package": "argparse",
+      "licenses": ["Python-2.0"],
+      "scope": "unealtă de dezvoltare (dependență tranzitivă a ESLint/js-yaml)",
+      "reason": "Licență permisivă (PSF); nu se distribuie. Menținută ca excepție explicită, nu în lista generală."
+    },
+    {
+      "package": "caniuse-lite",
+      "licenses": ["CC-BY-4.0"],
+      "scope": "date de build (browserslist/Next.js)",
+      "reason": "Date folosite la compilare; nu se copiază în `out/`, deci obligația de atribuire nu se declanșează. Dacă datele ar fi distribuite, se adaugă atribuire în ATTRIBUTIONS.md."
+    }
+  ]
+}

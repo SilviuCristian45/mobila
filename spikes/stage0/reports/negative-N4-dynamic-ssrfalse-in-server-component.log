@@ -1,0 +1,19 @@
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.mjs took 42ms
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 error:
+./src/app/neg4/page.tsx:2:11
+Error: `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+  [90m1 |[0m [36mimport[0m dynamic [36mfrom[0m [32m'next/dynamic'[0m;
+[31m[1m>[0m [90m2 |[0m [36mconst[0m [33mK[0m = dynamic(() => [36mimport[0m([32m'@/features/Editor2D'[0m), { ssr: [36mfalse[0m });
+  [90m  |[0m           [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m3 |[0m [36mexport[0m [36mdefault[0m [36mfunction[0m [33mN[0m() { [36mreturn[0m <[33mK[0m doc={[36mnull[0m [36mas[0m never} width={[35m1[0m} height={[35m1[0m} onMoveNode...
+  [90m4 |[0m
+
+Ecmascript file had an error
+
+
+    at ignore-listed frames

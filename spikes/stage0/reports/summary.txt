@@ -1,0 +1,11 @@
+== vitest
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+== tsc
+ok
+== e2e: rădăcină, 3 browsere
+  2 skipped
+  40 passed (50.3s)
+== e2e: basePath /rc-test, 3 browsere
+  2 skipped
+  40 passed (39.8s)

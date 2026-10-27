@@ -1,0 +1,10 @@
+{
+  "rooms": 20,
+  "objects": 300,
+  "prisms": 89,
+  "budgetLines": 300,
+  "msInterior": 28.5,
+  "msScene": 58.6,
+  "msBudget": 20.8,
+  "msTotal": 107.8
+}
