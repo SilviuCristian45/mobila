@@ -12,3 +12,16 @@ export function pluralRo(n: number, one: string, many: string, manyWithDe: strin
   const lastTwo = n % 100;
   return lastTwo === 0 || (lastTwo > 0 && lastTwo < 20) ? `${n} ${many}` : `${n} ${manyWithDe}`;
 }
+
+const num2 = new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 2 });
+const num1 = new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 1 });
+
+/** Lungime din mm în unitatea de afișare a proiectului (`mm` | `cm` | `m`); doar formatare, stocarea rămâne în mm. */
+export function formatLength(mm: number, unit: 'mm' | 'cm' | 'm'): string {
+  if (unit === 'mm') return `${num1.format(mm)} mm`;
+  if (unit === 'cm') return `${num1.format(mm / 10)} cm`;
+  return `${num2.format(mm / 1000)} m`;
+}
+
+/** Suprafață din mm² în m², cu două zecimale. */
+export const formatAreaM2 = (mm2: number): string => `${num2.format(mm2 / 1_000_000)} m²`;

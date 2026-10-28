@@ -221,6 +221,16 @@ Datele care depășesc aceste limite sunt **respinse** de `analyzeGeometry` / `c
 - Punctele derivate (îmbinări, poligon interior) sunt în virgulă mobilă; aria interioară este exactă până la ~10⁻³ mm² în testele de proprietăți. Nodurile și toate valorile stocate sunt întregi.
 - Un finisaj de pereți se aplică pe o **față** a unui perete; fețele aparțin camerei care le înconjoară; pentru o față fără cameră costul intră în „fără cameră”.
 
+### 3.B.1 Operații de editare (Etapa 2b, `src/domain/edit`)
+
+Toate întorc un document nou sau o eroare în română și sunt validate apoi integral de `ProjectSession`. Reguli pe care le impun (peste cele din 3.B):
+- **`addWall`**: capetele sunt noduri existente sau puncte (un punct deja ocupat de un nod îl reutilizează); grosime pară, înălțime și coordonate întregi; refuză perete de lungime zero sau dublură între aceleași noduri.
+- **`removeWall`**: șterge golurile peretelui și atribuirile de finisaj ale fețelor lui; dacă peretele face parte din camere, cere `removeRooms: true` (camera și finisajele ei dispar); refuză dacă obiecte sunt atașate peretelui (`wallId`) sau dacă linii manuale de buget sunt legate de camera / atribuirea ștearsă; elimină suprascrierile de buget rămase fără sursă și nodurile orfane.
+- **`removeRoom`**: pereții și nodurile rămân; aceleași refuzuri legate de buget.
+- **`addOpening`**: dimensiuni implicite de editor (ușă 900 × 2100 mm, prag 0; fereastră 1200 × 1200 mm, prag 900 mm; înălțimea se limitează la peretele ales) și cel mai apropiat de mijloc loc liber care respectă `openingEdgeMarginMm` și `openingGapMm`; ușa primește `swing: { hinge: 'start', side: 'left' }`.
+- **`updateOpening`**: repoziționare / redimensionare pe ACELAȘI perete; `swing` doar la uși. Un gol nu poate fi mutat pe alt perete (se șterge și se adaugă).
+- **`addRectRoom`**: 4 noduri, 4 pereți și camera, din dimensiuni interioare (A.4); numele implicit „Cameră N”.
+
 ## 4. Obiecte plasate
 
 ```ts

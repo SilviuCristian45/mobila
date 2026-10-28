@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { EditorShell } from '@/features/editor-shell/EditorShell';
+import { EditorClient } from './EditorClient';
 import { ProjectProvider } from '@/lib/project-runtime/ProjectProvider';
 import { Spinner } from '@/ui/feedback';
 
@@ -14,7 +14,7 @@ export default function EditorPage() {
           </main>
         }
       >
-        <EditorShell />
+        <EditorClient />
       </Suspense>
     </ProjectProvider>
   );

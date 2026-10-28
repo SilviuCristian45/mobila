@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { dashboardHref } from '@/lib/asset';
 import { formatDateTime } from '@/lib/format';
 import { useSessionState } from '@/lib/project-runtime/hooks';
-import type { ProjectSession } from '@/state/session';
+import type { ProjectSession, SessionState } from '@/state/session';
 import { Button } from '@/ui/Button';
 import { NameDialog } from '@/ui/NameDialog';
 import { SaveIndicator } from './SaveIndicator';
 import { exportBackupFile, SessionBanners } from './SessionBanners';
+
+/** Suprafața de lucru, compusă în `app/` (features/ nu se importă între ele — ARCHITECTURE §3). */
+export type WorkspaceRenderer = (session: ProjectSession, state: SessionState) => ReactNode;
 
 const isTyping = (t: EventTarget | null): boolean =>
   t instanceof HTMLElement &&
@@ -21,9 +24,11 @@ const isTyping = (t: EventTarget | null): boolean =>
 export function SessionView({
   session,
   takeOver,
+  workspace,
 }: {
   session: ProjectSession;
   takeOver: () => Promise<void>;
+  workspace?: WorkspaceRenderer;
 }) {
   const state = useSessionState(session);
   const [renaming, setRenaming] = useState(false);
@@ -104,18 +109,15 @@ export function SessionView({
       <div className="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6">
         <SessionBanners session={session} state={state} takeOver={takeOver} />
 
+        {workspace?.(session, state)}
+
         <section
-          aria-label="Suprafața de lucru"
-          data-testid="workspace-placeholder"
-          className="flex min-h-80 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-300 bg-white p-8 text-center"
+          aria-label="Rezumatul proiectului"
+          data-testid="workspace-summary"
+          className="rounded-2xl border border-stone-200 bg-white p-4"
         >
-          <p className="text-lg font-semibold text-stone-800">Aici va apărea editorul 2D / 3D</p>
-          <p className="mt-1 max-w-xl text-stone-600">
-            Suprafața de lucru urmează în etapele următoare. Starea proiectului (salvare automată,
-            istoric, protecție între taburi) funcționează deja.
-          </p>
           <dl
-            className="mt-6 grid grid-cols-2 gap-x-8 gap-y-1 text-left text-sm text-stone-700 sm:grid-cols-4"
+            className="grid grid-cols-2 gap-x-8 gap-y-1 text-left text-sm text-stone-700 sm:grid-cols-4"
             data-testid="doc-summary"
           >
             <div>

@@ -11,4 +11,5 @@ export * from './budget';
 export * from './scene';
 export * from './integrity';
 export * from './cascade';
+export * from './edit';
 export * from './io';

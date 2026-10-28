@@ -103,6 +103,18 @@
 
 ---
 
+## Etapa 2b — Editorul 2D: pereți, camere, uși și ferestre — EXECUTATĂ
+
+> Detalii: ADR-037 în [DECISIONS](DECISIONS.md) și ARCHITECTURE §4.7 / §7.6.3. Implementat în `src/features/plan-editor/` (SVG) și `src/domain/edit/` (operații pure).
+>
+> **Livrat:** plan SVG cu scară coerentă, grilă, zoom (butoane, rotiță, taste) și deplasare, potrivire în fereastră · selecție (nod / perete / cameră / gol) cu panou de proprietăți · cote (laturi interioare, suprafață, axa și grosimea peretelui selectat, lungimi în timpul tragerii) în unitatea proiectului · tragerea nodurilor cu un singur commit la final și revenire clară la respingere · unealta „Perete nou” (lanț de pereți, captare pe noduri existente) și formular din coordonate · cameră dreptunghiulară din dimensiuni interioare · ștergere de perete / cameră / gol cu confirmare și tratarea referințelor · editare de grosime și înălțime perete, nume / tip / înălțime tavan / dimensiuni interioare cameră · uși și ferestre: adăugare, repoziționare (tragere, butoane, câmp), dimensiuni, prag, sensul ușii, ștergere · tastatură · stări vizibile pentru doar-citire, conflict, eroare de salvare, salvare în curs, plan invalid.
+>
+> **Amânat:** cameră poligonală / desen liber · divizarea unui perete printr-un nod nou · mutarea unui gol pe alt perete · ștergere directă de nod · lungimea peretelui ca câmp numeric · snap la axe / unghiuri · riglă grafică · pinch / două degete · layout pe trei trepte și mod doar-vizualizare pe telefon · selecție multiplă · lista camerelor cu arii ca panou separat · spike 3D · măsurarea performanței la 20 de camere.
+>
+> **Netestat:** dispozitive tactile reale, cititoare de ecran, Safari / iOS real, performanța la 20 de camere (vezi raportul etapei pentru ce browsere au rulat efectiv).
+
+---
+
 ## Etapa 2 — Persistență, autosave, export/import, migrări
 
 > Notă: mecanismele de persistență, autosave, undo și blocare au fost livrate în Etapa 1c; în Etapa 2 rămân **interfața** lor (lista de proiecte, indicatori, dialoguri de conflict/eroare, import/export prin fișiere, `rc:prefs`) și integrarea în aplicație.
@@ -133,6 +145,8 @@
 ---
 
 ## Etapa 3 — Editor 2D: pereți, camere, goluri (+ spike 3D)
+
+> **Notă după Etapa 2b:** o parte din conținutul de mai jos a fost livrată deja în 2b, cu **SVG în loc de Konva** (ADR-037): pan/zoom, grilă, tastatură, selecție, pereți, cameră dreptunghiulară cu dimensiuni interioare, uși și ferestre, panou de proprietăți, cote. Rămân pentru Etapa 3: cameră poligonală, măsurare, snap la axe / unghiuri, riglă, gesturi tactile și layout responsive pe trepte, lista camerelor cu arii, spike 3D și măsurarea performanței (20 de camere).
 
 **Conținut**
 - Canvas Konva cu pan/zoom (conversie lume↔ecran din ARCHITECTURE §5), grilă, riglă/scară grafică, tastatură (săgeți, Del, Esc, Ctrl+Z/Y).

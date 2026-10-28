@@ -56,7 +56,7 @@ src/
   persistence/            Dexie, repository, autosave, instantanee, lock
   state/                  document store, ui store, istoric undo/redo
   features/
-    projects/  editor2d/  viewer3d/  catalog/  budget/  io/
+    projects/  editor-shell/  plan-editor/  viewer3d/  catalog/  budget/  io/
   ui/                     componente generice (butoane, dialoguri, câmpuri numerice)
   catalog-data/           catalog încorporat (JSON + schema)
 tests/ (unit) · e2e/ (Playwright) · fixtures/ (documente, per versiune)
@@ -103,7 +103,10 @@ Sume întregi în unități minore, TVA în puncte-bază, politici de rotunjire 
 ### 4.6 `persistence`
 Vezi §7.
 
-### 4.7 `features/editor2d` (React Konva)
+### 4.7 `features/plan-editor` (SVG) — înlocuiește varianta Konva (ADR-037)
+**Implementat în Etapa 2b:** SVG React. `PlanCanvas` (doar desenează), `PlanEditor` (gesturi, tastatură, stare efemeră de UI: selecție, unealtă, vizualizare, document-ciornă), `PropertiesPanel`, `view.ts` (matematica lume↔ecran, pură). Straturi, de jos în sus: grilă · camere · pereți · goluri · cote · previzualizare perete nou · noduri. Justificarea alegerii SVG și limitele ei: ADR-037. Varianta Konva de mai jos rămâne plan de rezervă dacă SVG-ul nu ține la scară.
+
+**Varianta inițială (Konva), neimplementată:**
 Straturi Konva: grilă (fără ascultare evenimente) · umpleri camere · pereți · goluri · obiecte · cote/dimensiuni · selecție/Transformer · ghidaje de snap. Uneltele sunt mașini de stări mici (select, perete, cameră, gol, obiect, măsurare, pan). Toată logica de decizie (snap, validare) este delegată `domain/geometry`; componentele doar desenează și traduc evenimente de pointer în coordonate lume.
 
 ### 4.8 `features/viewer3d` (R3F)
@@ -239,6 +242,15 @@ Nimic din fișier nu este evaluat ca cod; șirurile se randează ca text (React 
 - **Rute:** `/` = `Dashboard`; `/editor/?p=<id>` = `EditorShell` → `SessionView`. Toate linkurile între rute sunt `<a href>` prin `asset()` / `editorHref()` (ADR-031) și, deci, navigări complete: sesiunea se închide prin `pagehide`/demontare, iar blocarea se eliberează.
 - **Dashboard:** listare, creare, deschidere, redenumire, ștergere cu confirmare; stări: inițializare, încărcare, listă goală, eroare de stocare (cu „Reîncearcă”), stocare indisponibilă, proiecte invalide (verificate cu `manager.inspect`, cu restaurare din copii de siguranță).
 - **Editor (carcasă):** bara cu starea de salvare, undo/redo (butoane și Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y), redenumire, export de copie de siguranță; bannere pentru doar-citire („Preia controlul”), controlul pierdut, conflict (trei rezolvări) și eroare de stocare (reîncercare + export); înlocuitor pentru suprafața de lucru cu rezumatul documentului.
+
+### 7.6.3 Editorul 2D (Etapa 2b)
+
+- **Fluxul unei modificări:** gest sau formular → funcție pură din `domain/edit` (document nou) → `session.apply(label, operation)` → validare completă în `commit` → un pas de undo → autosave. Un eșec (`recipe-error` / `invalid`) nu modifică documentul și se traduce în română (`describeCommitFailure`).
+- **Gesturi:** tragerea unui nod sau a unui gol lucrează pe un document-ciornă derivat din documentul real; sesiunea nu este atinsă până la eliberare. La eliberare se face un singur `apply`; la respingere documentul rămâne neschimbat, iar utilizatorul vede motivul. `Escape` anulează.
+- **Ce NU este în document:** selecția, unealta, vizualizarea (zoom / deplasare) și ciorna rămân stare React locală (`useState`), conform ARCHITECTURE §4.5 (UI store efemer).
+- **Derivate:** geometria desenată vine din `selectGeometry(doc)` (memoizat pe identitatea documentului); documentul-ciornă își are propria intrare în cache, deci previzualizarea nu poluează cache-ul documentului real.
+- **Stări de sesiune:** `readonly`, `conflict`, `closed` → editare oprită (selecția, zoom-ul și deplasarea rămân); `error` și `saving` → editarea continuă, cu banda de stare `plan-status`.
+- **Compoziție:** `features/editor-shell` primește editorul printr-un slot `workspace`; `src/app/editor/EditorClient.tsx` îl leagă de `features/plan-editor` (modulele din `features/` nu se importă între ele).
 
 ### 7.7 Migrări
 - Două niveluri independente:

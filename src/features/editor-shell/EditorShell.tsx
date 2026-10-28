@@ -8,7 +8,7 @@ import type { ProjectRuntime } from '@/lib/project-runtime/browser-runtime';
 import { useRuntimeState } from '@/lib/project-runtime/ProjectProvider';
 import { buttonClass } from '@/ui/Button';
 import { Alert, Spinner } from '@/ui/feedback';
-import { SessionView } from './SessionView';
+import { SessionView, type WorkspaceRenderer } from './SessionView';
 
 function BackLink() {
   return (
@@ -19,7 +19,7 @@ function BackLink() {
 }
 
 /** Ruta editorului: proiectul vine din `?p=<id>` (ADR-002). Toate stările (încărcare, erori) sunt vizibile. */
-export function EditorShell() {
+export function EditorShell({ workspace }: { workspace?: WorkspaceRenderer }) {
   const projectId = useSearchParams().get('p') ?? '';
   const runtime = useRuntimeState();
 
@@ -58,10 +58,18 @@ export function EditorShell() {
       </Centered>
     );
   }
-  return <OpenProject runtime={runtime.runtime} projectId={projectId} />;
+  return <OpenProject runtime={runtime.runtime} projectId={projectId} workspace={workspace} />;
 }
 
-function OpenProject({ runtime, projectId }: { runtime: ProjectRuntime; projectId: string }) {
+function OpenProject({
+  runtime,
+  projectId,
+  workspace,
+}: {
+  runtime: ProjectRuntime;
+  projectId: string;
+  workspace?: WorkspaceRenderer;
+}) {
   const { state, takeOver } = useProjectSession(runtime.manager, projectId);
 
   if (state.phase === 'loading') {
@@ -86,7 +94,7 @@ function OpenProject({ runtime, projectId }: { runtime: ProjectRuntime; projectI
       </Centered>
     );
   }
-  return <SessionView session={state.session} takeOver={takeOver} />;
+  return <SessionView session={state.session} takeOver={takeOver} workspace={workspace} />;
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

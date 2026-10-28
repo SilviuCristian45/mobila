@@ -127,7 +127,7 @@ describe('Editor — sesiunea React peste ProjectSession', () => {
     expect(screen.getByTestId('count-walls').textContent).toBe('7');
     expect(screen.getByTestId('count-objects').textContent).toBe('2');
     expect(screen.getByTestId('mode').textContent).toBe('editare');
-    expect(screen.getByTestId('workspace-placeholder')).toBeTruthy();
+    expect(screen.getByTestId('workspace-summary')).toBeTruthy();
     expect((screen.getByTestId('undo') as HTMLButtonElement).disabled).toBe(true);
     expect(document.title).toBe('studio — RoomCraft');
   });
