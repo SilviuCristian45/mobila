@@ -37,6 +37,8 @@ export function assignmentArea(
     if (!room) throw new Error(`Cameră necunoscută: ${a.target.roomId}`);
     return { areaMm2: room.areaMm2, roomId: a.target.roomId };
   }
+  if (a.target.kind === 'objectSlot')
+    throw new Error('Zona unui obiect nu are arie: se contorizează pe bucată.');
   const { wallId, side } = a.target;
   const fp = model.footprints.get(wallId);
   if (!fp) throw new Error(`Perete necunoscut: ${wallId}`);
@@ -90,6 +92,13 @@ export function purchaseQuantity(f: Finish, netM2: number): Traced<PurchaseQuant
   const problems = finishConfigProblems(f);
   if (problems.length > 0) throw new Error(`Finisaj ${f.id} invalid: ${problems.join('; ')}`);
   const trace: TraceStep[] = [];
+  if (f.kind === 'furniture') {
+    // finisajele de mobilier se numără pe bucată: `netM2` poartă numărul de zone finisate
+    trace.push(
+      step('Bucăți', 'o bucată per zonă de obiect finisată', { 'zone finisate': netM2 }, netM2),
+    );
+    return { value: { purchase: netM2, computed: netM2, unit: 'buc' }, trace };
+  }
   if (f.kind === 'paint' && f.paint) {
     const litres = (netM2 * f.paint.coats) / f.paint.coverageM2PerLiter;
     trace.push(

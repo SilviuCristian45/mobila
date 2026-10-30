@@ -36,7 +36,7 @@ Combinația React 19.3.1 + react-konva 19.3.2 + konva 10.9.0 + three 0.186.1 + @
 
 - `src/domain` — nucleul pur (zod + TypeScript, fără React/DOM/platformă): `schema`, `geometry`, `money`, `quantities`, `budget`, `scene`, `integrity`, `cascade`, `io`.
 - `src/persistence` — Dexie/IndexedDB, blocări Web Locks, erori de stocare; `src/state` — sesiune de proiect (undo/redo, autosave), gestionar de proiecte, selectori memoizați (independente de React).
-- `src/lib/project-runtime` — adaptorul pentru browser (ProjectProvider, hook-uri React) peste `state/`; `src/features/projects` (dashboard) și `src/features/editor-shell` (ruta editorului); `src/ui` — componente generice.
+- `src/lib/project-runtime` — adaptorul pentru browser (ProjectProvider, hook-uri React) peste `state/`; `src/features/projects` (dashboard) și `src/features/editor-shell` (ruta editorului); `src/features/plan-editor` (plan 2D, SVG) și `src/catalog` (catalogul încorporat de obiecte: date, rețete parametrice, previzualizări — pur) cu `src/features/catalog` (browser + proprietăți); `src/materials` (catalogul de materiale și texturile procedurale — pur) cu `src/features/materials` (panou); `src/features/viewer-3d` (vizualizare 3D, doar citire, R3F încărcat doar pe client); `src/ui` — componente generice.
 - `src/app` — rute (doar compoziție); `src/features` — module de funcționalități; `src/lib` — utilitare (`asset()` pentru `basePath`).
 - `spikes/stage0` — prototipurile Etapei 0 (păstrate; NU fac parte din aplicație, sunt excluse din lint/tipuri/teste/depcruise).
 - `docs/` — specificații, arhitectură, model de date, decizii, rapoarte.

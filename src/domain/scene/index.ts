@@ -7,7 +7,11 @@ import {
   type WallFootprint,
 } from '../geometry';
 import { InvalidDocumentError } from '../errors';
-import type { ProjectDocument } from '../schema';
+import { stableHash } from '../hash';
+
+export { stableHash };
+import { resolveLook, type SurfaceLook } from '../finishes';
+import type { ObjectFinishSlot, ProjectDocument } from '../schema';
 
 export interface Prism {
   id: string;
@@ -17,12 +21,18 @@ export interface Prism {
   /** Cota de jos / de sus, mm. */
   y0: number;
   y1: number;
+  /** Cheile aspectului (în `SceneDescription.looks`) pe fața stângă/dreaptă a peretelui; `null` = finisajul implicit. */
+  left: string | null;
+  right: string | null;
 }
 export interface FloorDesc {
   id: string;
   roomId: string;
   polygon: Pt[];
+  /** Culoarea de bază rezolvată (finisaj sau `#dddddd`). */
   colorHex: string;
+  /** Cheia aspectului în `looks`; `null` = fără finisaj (culoare implicită). */
+  look: string | null;
 }
 export interface BoxDesc {
   id: string;
@@ -33,13 +43,19 @@ export interface BoxDesc {
   /** Rotația din plan θ (orar) ↔ rotation.y = −θ (radiani). */
   rotationY: number;
   colorHex: string;
+  /** Parametrii instanței (rețeta îi citește; cheile lipsă = valorile implicite ale rețetei). */
+  params: Record<string, number | string | boolean>;
   /** Rețeta din snapshot; `null` dacă itemul lipsește (randarea folosește o cutie de înlocuire). */
   recipe: { id: string; version: number } | null;
+  /** Finisajele zonelor obiectului: zonă → cheia aspectului din `looks`. */
+  slots: Partial<Record<ObjectFinishSlot, string>>;
 }
 export interface SceneDescription {
   prisms: Prism[];
   floors: FloorDesc[];
   boxes: BoxDesc[];
+  /** Aspectele folosite, după cheie (conținut identic ⇒ aceeași cheie: un material reutilizat apare o singură dată). */
+  looks: Record<string, SurfaceLook>;
   /** Hash stabil al conținutului (pentru actualizări incrementale și testul de autonomie). */
   hash: string;
 }
@@ -72,21 +88,45 @@ function piecePolygon(fp: WallFootprint, sa: number | null, sb: number | null): 
 }
 
 /** Peretele ca prisme: golurile se obțin prin segmentare (sub fereastră, deasupra golului, între goluri). */
-export function wallPrisms(doc: ProjectDocument, fp: WallFootprint): Prism[] {
+export function wallPrisms(
+  doc: ProjectDocument,
+  fp: WallFootprint,
+  looks: Map<string, SurfaceLook> = new Map(),
+): Prism[] {
   const wall = fp.frame.wall;
+  // finisajele fețelor: benzi de înălțime pe stânga/dreapta; prismele se taie la marginile benzilor
+  const bands = Object.values(doc.finishAssignments)
+    .filter((a) => a.target.kind === 'wallSide' && a.target.wallId === wall.id)
+    .map((a) => {
+      const side = (a.target as { side: 'left' | 'right' }).side;
+      const from = a.fromHeightMm ?? 0;
+      const to = Math.min(from + (a.coveredHeightMm ?? wall.heightMm - from), wall.heightMm);
+      const finish = doc.catalogSnapshot.finishes[a.finishId];
+      const look = finish ? resolveLook(finish, a.look) : null;
+      if (look) looks.set(look.key, look);
+      return { side, from, to, key: look?.key ?? null };
+    })
+    .filter((b) => b.to > b.from);
+  const cuts = [...new Set(bands.flatMap((b) => [b.from, b.to]))].sort((a, b) => a - b);
+  const keyAt = (side: 'left' | 'right', y0: number, y1: number): string | null =>
+    bands.find((b) => b.side === side && b.from <= y0 && b.to >= y1)?.key ?? null;
   const openings = Object.values(doc.openings)
     .filter((o) => o.wallId === wall.id)
     .sort((a, b) => a.offsetMm - b.offsetMm || a.id.localeCompare(b.id));
   const out: Prism[] = [];
   let n = 0;
   const push = (sa: number | null, sb: number | null, y0: number, y1: number) => {
-    if (y1 > y0)
+    if (y1 <= y0) return;
+    const ys = [y0, ...cuts.filter((c) => c > y0 && c < y1), y1];
+    for (let i = 0; i + 1 < ys.length; i++)
       out.push({
         id: `${wall.id}#${n++}`,
         wallId: wall.id,
         polygon: piecePolygon(fp, sa, sb),
-        y0,
-        y1,
+        y0: ys[i]!,
+        y1: ys[i + 1]!,
+        left: keyAt('left', ys[i]!, ys[i + 1]!),
+        right: keyAt('right', ys[i]!, ys[i + 1]!),
       });
   };
   let cursor: number | null = null;
@@ -104,35 +144,15 @@ export function wallPrisms(doc: ProjectDocument, fp: WallFootprint): Prism[] {
 
 const round3 = (x: number): number => Math.round(x * 1000) / 1000;
 
-/** Hash FNV-1a pe JSON canonic (chei sortate). */
-export function stableHash(value: unknown): string {
-  const canonical = (v: unknown): unknown =>
-    Array.isArray(v)
-      ? v.map(canonical)
-      : v && typeof v === 'object'
-        ? Object.fromEntries(
-            Object.entries(v as Record<string, unknown>)
-              .sort(([a], [b]) => (a < b ? -1 : 1))
-              .map(([k, x]) => [k, canonical(x)]),
-          )
-        : v;
-  const s = JSON.stringify(canonical(value));
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h.toString(16).padStart(8, '0');
-}
-
 export function buildScene(doc: ProjectDocument, geometry?: GeometryModel): SceneDescription {
   const model = geometry ?? analyzeGeometry(doc);
   if (model.issues.length > 0)
     throw new InvalidDocumentError('Geometrie invalidă: scena nu se poate construi.', model.issues);
 
+  const looks = new Map<string, SurfaceLook>();
   const prisms = [...model.footprints.keys()]
     .sort()
-    .flatMap((id) => wallPrisms(doc, model.footprints.get(id)!));
+    .flatMap((id) => wallPrisms(doc, model.footprints.get(id)!, looks));
 
   const floorAssignment = (roomId: string) =>
     Object.values(doc.finishAssignments)
@@ -141,11 +161,14 @@ export function buildScene(doc: ProjectDocument, geometry?: GeometryModel): Scen
   const floors: FloorDesc[] = [...model.rooms.keys()].sort().map((roomId) => {
     const a = floorAssignment(roomId);
     const finish = a ? doc.catalogSnapshot.finishes[a.finishId] : undefined;
+    const look = finish ? resolveLook(finish, a?.look) : null;
+    if (look) looks.set(look.key, look);
     return {
       id: `floor:${roomId}`,
       roomId,
       polygon: model.rooms.get(roomId)!.polygon,
-      colorHex: finish?.appearance.baseColorHex ?? '#dddddd',
+      colorHex: look?.baseColorHex ?? '#dddddd',
+      look: look?.key ?? null,
     };
   });
 
@@ -155,13 +178,24 @@ export function buildScene(doc: ProjectDocument, geometry?: GeometryModel): Scen
       const o = doc.objects[id]!;
       const item = doc.catalogSnapshot.items[o.catalogItemId];
       const [x, , z] = toWorld(o.position);
+      const slots: BoxDesc['slots'] = {};
+      for (const a of Object.values(doc.finishAssignments)) {
+        if (a.target.kind !== 'objectSlot' || a.target.objectId !== id) continue;
+        const finish = doc.catalogSnapshot.finishes[a.finishId];
+        if (!finish) continue;
+        const look = resolveLook(finish, a.look);
+        looks.set(look.key, look);
+        slots[a.target.slot] = look.key;
+      }
       return {
         id,
         center: [x, (o.elevationMm + o.size.heightMm / 2) / 1000, z],
         size: [o.size.widthMm / 1000, o.size.heightMm / 1000, o.size.depthMm / 1000],
         rotationY: planRotationToThree(o.rotationDeg),
+        params: { ...o.params },
         colorHex: o.colorHex ?? item?.defaultColorHex ?? '#bbbbbb',
         recipe: item ? { id: item.recipe.id, version: item.recipe.version } : null,
+        slots,
       };
     });
 
@@ -175,8 +209,15 @@ export function buildScene(doc: ProjectDocument, geometry?: GeometryModel): Scen
       polygon: f.polygon.map((q) => ({ x: round3(q.x), y: round3(q.y) })),
     })),
     boxes,
+    looks: Object.fromEntries([...looks].sort(([a], [b]) => (a < b ? -1 : 1))),
   };
-  return { prisms, floors, boxes, hash: stableHash(body) };
+  return {
+    prisms,
+    floors,
+    boxes,
+    looks: body.looks,
+    hash: stableHash(body),
+  };
 }
 
 /** Semnătură fără ID-uri: două documente identice ca geometrie, dar cu ID-uri diferite, au aceeași semnătură. */
@@ -184,10 +225,10 @@ export function geometrySignature(scene: SceneDescription): string {
   const strip = (p: Pt[]) => p.map((q) => [round3(q.x), round3(q.y)]);
   const order = (a: unknown, b: unknown) => (JSON.stringify(a) < JSON.stringify(b) ? -1 : 1);
   return stableHash({
-    prisms: scene.prisms.map((p) => [strip(p.polygon), p.y0, p.y1]).sort(order),
-    floors: scene.floors.map((f) => [strip(f.polygon), f.colorHex]).sort(order),
+    prisms: scene.prisms.map((p) => [strip(p.polygon), p.y0, p.y1, p.left, p.right]).sort(order),
+    floors: scene.floors.map((f) => [strip(f.polygon), f.colorHex, f.look]).sort(order),
     boxes: scene.boxes
-      .map((b) => [b.center, b.size, b.rotationY, b.colorHex, b.recipe])
+      .map((b) => [b.center, b.size, b.rotationY, b.colorHex, b.recipe, b.params, b.slots])
       .sort(order),
   });
 }

@@ -89,14 +89,35 @@ export const CatalogItemSchema = z.strictObject({
   provenance: ProvenanceSchema,
 });
 
+/** Tipuri de suprafață pe care se poate aplica un material. */
+export const FINISH_SURFACES = ['floor', 'wall', 'object'] as const;
+export type FinishSurface = (typeof FINISH_SURFACES)[number];
+/** Zonele finisabile ale unui obiect (rolurile de culoare ale rețetelor, grupate): corp, fronturi/accente, blat/lemn/cadru, metal. */
+export const OBJECT_FINISH_SLOTS = ['body', 'front', 'top', 'metal'] as const;
+export type ObjectFinishSlot = (typeof OBJECT_FINISH_SLOTS)[number];
+/** Modele procedurale de textură (generate local, deterministe după `seed`). */
+export const TEXTURE_PATTERNS = [
+  'tile_grid',
+  'plank',
+  'marble_tile',
+  'speckle',
+  'flagstone',
+  'wallpaper',
+  'brushed',
+] as const;
+
 const AppearanceSchema = z.strictObject({
   baseColorHex: HexSchema,
   roughness: z.number().min(0).max(1),
+  /** 0 = dielectric, 1 = metal. Lipsă = 0. */
+  metalness: z.number().min(0).max(1).optional(),
+  /** Transparență (sticlă). Lipsă = opac. */
+  opacity: z.number().min(0.05).max(1).optional(),
   texture: z.discriminatedUnion('type', [
     z.strictObject({ type: z.literal('solid') }),
     z.strictObject({
       type: z.literal('procedural'),
-      pattern: z.enum(['tile_grid', 'plank']),
+      pattern: z.enum(TEXTURE_PATTERNS),
       groutColorHex: HexSchema,
       offsetPct: z.union([z.literal(0), z.literal(33), z.literal(50)]),
       toneVariation: z.number().min(0).max(1),
@@ -109,7 +130,15 @@ export const FinishSchema = z
   .strictObject({
     id: z.string().min(1).max(100),
     version: z.number().int().positive(),
-    kind: z.enum(['tile', 'wall_tile', 'parquet', 'paint']),
+    /**
+     * `tile`/`wall_tile`/`parquet`/`paint`: finisaje cu parametri de calcul (rost, vopsea). `surface`: suprafață generică la m²
+     * (beton, piatră, tapet, lemn, metal, sticlă). `furniture`: finisaj de mobilier, preț pe bucată (supliment față de prețul obiectului).
+     */
+    kind: z.enum(['tile', 'wall_tile', 'parquet', 'paint', 'surface', 'furniture']),
+    /** Categoria de afișare în panou (id ASCII); lipsă = derivată din `kind`. */
+    category: z.string().max(60).optional(),
+    /** Tipurile de suprafață compatibile; lipsă = derivate din `kind` (obligatoriu pentru `surface`/`furniture`). */
+    surfaces: z.array(z.enum(FINISH_SURFACES)).min(1).max(3).optional(),
     name: LocalizedTextSchema,
     appearance: AppearanceSchema,
     priceUnit: z.enum(['m2', 'box', 'piece', 'liter', 'can']),
@@ -136,7 +165,19 @@ export const FinishSchema = z
     provenance: ProvenanceSchema,
   })
   .superRefine((f, ctx) => {
+    const generic = f.kind === 'surface' || f.kind === 'furniture';
     const isPaint = f.kind === 'paint';
+    if (generic) {
+      if (f.tile || f.paint)
+        ctx.addIssue({ code: 'custom', message: '„surface”/„furniture” nu au `tile` sau `paint`' });
+      if (!f.surfaces)
+        ctx.addIssue({ code: 'custom', message: '„surface”/„furniture” cer `surfaces`' });
+      if (f.kind === 'surface' && f.priceUnit !== 'm2')
+        ctx.addIssue({ code: 'custom', message: 'suprafața generică se tarifează la m²' });
+      if (f.kind === 'furniture' && f.priceUnit !== 'piece')
+        ctx.addIssue({ code: 'custom', message: 'finisajul de mobilier se tarifează pe bucată' });
+      return;
+    }
     if (isPaint && (!f.paint || f.tile))
       ctx.addIssue({ code: 'custom', message: 'vopseaua cere `paint` și nu `tile`' });
     if (!isPaint && (!f.tile || f.paint))
@@ -166,7 +207,20 @@ const FinishTargetSchema = z.discriminatedUnion('kind', [
     wallId: IdSchema,
     side: z.enum(['left', 'right']),
   }),
+  z.strictObject({
+    kind: z.literal('objectSlot'),
+    objectId: IdSchema,
+    slot: z.enum(OBJECT_FINISH_SLOTS),
+  }),
 ]);
+
+/** Proprietăți specifice APLICĂRII (nu definiției materialului): culoare, scara și rotația texturii, rugozitate. */
+export const FinishLookSchema = z.strictObject({
+  colorHex: HexSchema.optional(),
+  textureScale: z.number().min(0.25).max(4).optional(),
+  textureRotationDeg: z.number().min(0).lt(360).optional(),
+  roughness: z.number().min(0).max(1).optional(),
+});
 
 const QuantityBindingSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('roomFloorArea'), roomId: IdSchema }),
@@ -306,6 +360,7 @@ export const ProjectDocumentSchema = z.strictObject({
       coveredHeightMm: PosMmSchema.optional(),
       fromHeightMm: z.number().int().min(0).optional(),
       layout: z.enum(['straight', 'diagonal']).optional(),
+      look: FinishLookSchema.optional(),
     }),
   ),
   catalogSnapshot: z.strictObject({
@@ -329,6 +384,7 @@ export type Room = ProjectDocument['rooms'][string];
 export type PlacedObject = ProjectDocument['objects'][string];
 export type FinishAssignment = ProjectDocument['finishAssignments'][string];
 export type FinishTarget = FinishAssignment['target'];
+export type FinishLook = z.infer<typeof FinishLookSchema>;
 export type LineOverride = z.infer<typeof LineOverrideSchema>;
 export type ManualLine = z.infer<typeof ManualLineSchema>;
 export type ProjectSettings = ProjectDocument['settings'];

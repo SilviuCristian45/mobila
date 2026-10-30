@@ -144,7 +144,13 @@
 
 ---
 
+> **Etapa 3b (livrată):** catalog încorporat de 41 de obiecte parametrice, adăugare/mutare/rotire/duplicare/ștergere, panou de proprietăți, previzualizări SVG, obiecte în 2D și 3D, fără modificare de schemă. Vezi ADR-039 și [STAGE3B_REPORT](STAGE3B_REPORT.md). Rămân: redimensionare prin mânere, snap la pereți/obiecte, selecție multiplă, itemi definiți de utilizator, materiale.
+
+> **Etapa 3c (livrată):** sistem unitar de materiale — 36 de materiale (pardoseli, pereți, alte suprafețe, mobilier), texturi procedurale offline, aplicare pe podea/pereți/fețe/zone de mobilier, parametri ai aplicării, 2D și 3D, buget. Vezi ADR-040 și [STAGE3C_REPORT](STAGE3C_REPORT.md). Rămân: texturi pentru mobilier, materiale personalizate ale utilizatorului, benzi de înălțime din UI, norme/rotunjiri pe pachete diferite.
+
 ## Etapa 3 — Editor 2D: pereți, camere, goluri (+ spike 3D)
+
+> **Etapa 3a (livrată):** fundația vizualizării 3D în ruta editorului — podele, pereți cu goluri și îmbinări din `SceneDescription`, orbitare/zoom/deplasare cu mouse-ul, reset al vederii, comutare 2D/3D pe același proiect activ. Vezi ADR-038 și [STAGE3A_REPORT](STAGE3A_REPORT.md). Rămân: navigare tactilă validată, obiecte/mobilier, materiale, performanță pe proiecte mari.
 
 > **Notă după Etapa 2b:** o parte din conținutul de mai jos a fost livrată deja în 2b, cu **SVG în loc de Konva** (ADR-037): pan/zoom, grilă, tastatură, selecție, pereți, cameră dreptunghiulară cu dimensiuni interioare, uși și ferestre, panou de proprietăți, cote. Rămân pentru Etapa 3: cameră poligonală, măsurare, snap la axe / unghiuri, riglă, gesturi tactile și layout responsive pe trepte, lista camerelor cu arii, spike 3D și măsurarea performanței (20 de camere).
 

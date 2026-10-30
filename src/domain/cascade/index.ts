@@ -1,6 +1,7 @@
 // Operații pe document care păstrează derivatele consistente. Fiecare întoarce un document NOU; curățarea
 // suprascrierilor are loc în ACEEAȘI operație cu ștergerea sursei (altfel `undo` ar pierde prețul editat).
 import { cloneDocument } from '../factory';
+import { pruneUnusedFinishes } from '../finishes';
 import type { Result } from '../result';
 import type { LineOverride, ProjectDocument } from '../schema';
 
@@ -24,7 +25,11 @@ export function removeObject(doc: ProjectDocument, objectId: string): Result<Pro
   const next = cloneDocument(doc);
   delete next.objects[objectId];
   delete next.budget.overrides[`object:${objectId}`];
-  return { ok: true, value: next };
+  // finisajele zonelor obiectului dispar în aceeași operație (și finisajele rămase nefolosite din snapshot)
+  for (const a of Object.values(next.finishAssignments))
+    if (a.target.kind === 'objectSlot' && a.target.objectId === objectId)
+      delete next.finishAssignments[a.id];
+  return { ok: true, value: pruneUnusedFinishes(next) };
 }
 
 /** Șterge o atribuire de finisaj; refuză dacă o linie manuală este legată de ea. */

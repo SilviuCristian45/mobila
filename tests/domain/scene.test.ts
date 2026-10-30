@@ -146,6 +146,9 @@ describe('regresii cunoscute', () => {
   it('L: fereastra apare în prisme (4) și suprafața nu depinde de ordinea pereților', () => {
     const d = lShapeProject();
     const m = analyzeGeometry(d);
-    expect(wallPrisms(d, m.footprints.get('w1')!)).toHaveLength(4);
+    // peretele are benzi de finisaj la 1200 mm (faianță dedesubt, vopsea deasupra): prismele se taie la marginea benzii
+    expect(wallPrisms(d, m.footprints.get('w1')!)).toHaveLength(6);
+    d.finishAssignments = {};
+    expect(wallPrisms(d, m.footprints.get('w1')!)).toHaveLength(4); // fără finisaje: segmentarea după goluri
   });
 });

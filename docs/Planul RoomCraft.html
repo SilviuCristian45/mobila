@@ -1,0 +1,454 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Planul RoomCraft</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: coloană îngustă; o bară de progres pe etape, apoi o listă verticală de etape pe un ax, apoi secțiuni cu linie de cotă. */
+  :root {
+    --bg: #EEF1F4;
+    --surface: #FFFFFF;
+    --fg: #13202C;
+    --muted: #56656F;
+    --line: #D3DBE2;
+    --accent: #2347C5;
+    --accent-soft: #E3EAFB;
+    --done: #1B7A4F;
+    --done-soft: #DDF1E7;
+    --review: #9A5F00;
+    --review-soft: #FBEBCB;
+    --plan: #5B6B78;
+    --plan-soft: #E4E9ED;
+    --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E151C; --surface: #151F28; --fg: #E7EDF2; --muted: #95A3AF; --line: #27343F;
+      --accent: #8CA6FF; --accent-soft: #1C2848;
+      --done: #5FD49A; --done-soft: #143124;
+      --review: #F0B955; --review-soft: #3A2B0E;
+      --plan: #9AA9B5; --plan-soft: #222D37;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E151C; --surface: #151F28; --fg: #E7EDF2; --muted: #95A3AF; --line: #27343F;
+    --accent: #8CA6FF; --accent-soft: #1C2848;
+    --done: #5FD49A; --done-soft: #143124;
+    --review: #F0B955; --review-soft: #3A2B0E;
+    --plan: #9AA9B5; --plan-soft: #222D37;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    padding-block: 40px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+  section, header { min-width: 0; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Antet */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(2.2rem, 7vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .lead { max-width: 62ch; color: var(--muted); font-size: 1.05rem; margin: 0; }
+
+  /* Bara de progres */
+  .progress { display: flex; flex-direction: column; gap: 14px; margin-top: 32px; }
+  .strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+  .seg {
+    display: flex; flex-direction: column; gap: 6px;
+    text-decoration: none; color: var(--muted);
+    font-family: var(--font-mono); font-size: 11px; line-height: 1;
+    border-radius: 4px;
+    min-width: 0;
+  }
+  .seg i { display: block; height: 8px; border-radius: 2px; background: var(--plan); opacity: 0.45; }
+  .seg.done i { background: var(--done); opacity: 1; }
+  .seg.review i { background: var(--review); opacity: 1; }
+  .seg:hover { color: var(--fg); }
+  .seg:focus-visible, .rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend b { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  /* Titluri de secțiune cu linie de cotă */
+  h2 {
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.4rem, 4vw, 1.75rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 20px;
+  }
+  h2::after {
+    content: "";
+    flex: 1; min-width: 24px; height: 9px;
+    border-left: 1.5px solid var(--line);
+    border-right: 1.5px solid var(--line);
+    background: linear-gradient(var(--line), var(--line)) center / 100% 1.5px no-repeat;
+  }
+
+  /* Etape pe ax */
+  .rail { list-style: none; margin: 0; padding: 0; }
+  .stage { position: relative; padding: 0 0 20px 38px; scroll-margin-top: 16px; }
+  .stage:last-child { padding-bottom: 0; }
+  .stage::before {
+    content: ""; position: absolute; left: 8px; top: 20px; bottom: -2px; width: 2px; background: var(--line);
+  }
+  .stage:last-child::before { display: none; }
+  .stage::after {
+    content: ""; position: absolute; left: 0; top: 6px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--plan);
+  }
+  .stage.done::after { background: var(--done); border-color: var(--done); }
+  .stage.review::after { border-color: var(--review); background: var(--review-soft); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 20px 18px;
+    min-width: 0;
+  }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 6px; }
+  .code {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  }
+  .pill {
+    font-size: 12px; font-weight: 600; line-height: 1;
+    padding: 5px 9px; border-radius: 999px;
+    background: var(--plan-soft); color: var(--plan);
+  }
+  .done .pill { background: var(--done-soft); color: var(--done); }
+  .review .pill { background: var(--review-soft); color: var(--review); }
+  h3 {
+    font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; line-height: 1.25;
+    letter-spacing: -0.01em; margin: 0 0 8px; text-wrap: balance;
+  }
+  .card p { margin: 0; max-width: 65ch; }
+  .card p + ul { margin-top: 10px; }
+  .goal { color: var(--fg); }
+  .goal b { font-weight: 600; }
+  ul.points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  ul.points li { position: relative; padding-left: 20px; max-width: 65ch; }
+  ul.points li::before {
+    content: ""; position: absolute; left: 2px; top: 0.68em; width: 7px; height: 7px; background: var(--accent); border-radius: 1px;
+  }
+
+  /* Împărțirea în subetape */
+  .intro { max-width: 65ch; color: var(--muted); margin: 0 0 16px; }
+  .split { padding: 0; overflow: hidden; }
+  .split-row {
+    display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px 24px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--line);
+  }
+  .split-row:first-child { border-top: 0; }
+  .split-row h3 { font-size: 1.05rem; margin: 0; }
+  .split-row h3 span { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .subs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 20px; }
+  .subs li { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+  .subs b {
+    font-family: var(--font-mono); font-weight: 500; font-size: 13px; color: var(--accent);
+    background: var(--accent-soft); padding: 1px 7px; border-radius: 4px; flex: none;
+  }
+
+  /* Prioritate */
+  .order { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .step {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px;
+    font-weight: 500;
+  }
+  .step b { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+  .arrow { color: var(--muted); font-family: var(--font-mono); }
+  .condition {
+    background: var(--accent-soft); border-radius: 8px; padding: 14px 18px; max-width: 70ch;
+  }
+  .condition .code { color: var(--accent); display: block; margin-bottom: 4px; }
+  .condition p { margin: 0; }
+
+  .rules-title { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 32px 0 14px; }
+  .rules { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .rules li { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; min-width: 0; }
+  .rules .n { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; color: var(--accent); }
+  .rules h4 { font-size: 1rem; font-weight: 600; margin: 4px 0 6px; line-height: 1.35; }
+  .rules p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  /* Țintă */
+  .targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .target { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; min-width: 0; }
+  .target .code { display: block; margin-bottom: 6px; color: var(--accent); }
+  .target p { margin: 0; }
+
+  @media (max-width: 560px) {
+    .split-row { grid-template-columns: minmax(0, 1fr); }
+    .card { padding: 14px 16px 16px; }
+    .seg { font-size: 10px; }
+    .stage { padding-left: 32px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Roadmap de dezvoltare</p>
+    <h1>Planul RoomCraft</h1>
+    <p class="lead">După ce aprobăm definitiv Etapa 2b, continuăm în etape mici, ca să obții o aplicație utilizabilă cât mai repede, fără să construim 2D, 3D, mobilier și buget toate deodată.</p>
+
+    <div class="progress">
+      <nav class="strip" aria-label="Progres pe etape">
+        <a class="seg done" href="#etapa-0-2a"><i></i><span>0–2a</span></a>
+        <a class="seg review" href="#etapa-2b"><i></i><span>2b</span></a>
+        <a class="seg" href="#etapa-3"><i></i><span>3</span></a>
+        <a class="seg" href="#etapa-4"><i></i><span>4</span></a>
+        <a class="seg" href="#etapa-5"><i></i><span>5</span></a>
+        <a class="seg" href="#etapa-6"><i></i><span>6</span></a>
+        <a class="seg" href="#etapa-7"><i></i><span>7</span></a>
+        <a class="seg" href="#etapa-8"><i></i><span>8</span></a>
+      </nav>
+      <div class="legend">
+        <span><b style="background: var(--done)"></b>Implementat</span>
+        <span><b style="background: var(--review)"></b>În curs de aprobare</span>
+        <span><b style="background: var(--plan); opacity: .45"></b>Planificat</span>
+      </div>
+    </div>
+  </header>
+
+  <section aria-labelledby="roadmap">
+    <h2 id="roadmap">Roadmap-ul propus</h2>
+    <ol class="rail">
+
+      <li class="stage done" id="etapa-0-2a">
+        <div class="card">
+          <div class="meta"><span class="code">Etapele 0–2a</span><span class="pill">Implementat</span></div>
+          <h3>Fundația și dashboard-ul</h3>
+          <p>Arhitectură, model de date, persistență, autosave, undo/redo, proiecte și carcasa editorului.</p>
+        </div>
+      </li>
+
+      <li class="stage review" id="etapa-2b">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 2b</span><span class="pill">În curs de aprobare</span></div>
+          <h3>Editor 2D</h3>
+          <p>Pereți, camere, dimensiuni, uși și ferestre, cu editare și validare geometrică.</p>
+        </div>
+      </li>
+
+      <li class="stage" id="etapa-3">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 3</span><span class="pill">Planificat</span></div>
+          <h3>Vizualizare 3D</h3>
+          <p class="goal"><b>Obiectiv:</b> să vezi camera construită în 2D în trei dimensiuni.</p>
+          <ul class="points">
+            <li>Pereți, podea și goluri pentru uși și ferestre.</li>
+            <li>Cameră orbitabilă, zoom și vedere din interior.</li>
+            <li>Sincronizare cu documentul proiectului.</li>
+            <li>Fără mobilier complex încă.</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stage" id="etapa-4">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 4</span><span class="pill">Planificat</span></div>
+          <h3>Catalog de mobilier și obiecte</h3>
+          <ul class="points">
+            <li>Pat, canapea, dulap, masă, scaune, birou și alte obiecte.</li>
+            <li>Dimensiuni editabile, poziționare și rotație.</li>
+            <li>Bibliotecă de obiecte parametrice, fără modele 3D externe obligatorii.</li>
+            <li>Aceeași poziție în planul 2D și în scena 3D.</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stage" id="etapa-5">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 5</span><span class="pill">Planificat</span></div>
+          <h3>Materiale și finisaje</h3>
+          <ul class="points">
+            <li>Culori pentru pereți și tavane.</li>
+            <li>Parchet, gresie și faianță.</li>
+            <li>Texturi procedurale și scară configurabilă.</li>
+            <li>Aplicarea finisajelor pe camere sau suprafețe compatibile.</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stage" id="etapa-6">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 6</span><span class="pill">Planificat</span></div>
+          <h3>Bugetul renovării</h3>
+          <ul class="points">
+            <li>Calculul suprafețelor și cantităților.</li>
+            <li>Costuri editabile pentru materiale și manoperă.</li>
+            <li>TVA configurabil și pierderi estimate pentru materiale.</li>
+            <li>Prețuri manuale care nu se pierd la recalculare.</li>
+            <li>Totaluri pe camere, categorii și întregul proiect.</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stage" id="etapa-7">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 7</span><span class="pill">Planificat</span></div>
+          <h3>Import, export și prezentare</h3>
+          <ul class="points">
+            <li>Export și import complet <code>.roomcraft.json</code>.</li>
+            <li>Export CSV pentru buget și materiale.</li>
+            <li>Export de plan 2D și capturi ale scenei 3D.</li>
+            <li>Rezumat de proiect și listă de cumpărături.</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stage" id="etapa-8">
+        <div class="card">
+          <div class="meta"><span class="code">Etapa 8</span><span class="pill">Planificat</span></div>
+          <h3>Stabilizare și lansare</h3>
+          <ul class="points">
+            <li>Testare în browsere și pe dispozitive reale.</li>
+            <li>Verificări de accesibilitate, performanță și proiecte mari.</li>
+            <li>CI funcțional și build reproductibil.</li>
+            <li>Testarea restaurării copiilor de siguranță.</li>
+            <li>Pregătirea exportului static pentru hosting.</li>
+          </ul>
+        </div>
+      </li>
+
+    </ol>
+  </section>
+
+  <section aria-labelledby="subetape">
+    <h2 id="subetape">Cum împărțim etapele mari</h2>
+    <p class="intro">Nu i-aș cere lui Claude să facă întreaga etapă 3 într-un singur prompt. De exemplu:</p>
+    <div class="card split">
+      <div class="split-row">
+        <h3><span>Etapa 3</span>3D</h3>
+        <ul class="subs">
+          <li><b>3a</b>pereți și podea</li>
+          <li><b>3b</b>uși și ferestre</li>
+          <li><b>3c</b>navigare și sincronizare</li>
+          <li><b>3d</b>teste de geometrie și performanță</li>
+        </ul>
+      </div>
+      <div class="split-row">
+        <h3><span>Etapa 4</span>Mobilier</h3>
+        <ul class="subs">
+          <li><b>4a</b>catalog și obiecte parametrice</li>
+          <li><b>4b</b>adăugare și poziționare</li>
+          <li><b>4c</b>rotație și proprietăți</li>
+          <li><b>4d</b>sincronizare 2D/3D</li>
+        </ul>
+      </div>
+      <div class="split-row">
+        <h3><span>Etapa 5</span>Finisaje</h3>
+        <ul class="subs">
+          <li><b>5a</b>culori și materiale simple</li>
+          <li><b>5b</b>texturi și scară</li>
+          <li><b>5c</b>calculul suprafețelor finisate</li>
+        </ul>
+      </div>
+      <div class="split-row">
+        <h3><span>Etapa 6</span>Buget</h3>
+        <ul class="subs">
+          <li><b>6a</b>cantități</li>
+          <li><b>6b</b>prețuri și TVA</li>
+          <li><b>6c</b>interfață, modificări manuale și export</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="prioritati">
+    <h2 id="prioritati">Ce prioritizăm</h2>
+    <p class="intro">Ordinea importantă este 3 → 4 → 5 → 6, cu o condiție.</p>
+
+    <div class="order" aria-label="Ordinea etapelor">
+      <span class="step"><b>3</b>3D</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step"><b>4</b>Mobilier</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step"><b>5</b>Finisaje</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step"><b>6</b>Buget</span>
+    </div>
+
+    <div class="condition">
+      <span class="code">Condiție înainte de 3D</span>
+      <p>Înainte de a începe 3D-ul, trebuie verificat că geometria 2D este stabilă și că modelul canonic conține toate informațiile necesare.</p>
+    </div>
+
+    <h3 class="rules-title">Trei reguli pe tot parcursul dezvoltării</h3>
+    <ol class="rules">
+      <li>
+        <span class="n">REGULA 1</span>
+        <h4>Un singur model de proiect</h4>
+        <p>2D, 3D și bugetul trebuie să derive din același <code>ProjectDocument</code>, nu să întrețină copii independente.</p>
+      </li>
+      <li>
+        <span class="n">REGULA 2</span>
+        <h4>Fiecare etapă trece verificările existente</h4>
+        <p>Nu acceptăm un editor nou care strică persistența, importul sau exportul.</p>
+      </li>
+      <li>
+        <span class="n">REGULA 3</span>
+        <h4>Funcționalitate înainte de detalii vizuale</h4>
+        <p>Mai întâi pereți corecți și mobilier poziționat corect; după aceea texturi realiste, iluminare și finisaje vizuale.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="tinta">
+    <h2 id="tinta">Ținta practică</h2>
+    <div class="targets">
+      <div class="target">
+        <span class="code">După etapa 4</span>
+        <p>Poți desena un apartament, să-l vezi în 3D și să-l mobilezi.</p>
+      </div>
+      <div class="target">
+        <span class="code">După etapele 5 și 6</span>
+        <p>Aplicația poate deveni un instrument real pentru planificarea unei renovări, nu doar un editor vizual.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body></html>

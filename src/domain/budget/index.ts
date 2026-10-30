@@ -60,12 +60,16 @@ export interface BudgetSummary {
   trace: TraceStep[];
 }
 
-const FINISH_CATEGORY = {
-  tile: 'flooring',
-  parquet: 'flooring',
-  wall_tile: 'wall_finish',
-  paint: 'paint',
-} as const;
+/**
+ * Categoria liniei unui finisaj: vopseaua → `paint`, finisajul de mobilier → `furniture`; restul după suprafețele pe care e
+ * aplicat (numai pereți → `wall_finish`, altfel `flooring`). O linie e per finisaj, deci o singură categorie.
+ */
+function finishCategory(kind: string, surfaces: ReadonlySet<string>): BudgetCategory {
+  if (kind === 'paint') return 'paint';
+  if (kind === 'furniture') return 'furniture';
+  if (kind === 'wall_tile') return 'wall_finish';
+  return surfaces.size > 0 && [...surfaces].every((x) => x === 'wall') ? 'wall_finish' : 'flooring';
+}
 
 function requireValid(model: GeometryModel): GeometryModel {
   if (model.issues.length > 0) {
@@ -148,16 +152,56 @@ export function computeBudget(doc: ProjectDocument, geometry?: GeometryModel): B
 
   // 2) finisaje: aria netă se însumează pe finisaj ÎNAINTE de rotunjirea la ambalaj
   interface Group {
+    /** m² nete (cu rebut) pentru suprafețe; număr de zone finisate pentru finisajele de mobilier. */
     netM2: number;
+    surfaces: Set<string>;
     perRoom: Record<string, number>;
     trace: TraceStep[];
   }
   const groups = new Map<string, Group>();
   for (const a of Object.values(doc.finishAssignments).sort((x, y) => x.id.localeCompare(y.id))) {
+    if (a.target.kind === 'objectSlot') {
+      // finisaj de mobilier: o bucată per zonă; camera = cea a obiectului; fără arie (nu se taxează suprafețe)
+      const obj = doc.objects[a.target.objectId];
+      if (!obj)
+        throw new InvalidDocumentError(`Obiect inexistent: ${a.target.objectId}`, [
+          {
+            code: 'assignment-object-missing',
+            path: `finishAssignments.${a.id}`,
+            message: 'obiect inexistent',
+          },
+        ]);
+      const roomId = roomOf(obj.position);
+      const g = groups.get(a.finishId) ?? {
+        netM2: 0,
+        surfaces: new Set<string>(),
+        perRoom: {},
+        trace: [],
+      };
+      g.netM2 += 1;
+      g.surfaces.add('object');
+      g.perRoom[roomId] = (g.perRoom[roomId] ?? 0) + 1;
+      g.trace.push(
+        step(
+          `Zonă ${a.id}`,
+          'o bucată per zonă de obiect finisată',
+          { obiect: obj.id, zonă: a.target.slot, cameră: roomId },
+          1,
+        ),
+      );
+      groups.set(a.finishId, g);
+      continue;
+    }
     const { areaMm2, roomId } = assignmentArea(doc, model, a, sideIndex);
     const areaM2 = m2OfMm2(areaMm2);
     const net = areaM2 * (1 + a.wastePct / 100);
-    const g = groups.get(a.finishId) ?? { netM2: 0, perRoom: {}, trace: [] };
+    const g = groups.get(a.finishId) ?? {
+      netM2: 0,
+      surfaces: new Set<string>(),
+      perRoom: {},
+      trace: [],
+    };
+    g.surfaces.add(a.target.kind === 'roomFloor' ? 'floor' : 'wall');
     g.netM2 += net;
     g.perRoom[roomId] = (g.perRoom[roomId] ?? 0) + net;
     g.trace.push(
@@ -214,8 +258,11 @@ export function computeBudget(doc: ProjectDocument, geometry?: GeometryModel): B
     lines.push({
       key,
       origin: 'derived',
-      category: FINISH_CATEGORY[finish.kind],
-      description: finish.name.ro,
+      category: finishCategory(finish.kind, g.surfaces),
+      description:
+        finish.kind === 'furniture'
+          ? `${finish.name.ro} (finisaj mobilier, supliment)`
+          : finish.name.ro,
       unit: pq.value.unit,
       computed,
       effective,
@@ -232,8 +279,10 @@ export function computeBudget(doc: ProjectDocument, geometry?: GeometryModel): B
       trace: [
         ...g.trace,
         step(
-          'Arie netă totală',
-          'Σ ariile nete ale atribuirilor aceluiași finisaj',
+          finish.kind === 'furniture' ? 'Zone finisate' : 'Arie netă totală',
+          finish.kind === 'furniture'
+            ? 'Σ zonele finisate cu același finisaj'
+            : 'Σ ariile nete ale atribuirilor aceluiași finisaj',
           { finisaj: finishId },
           Math.round(g.netM2 * 1e6) / 1e6,
         ),

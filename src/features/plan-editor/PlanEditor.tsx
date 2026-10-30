@@ -7,23 +7,28 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react';
 import {
   addOpening,
   addRectRoom,
   addWall,
   dot,
+  duplicateObject,
   moveNode,
   openingCenterRange,
+  removeObject,
   removeOpening,
   removeRoom,
   removeWall,
   roomDeletionImpact,
+  updateObject,
   updateOpening,
   wallDeletionImpact,
   wallFrame,
   type OpeningType,
   type ProjectDocument,
+  type Pt,
   type Result,
 } from '@/domain';
 import { formatLength } from '@/lib/format';
@@ -62,7 +67,16 @@ const isTyping = (t: EventTarget | null): boolean =>
 type Gesture =
   | { type: 'pan'; startX: number; startY: number; view: View }
   | { type: 'node'; nodeId: string; startX: number; startY: number; active: boolean }
-  | { type: 'opening'; openingId: string; startX: number; startY: number; active: boolean };
+  | { type: 'opening'; openingId: string; startX: number; startY: number; active: boolean }
+  | {
+      type: 'object';
+      objectId: string;
+      startX: number;
+      startY: number;
+      /** Decalajul cursor → centrul obiectului la apăsare (fără salt la începutul tragerii). */
+      grab: Pt;
+      active: boolean;
+    };
 
 type Confirm = { title: string; description: string; label: string; action: () => string | null };
 
@@ -93,10 +107,21 @@ export function PlanEditor({
   session,
   state,
   genId = defaultGenId,
+  selectedObjectId: selectedObjectIdProp = null,
+  onSelectObject,
+  onSelectionChange,
+  sidePanel,
 }: {
   session: ProjectSession;
   state: SessionState;
   genId?: () => string;
+  /** Obiectul selectat (starea de selecție a obiectelor e comună cu vizualizarea 3D și cu panoul de proprietăți). */
+  selectedObjectId?: string | null;
+  onSelectObject?: (id: string | null) => void;
+  /** Raportează selecția de nod/perete/cameră/gol (folosită de panoul de materiale ca țintă sugerată). */
+  onSelectionChange?: (s: Selection) => void;
+  /** Conținut deasupra panoului de proprietăți (catalogul și proprietățile obiectului, compuse în `app/`). */
+  sidePanel?: ReactNode;
 }) {
   const { doc } = state;
   const editable = !state.readOnly && !state.conflict && state.status !== 'closed';
@@ -128,7 +153,16 @@ export function PlanEditor({
     setDraft(null);
   }, []);
   const selection = exists(doc, selectionRaw) ? selectionRaw : null;
+  const selectedObjectId =
+    selectedObjectIdProp && selectedObjectIdProp in doc.objects ? selectedObjectIdProp : null;
   const grid = doc.settings.gridMm;
+  // o selecție de nod/perete/cameră/gol elimină selecția de obiect (și invers, în gesturi)
+  useEffect(() => {
+    if (selection) onSelectObject?.(null);
+  }, [selection, onSelectObject]);
+  useEffect(() => {
+    onSelectionChange?.(selection);
+  }, [selection, onSelectionChange]);
 
   // ───────────── document temporar în timpul gestului ─────────────
   const draftDoc = useMemo(() => {
@@ -136,7 +170,9 @@ export function PlanEditor({
     const r =
       drag.kind === 'node'
         ? moveNode(doc, drag.nodeId, drag.to)
-        : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
+        : drag.kind === 'object'
+          ? updateObject(doc, drag.objectId, { position: drag.to })
+          : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
     return r.ok ? r.value : doc;
   }, [doc, drag]);
   const geometry = useMemo(() => selectGeometry(draftDoc), [draftDoc]);
@@ -268,7 +304,13 @@ export function PlanEditor({
   );
 
   const deleteSelected = useCallback(() => {
-    if (!selection || !editable) return;
+    if (!editable) return;
+    if (selectedObjectId) {
+      const id = selectedObjectId;
+      if (runNotice('Șterge obiect', (d) => removeObject(d, id))) onSelectObject?.(null);
+      return;
+    }
+    if (!selection) return;
     if (selection.kind === 'node') {
       setNotice({
         tone: 'info',
@@ -317,7 +359,20 @@ export function PlanEditor({
         return err;
       },
     });
-  }, [selection, editable, doc, run, runNotice]);
+  }, [selection, selectedObjectId, onSelectObject, editable, doc, run, runNotice]);
+
+  const duplicateSelected = useCallback(() => {
+    if (!editable || !selectedObjectId) return;
+    const src = selectedObjectId;
+    let created: string | null = null;
+    const ok = runNotice('Duplică obiect', (d) => {
+      const r = duplicateObject(d, src, genId);
+      if (!r.ok) return r;
+      created = r.value.objectId;
+      return { ok: true, value: r.value.doc };
+    });
+    if (ok && created) onSelectObject?.(created);
+  }, [editable, selectedObjectId, runNotice, genId, onSelectObject]);
 
   // ───────────── gesturi cu pointerul ─────────────
   const worldOf = (e: { clientX: number; clientY: number }) => {
@@ -382,6 +437,7 @@ export function PlanEditor({
       if (e.button !== 0 && e.button !== 1) return;
       if (tool === 'wall' && e.button === 0) return wallToolClick(e);
       setSelection(null);
+      onSelectObject?.(null);
       setNotice(null);
       gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
       capture(e);
@@ -390,8 +446,25 @@ export function PlanEditor({
       if (e.button !== 0) return;
       e.stopPropagation();
       if (tool === 'wall') return wallToolClick(e);
-      setSelection({ kind, id });
       setNotice(null);
+      if (kind === 'object') {
+        setSelection(null);
+        onSelectObject?.(id);
+        const o = doc.objects[id];
+        if (!editable || !o) return;
+        const w = worldOf(e);
+        gesture.current = {
+          type: 'object',
+          objectId: id,
+          startX: e.clientX,
+          startY: e.clientY,
+          grab: { x: w.x - o.position.x, y: w.y - o.position.y },
+          active: false,
+        };
+        capture(e);
+        return;
+      }
+      setSelection({ kind, id });
       if (!editable) return;
       if (kind === 'node')
         gesture.current = {
@@ -435,6 +508,14 @@ export function PlanEditor({
       g.active = true;
       if (g.type === 'node') {
         setDrag({ kind: 'node', nodeId: g.nodeId, to: snapPoint(e) });
+      } else if (g.type === 'object') {
+        const w = worldOf(e);
+        const at = { x: w.x - g.grab.x, y: w.y - g.grab.y };
+        setDrag({
+          kind: 'object',
+          objectId: g.objectId,
+          to: e.altKey ? { x: Math.round(at.x), y: Math.round(at.y) } : snapToGrid(at, grid),
+        });
       } else {
         const o = doc.openings[g.openingId];
         const wall = o && doc.walls[o.wallId];
@@ -463,6 +544,13 @@ export function PlanEditor({
           setNotice((n) =>
             n ? { ...n, text: `${n.text} Nodul a revenit la poziția anterioară.` } : n,
           );
+      } else if (finished.kind === 'object') {
+        const { objectId, to } = finished;
+        const ok = runNotice('Mută obiectul', (d) => updateObject(d, objectId, { position: to }));
+        if (!ok)
+          setNotice((n) =>
+            n ? { ...n, text: `${n.text} Obiectul a revenit la poziția anterioară.` } : n,
+          );
       } else {
         const { openingId, offsetMm } = finished;
         const ok = runNotice('Mută golul', (d) => updateOpening(d, openingId, { offsetMm }));
@@ -481,13 +569,27 @@ export function PlanEditor({
   // ───────────── tastatură ─────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (confirm || e.defaultPrevented || isTyping(e.target) || e.ctrlKey || e.metaKey || e.altKey)
+      if (confirm || e.defaultPrevented || isTyping(e.target) || e.altKey) return;
+      if (e.ctrlKey || e.metaKey) {
+        if ((e.key === 'd' || e.key === 'D') && selectedObjectId) {
+          e.preventDefault();
+          duplicateSelected();
+        }
         return;
+      }
       const k = e.key;
       const nudge = (dx: number, dy: number) => {
         const step = (e.shiftKey ? 10 : 1) * grid;
-        if (!editable && selection) return;
-        if (selection?.kind === 'node') {
+        if (!editable && (selection || selectedObjectId)) return;
+        if (selectedObjectId) {
+          const o = doc.objects[selectedObjectId];
+          if (o)
+            runNotice('Mută obiectul', (d) =>
+              updateObject(d, o.id, {
+                position: { x: o.position.x + dx * step, y: o.position.y + dy * step },
+              }),
+            );
+        } else if (selection?.kind === 'node') {
           const n = doc.nodes[selection.id];
           if (n)
             runNotice('Mută nodul', (d) =>
@@ -514,7 +616,14 @@ export function PlanEditor({
         } else if (draft) setDraft(null);
         else if (tool === 'wall') setTool('select');
         else if (selection) setSelection(null);
+        else if (selectedObjectId) onSelectObject?.(null);
         else handled = false;
+      } else if ((k === 'r' || k === 'R') && selectedObjectId && editable) {
+        const o = doc.objects[selectedObjectId];
+        if (o)
+          runNotice('Rotește obiectul', (d) =>
+            updateObject(d, o.id, { rotationDeg: o.rotationDeg + (e.shiftKey ? -90 : 90) }),
+          );
       } else if (k === 'ArrowLeft') nudge(-1, 0);
       else if (k === 'ArrowRight') nudge(1, 0);
       else if (k === 'ArrowUp') nudge(0, -1);
@@ -540,8 +649,11 @@ export function PlanEditor({
     fit,
     grid,
     deleteSelected,
+    duplicateSelected,
+    onSelectObject,
     runNotice,
     selection,
+    selectedObjectId,
     tool,
     zoomBy,
   ]);
@@ -688,6 +800,7 @@ export function PlanEditor({
             view={view}
             size={size}
             selection={selection}
+            selectedObjectId={selectedObjectId}
             tool={tool}
             editable={editable}
             drag={drag}
@@ -716,6 +829,7 @@ export function PlanEditor({
         </div>
 
         <aside aria-label="Proprietăți" className="space-y-4 lg:w-80 lg:shrink-0">
+          {sidePanel}
           {notice ? (
             <Alert
               tone={notice.tone}

@@ -12,7 +12,13 @@ export default defineConfig({
     exclude: ['spikes/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
-      include: ['src/domain/**/*.ts', 'src/state/**/*.ts', 'src/persistence/**/*.ts'],
+      include: [
+        'src/domain/**/*.ts',
+        'src/state/**/*.ts',
+        'src/persistence/**/*.ts',
+        'src/catalog/**/*.ts',
+        'src/materials/**/*.ts',
+      ],
       exclude: ['src/domain/index.ts'],
       reporter: ['text-summary', 'text'],
     },

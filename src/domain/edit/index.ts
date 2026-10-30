@@ -140,7 +140,11 @@ function impactOf(
   const openings = Object.values(doc.openings).filter((o) => wallIds.has(o.wallId));
   const assignmentIds = Object.values(doc.finishAssignments)
     .filter((a) =>
-      a.target.kind === 'roomFloor' ? roomIds.has(a.target.roomId) : wallIds.has(a.target.wallId),
+      a.target.kind === 'roomFloor'
+        ? roomIds.has(a.target.roomId)
+        : a.target.kind === 'wallSide'
+          ? wallIds.has(a.target.wallId)
+          : false,
     )
     .map((a) => a.id);
   const blockers: string[] = [];

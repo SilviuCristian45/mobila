@@ -1,7 +1,13 @@
 'use client';
 
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { type GeometryModel, type Opening, type Pt, type ProjectDocument } from '@/domain';
+import {
+  resolveLook,
+  type GeometryModel,
+  type Opening,
+  type Pt,
+  type ProjectDocument,
+} from '@/domain';
 import { formatAreaM2, formatLength } from '@/lib/format';
 import type { Drag, Selection, SelectionKind, Tool, WallDraft } from './types';
 import { polygonCentroid, readableAngleDeg, type Size, type View } from './view';
@@ -11,7 +17,11 @@ export interface CanvasHandlers {
   onMove: (e: ReactPointerEvent<SVGSVGElement>) => void;
   onUp: (e: ReactPointerEvent<SVGSVGElement>) => void;
   onCancel: () => void;
-  onElementDown: (kind: SelectionKind, id: string, e: ReactPointerEvent<SVGElement>) => void;
+  onElementDown: (
+    kind: SelectionKind | 'object',
+    id: string,
+    e: ReactPointerEvent<SVGElement>,
+  ) => void;
 }
 
 interface Props {
@@ -21,11 +31,19 @@ interface Props {
   view: View;
   size: Size;
   selection: Selection;
+  selectedObjectId: string | null;
   tool: Tool;
   editable: boolean;
   drag: Drag | null;
   draft: WallDraft | null;
   handlers: CanvasHandlers;
+}
+
+/** Culoarea de bază a finisajului aplicat (sau `null`): doar o reprezentare simplă, fără texturi, ca planul să rămână curat. */
+function finishColor(doc: ProjectDocument, assignmentId: string | undefined): string | null {
+  const a = assignmentId ? doc.finishAssignments[assignmentId] : undefined;
+  const f = a ? doc.catalogSnapshot.finishes[a.finishId] : undefined;
+  return f && a ? resolveLook(f, a.look).baseColorHex : null;
 }
 
 const P = (fp: { frame: { start: Pt; d: Pt; nL: Pt } }, s: number, k: number): Pt => ({
@@ -169,6 +187,75 @@ function OpeningShape({
   );
 }
 
+/** Amprenta unui obiect: dreptunghi rotit (rotația e orară pe ecran), cu o linie pe latura din față și eticheta. */
+function ObjectShape({
+  doc,
+  o,
+  zoom,
+  selected,
+  editable,
+  down,
+}: {
+  doc: ProjectDocument;
+  o: ProjectDocument['objects'][string];
+  zoom: number;
+  selected: boolean;
+  editable: boolean;
+  down: (e: ReactPointerEvent<SVGElement>) => void;
+}) {
+  const item = doc.catalogSnapshot.items[o.catalogItemId];
+  const label = o.name ?? item?.name.ro ?? 'Obiect';
+  const w = o.size.widthMm;
+  const d = o.size.depthMm;
+  const suspended = item ? item.mounting !== 'floor' : false;
+  const showLabel = Math.min(w, d) * zoom >= 34;
+  return (
+    <g
+      transform={`translate(${o.position.x} ${o.position.y}) rotate(${o.rotationDeg})`}
+      data-testid={`object-${o.id}`}
+      data-selected={selected}
+      data-item={o.catalogItemId}
+      onPointerDown={down}
+      style={{ cursor: editable ? 'grab' : 'pointer' }}
+    >
+      <rect
+        x={-w / 2}
+        y={-d / 2}
+        width={w}
+        height={d}
+        className={selected ? 'fill-teal-100 stroke-teal-700' : 'fill-amber-50 stroke-stone-600'}
+        strokeWidth={selected ? 2.5 : 1.5}
+        strokeDasharray={suspended ? `${6 / zoom} ${4 / zoom}` : undefined}
+        vectorEffect="non-scaling-stroke"
+      />
+      <line
+        x1={-w / 2}
+        y1={d / 2}
+        x2={w / 2}
+        y2={d / 2}
+        className={selected ? 'stroke-teal-700' : 'stroke-stone-800'}
+        strokeWidth={4}
+        vectorEffect="non-scaling-stroke"
+      />
+      {showLabel ? (
+        <text
+          x={0}
+          y={0}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={11 / zoom}
+          className="fill-stone-800"
+          style={{ paintOrder: 'stroke', stroke: 'white', strokeWidth: 3 / zoom }}
+          pointerEvents="none"
+          transform={`rotate(${-o.rotationDeg})`}
+        >
+          {label}
+        </text>
+      ) : null}
+    </g>
+  );
+}
+
 /** Suprafața SVG a planului. Doar desenează: starea și gesturile vin de sus. Toate coordonatele sunt în mm (spațiul lume). */
 export function PlanCanvas({
   svgRef,
@@ -177,6 +264,7 @@ export function PlanCanvas({
   view,
   size,
   selection,
+  selectedObjectId,
   tool,
   editable,
   drag,
@@ -204,6 +292,17 @@ export function PlanCanvas({
     h: size.h / zoom,
   };
   const nodes = Object.values(doc.nodes);
+  // finisaje: podeaua colorează camera; fața peretelui cu material primește o bandă colorată pe latura ei
+  const floorFinish = new Map<string, string>();
+  const faceFinish: Array<{ key: string; wallId: string; side: 'left' | 'right'; color: string }> =
+    [];
+  for (const a of Object.values(doc.finishAssignments)) {
+    const c = finishColor(doc, a.id);
+    if (!c) continue;
+    if (a.target.kind === 'roomFloor') floorFinish.set(a.target.roomId, c);
+    else if (a.target.kind === 'wallSide')
+      faceFinish.push({ key: a.id, wallId: a.target.wallId, side: a.target.side, color: c });
+  }
   const showEdgeDims = zoom >= 0.04;
 
   return (
@@ -256,12 +355,22 @@ export function PlanCanvas({
               const c = polygonCentroid(r.polygon);
               const sel = isSel('room', r.roomId);
               return (
-                <g key={r.roomId} data-testid={`room-${r.roomId}`} data-selected={sel}>
+                <g
+                  key={r.roomId}
+                  data-testid={`room-${r.roomId}`}
+                  data-selected={sel}
+                  data-floor={floorFinish.get(r.roomId) ?? ''}
+                >
                   <polygon
                     points={pts(r.polygon)}
                     className={sel ? 'fill-teal-200/70' : 'fill-teal-50'}
                     onPointerDown={(e) => handlers.onElementDown('room', r.roomId, e)}
-                    style={{ cursor: 'pointer' }}
+                    style={{
+                      cursor: 'pointer',
+                      ...(floorFinish.has(r.roomId)
+                        ? { fill: floorFinish.get(r.roomId), fillOpacity: sel ? 0.8 : 0.6 }
+                        : {}),
+                    }}
                   />
                   <Label
                     at={{ x: c.x, y: c.y - 10 / zoom }}
@@ -327,6 +436,36 @@ export function PlanCanvas({
               );
             })}
 
+        {/* finisaje pe fețele pereților (bandă subțire pe fața interioară) */}
+        {drawable
+          ? faceFinish.map((f) => {
+              const fp = geometry.footprints.get(f.wallId);
+              if (!fp) return null;
+              const side = f.side === 'left' ? fp.left : fp.right;
+              const t = fp.frame.wall.thicknessMm / 2;
+              const k = f.side === 'left' ? t : -t;
+              const band = Math.min(40, t * 0.7) * (f.side === 'left' ? 1 : -1);
+              return (
+                <polygon
+                  key={f.key}
+                  points={pts([
+                    P(fp, side.s0, k),
+                    P(fp, side.s1, k),
+                    P(fp, side.s1, k - band),
+                    P(fp, side.s0, k - band),
+                  ])}
+                  fill={f.color}
+                  stroke="#57534e"
+                  strokeWidth={0.5}
+                  vectorEffect="non-scaling-stroke"
+                  pointerEvents="none"
+                  data-testid={`finish-face-${f.key}`}
+                  data-color={f.color}
+                />
+              );
+            })
+          : null}
+
         {/* goluri */}
         {drawable
           ? Object.values(doc.openings).map((o) => {
@@ -345,6 +484,19 @@ export function PlanCanvas({
               );
             })
           : null}
+
+        {/* obiecte (mobilier etc.): amprenta în plan, cu indicator de orientare (fața) */}
+        {Object.values(doc.objects).map((o) => (
+          <ObjectShape
+            key={o.id}
+            doc={doc}
+            o={o}
+            zoom={zoom}
+            selected={o.id === selectedObjectId}
+            editable={editable && tool === 'select'}
+            down={(e) => handlers.onElementDown('object', o.id, e)}
+          />
+        ))}
 
         {/* cote: laturile interioare ale camerelor */}
         {drawable && showEdgeDims

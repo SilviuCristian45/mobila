@@ -303,7 +303,9 @@ export function remapIds(doc: ProjectDocument, genId: () => string): ProjectDocu
     target:
       x.target.kind === 'roomFloor'
         ? { ...x.target, roomId: m(x.target.roomId) }
-        : { ...x.target, wallId: m(x.target.wallId) },
+        : x.target.kind === 'wallSide'
+          ? { ...x.target, wallId: m(x.target.wallId) }
+          : { ...x.target, objectId: m(x.target.objectId) },
   }));
   out.budget.overrides = {};
   for (const key of Object.keys(doc.budget.overrides).sort()) {

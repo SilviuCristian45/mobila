@@ -1,5 +1,7 @@
 // Integritatea unui document: referințe, geometrie, finisaje, buget. Folosită la import și înainte de calcule.
 import { analyzeGeometry, type GeometryModel } from '../geometry';
+import { incompatibility } from '../finishes';
+import { paramProblems } from '../objects';
 import { finishConfigProblems } from '../quantities';
 import type { ProjectDocument } from '../schema';
 
@@ -77,6 +79,10 @@ export function checkIntegrity(doc: ProjectDocument): IntegrityReport {
     ) {
       err('object-size-limits', `objects.${o.id}`, 'dimensiuni în afara limitelor itemului');
     }
+    const pp = paramProblems(item, o.params);
+    for (const p of pp.invalid) err('object-param-invalid', `objects.${o.id}.params`, p);
+    for (const k of pp.unknown)
+      warn('object-param-unknown', `objects.${o.id}.params.${k}`, `parametru necunoscut: ${k}`);
     if (o.wallId && !doc.walls[o.wallId])
       err('object-wall-missing', `objects.${o.id}`, `perete inexistent: ${o.wallId}`);
     const ref = item.reference;
@@ -101,6 +107,7 @@ export function checkIntegrity(doc: ProjectDocument): IntegrityReport {
   }
   const bandsByTarget = new Map<string, Array<{ id: string; from: number; to: number }>>();
   const floorsSeen = new Map<string, string>();
+  const slotsSeen = new Map<string, string>();
   for (const a of Object.values(doc.finishAssignments)) {
     if (!doc.catalogSnapshot.finishes[a.finishId])
       err(
@@ -108,6 +115,37 @@ export function checkIntegrity(doc: ProjectDocument): IntegrityReport {
         `finishAssignments.${a.id}`,
         `finisajul „${a.finishId}” lipsește din catalogSnapshot`,
       );
+    const fin = doc.catalogSnapshot.finishes[a.finishId];
+    if (fin) {
+      const inc = incompatibility(fin, a.target);
+      if (inc) err('finish-incompatible', `finishAssignments.${a.id}`, inc);
+    }
+    if (a.look) {
+      // ordinea câmpurilor e verificată de schemă; aici doar legătura cu materialul (parametri fără sens)
+      if (
+        fin?.appearance.texture.type === 'solid' &&
+        (a.look.textureScale !== undefined || a.look.textureRotationDeg !== undefined)
+      )
+        warn(
+          'finish-look-unused',
+          `finishAssignments.${a.id}.look`,
+          'scara/rotația texturii nu au efect pe un material uniform',
+        );
+    }
+    if (a.target.kind === 'objectSlot') {
+      const obj = doc.objects[a.target.objectId];
+      if (!obj) err('assignment-object-missing', `finishAssignments.${a.id}`, 'obiect inexistent');
+      const dupKey = `${a.target.objectId}:${a.target.slot}`;
+      const prev = slotsSeen.get(dupKey);
+      if (prev)
+        err(
+          'object-slot-assigned-twice',
+          `finishAssignments.${a.id}`,
+          `zona are deja finisaj (${prev})`,
+        );
+      else slotsSeen.set(dupKey, a.id);
+      continue;
+    }
     if (a.target.kind === 'roomFloor') {
       if (!doc.rooms[a.target.roomId])
         err('assignment-room-missing', `finishAssignments.${a.id}`, 'cameră inexistentă');

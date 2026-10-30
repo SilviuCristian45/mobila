@@ -25,3 +25,12 @@ export function formatLength(mm: number, unit: 'mm' | 'cm' | 'm'): string {
 
 /** Suprafață din mm² în m², cu două zecimale. */
 export const formatAreaM2 = (mm2: number): string => `${num2.format(mm2 / 1_000_000)} m²`;
+
+/** Sumă din unități minore (bani) cu moneda proiectului, ex. „1.234,50 RON”. */
+export function formatMoney(minor: number, currency: string): string {
+  const v = new Intl.NumberFormat('ro-RO', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(minor / 100);
+  return `${v} ${currency}`;
+}

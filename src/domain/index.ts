@@ -12,4 +12,8 @@ export * from './scene';
 export * from './integrity';
 export * from './cascade';
 export * from './edit';
+export * from './objects';
+export * from './finishes';
+export * from './placement';
+export { stableHash } from './hash';
 export * from './io';

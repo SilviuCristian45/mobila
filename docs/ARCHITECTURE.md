@@ -17,7 +17,7 @@
 ┌─────────────────────────── Browser ───────────────────────────┐
 │  UI (Next.js App Router, React, Tailwind)                       │
 │   ├─ features/projects   features/editor2d (React Konva)        │
-│   ├─ features/viewer3d (R3F)   features/catalog   features/budget│
+│   ├─ features/viewer-3d (R3F)   features/catalog   features/budget│
 │   └─ features/io (import/export)                                │
 │                │ comenzi (acțiuni validate)       ▲ selectori    │
 │                ▼                                  │ memoizați    │
@@ -56,7 +56,7 @@ src/
   persistence/            Dexie, repository, autosave, instantanee, lock
   state/                  document store, ui store, istoric undo/redo
   features/
-    projects/  editor-shell/  plan-editor/  viewer3d/  catalog/  budget/  io/
+    projects/  editor-shell/  plan-editor/  viewer-3d/  catalog/  budget/  io/
   ui/                     componente generice (butoane, dialoguri, câmpuri numerice)
   catalog-data/           catalog încorporat (JSON + schema)
 tests/ (unit) · e2e/ (Playwright) · fixtures/ (documente, per versiune)
@@ -72,7 +72,7 @@ tests/ (unit) · e2e/ (Playwright) · fixtures/ (documente, per versiune)
 | `features/*` | `domain`, `state`, `ui`, biblioteca proprie | alt `features/*` (comunicare prin `state`/`domain`) |
 | `app` | `features`, `ui` | `domain` direct pentru logică de business |
 
-Asta limitează costul înlocuirii Konva (doar `features/editor2d`) sau a Three (doar `features/viewer3d`).
+Asta limitează costul înlocuirii Konva (doar `features/editor2d`) sau a Three (doar `features/viewer-3d`).
 
 ## 4. Module — responsabilități
 
@@ -109,8 +109,27 @@ Vezi §7.
 **Varianta inițială (Konva), neimplementată:**
 Straturi Konva: grilă (fără ascultare evenimente) · umpleri camere · pereți · goluri · obiecte · cote/dimensiuni · selecție/Transformer · ghidaje de snap. Uneltele sunt mașini de stări mici (select, perete, cameră, gol, obiect, măsurare, pan). Toată logica de decizie (snap, validare) este delegată `domain/geometry`; componentele doar desenează și traduc evenimente de pointer în coordonate lume.
 
-### 4.8 `features/viewer3d` (R3F)
-Primește `SceneDescription`, nu documentul. Vezi §6.
+### 4.8 `features/viewer-3d` (R3F)
+Vezi §6. **Implementat în Etapa 3a** (doar citire, fără editare 3D):
+- `Viewer3D` primește `ProjectDocument`, derivă scena prin `selectScene` (memoizat pe identitatea documentului, deci aceeași scenă ca în restul aplicației) și prinde excepția `InvalidDocumentError` ca mesaj cu motivele, nu ca ecran gol. Tratează și: proiect fără geometrie (mesaj), WebGL indisponibil (avertisment), eroare de randare în canvas (`RenderBoundary` + „Încearcă din nou”).
+- `sceneObjects.ts` (pur, fără DOM/WebGL, testabil în Node): `SceneDescription` → geometrii Three (`ExtrudeGeometry` pentru prisme, `ShapeGeometry` pentru podele, `EdgesGeometry` pentru contururi), `sceneBounds`, `frameCamera`. Nu calculează geometria proiectului: prismele, golurile (segmentarea) și îmbinările (mitre) vin gata din `domain/scene`.
+- `ViewerCanvas.tsx`: `Canvas` R3F (`frameloop="demand"`), lumini, `OrbitControls` (stânga: rotație, roată: zoom, dreapta: deplasare; fără amortizare; unghiul polar limitat sub orizontală). Camera se încadrează la prima scenă măsurată/nevidă și la „Resetează vederea”; editările nu o mută.
+- **Încărcare exclusiv pe client:** `ViewerCanvas` e importat cu `React.lazy` și randat doar după verificarea WebGL pe client (`useSyncExternalStore`, cu snapshot de server „checking”). Prerandarea statică nu evaluează Three/R3F și nu atinge `window`/WebGL (test în `tests/ui/prerender.test.tsx`).
+- **Compoziție:** `src/app/editor/EditorClient.tsx` ține modul 2D/3D (tab-uri) peste aceeași sesiune; editorul 2D se demontează în 3D ca scurtăturile lui (Delete, săgeți) să nu acționeze nevăzut. Proiectul, istoricul și autosave-ul trăiesc în sesiune și nu sunt afectate.
+
+### 4.8b Catalog și obiecte (Etapa 3b)
+- **`src/catalog/`** (date și funcții pure, fără React/Three/DOM): `items.ts` (41 de itemi), `recipes.ts` (26 de rețete parametrice versionate: dimensiuni + parametri → **părți** primitive: cutie/cilindru/elipsoid), `mesh.ts` (părți → triunghiuri), `preview.ts` (părți → poligoane SVG izometrice), `index.ts` (categorii, căutare fără diacritice, etichete în română pentru parametri). Un singur drum de geometrie alimentează scena 3D, previzualizările și testele.
+- **`domain/objects`**: validarea parametrilor/dimensiunilor față de `CatalogItem` (`paramSpecs`, `sizeLimits`), plasarea propusă (`suggestPlacement`), `addObject` (copiază itemul în `catalogSnapshot` la prima utilizare), `updateObject`, `duplicateObject`; ștergerea rămâne `removeObject` (cascade). Domeniul nu citește catalogul aplicației.
+- **`features/catalog`**: `CatalogBrowser` (căutare, categorii, miniaturi), `ObjectPanel` (proprietăți), `CatalogPanel` (compoziție + acțiuni prin `session.apply`). **`features/plan-editor`** desenează amprenta obiectelor și le mută/rotește/duplică/șterge (gest = un singur pas, ca la noduri). **`features/viewer-3d`** randează obiectele (un mesh per obiect, geometrii partajate în `GeometryCache`) și conturează selecția. Selecția de obiect e ținută în `app/editor/EditorClient.tsx` și e comună 2D/3D/panou.
+- Rețetă necunoscută sau mai nouă ⇒ cutie de înlocuire + avertisment în 3D; datele se păstrează.
+
+### 4.8c Materiale și finisaje (Etapa 3c)
+- **Definiție ≠ aplicare ≠ proprietăți ale aplicării.** Definiția materialului = `Finish` din `catalogSnapshot.finishes` (copiat la prima utilizare, deci proiectul e autonom); aplicarea = `FinishAssignment` (țintă + `finishId`); proprietățile aplicării = `assignment.look` (culoare, scara și rotația texturii, rugozitate) + `wastePct`. Același material se referă din oricâte aplicări fără a fi duplicat.
+- **`domain/finishes`** (pur): compatibilitatea cu suprafața (`floor`/`wall`/`object`), `resolveLook` (definiție + aplicare → aspect JSON cu cheie după conținut), `applyFinish` / `applyFinishToRoomWalls` / `updateAssignmentLook` / `clearFinish` (înlocuire pe aceeași țintă, curățarea snapshot-ului), `finishParamRules` (ce parametri au sens). `domain/scene` expune `looks` și pune cheile pe fețele pereților (benzi de înălțime ⇒ prismele se taie), pe podele și pe zonele obiectelor.
+- **`src/materials/`** (pur, fără React/Three/DOM): catalogul de 36 de materiale (`catalog.ts`), texturi procedurale deterministe și tileabile (`texture.ts`: gresie, marmură, scânduri, beton/granulație, lespezi, tapet, periat), UV în lume cu scară/rotație (`uv.ts`), miniaturi BMP în data-URL (`bmp.ts`, `swatch.ts`).
+- **`features/viewer-3d`**: `MaterialCache` (o `DataTexture` per textură de bază, un `MeshStandardMaterial` per aspect, `prune`/`clear` eliberează ce nu mai e folosit); pereții sunt prisme cu 3 grupe de material (față stângă, dreaptă, rest) și UV în lume; obiectele au grupe după (rugozitate, metalicitate); clic pe podea/față de perete în 3D alege ținta.
+- **`features/materials`**: panoul „Materiale și finisaje” (țintă, listă filtrată după compatibilitate, căutare, categorii, miniaturi, parametri relevanți, eliminare, estimare din `selectBudget`). **`features/plan-editor`**: finisajele apar simplu în 2D (culoarea podelei pe cameră, bandă colorată pe fața peretelui).
+- **Bugetul** (`domain/budget`) a primit finisajele de mobilier (o bucată per zonă, pe camera obiectului) și categoria liniilor generice după suprafețele aplicate; ariile vin din geometria domeniului. Vezi ADR-040.
 
 ### 4.9 `features/io`
 Export/import `.roomcraft.json`, export CSV/XLSX; vezi §7.
