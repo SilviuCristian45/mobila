@@ -11,6 +11,7 @@ import { editorHref } from '@/lib/asset';
 import { downloadTextFile, rawBackupFileName } from '@/lib/download';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
+import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Alert, Spinner } from '@/ui/feedback';
 import { NameDialog } from '@/ui/NameDialog';
 import { ProjectCard } from './ProjectCard';
@@ -173,14 +174,33 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
         <ul className="grid gap-4 sm:grid-cols-2" aria-label="Lista proiectelor">
           {state.projects.map((p) => (
             <li key={`${p.id}:${p.revision}`}>
-              <ProjectCard
-                project={p}
-                manager={manager}
-                onRename={() => setDialog({ kind: 'rename', project: p })}
-                onDelete={() => setDialog({ kind: 'delete', project: p })}
-                onRecover={() => setDialog({ kind: 'recover', project: p })}
-                onExportRaw={() => void exportRaw(p)}
-              />
+              {/* un card care nu se poate afișa nu are voie să scoată din funcțiune restul listei */}
+              <ErrorBoundary
+                label={`cardul proiectului ${p.id}`}
+                fallback={({ reset }) => (
+                  <article
+                    data-testid="project-card-error"
+                    className="rounded-2xl border border-red-300 bg-red-50 p-5 text-sm text-red-900"
+                  >
+                    <p className="font-medium">Acest proiect nu a putut fi afișat</p>
+                    <p className="mt-1">
+                      Datele lui nu au fost modificate. Celelalte proiecte funcționează normal.
+                    </p>
+                    <Button className="mt-3" onClick={reset}>
+                      Încearcă din nou
+                    </Button>
+                  </article>
+                )}
+              >
+                <ProjectCard
+                  project={p}
+                  manager={manager}
+                  onRename={() => setDialog({ kind: 'rename', project: p })}
+                  onDelete={() => setDialog({ kind: 'delete', project: p })}
+                  onRecover={() => setDialog({ kind: 'recover', project: p })}
+                  onExportRaw={() => void exportRaw(p)}
+                />
+              </ErrorBoundary>
             </li>
           ))}
         </ul>

@@ -7,6 +7,9 @@ import { MaterialsPanel, type PlanSelectionInfo } from '@/features/materials/Mat
 import { PlanEditor } from '@/features/plan-editor/PlanEditor';
 import { Viewer3D } from '@/features/viewer-3d/Viewer3D';
 import type { ProjectSession, SessionState } from '@/state/session';
+import { Button } from '@/ui/Button';
+import { ErrorBoundary } from '@/ui/ErrorBoundary';
+import { Alert } from '@/ui/feedback';
 
 type Mode = '2d' | '3d';
 type Side = 'catalog' | 'materials' | null;
@@ -58,7 +61,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
     if (s) setSurface(null);
   }, []);
 
-  const sidePanel = (
+  const sidePanelContent = (
     <>
       {side === 'materials' ? (
         <div className="rounded-xl border border-stone-200 bg-white p-4">
@@ -82,6 +85,25 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
         onSelectObject={selectObject}
       />
     </>
+  );
+  // panourile laterale eșuează independent de plan / 3D: planul rămâne utilizabil, iar panoul se poate reîncerca
+  const sidePanel = (
+    <ErrorBoundary
+      label="panoul lateral"
+      resetKey={side}
+      fallback={({ reset }) => (
+        <Alert
+          tone="error"
+          title="Panoul lateral a întâmpinat o eroare"
+          testId="side-panel-error"
+          actions={<Button onClick={reset}>Încearcă din nou</Button>}
+        >
+          Planul și proiectul nu sunt afectate.
+        </Alert>
+      )}
+    >
+      {sidePanelContent}
+    </ErrorBoundary>
   );
   return (
     <div className="space-y-3">

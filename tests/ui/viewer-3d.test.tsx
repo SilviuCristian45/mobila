@@ -128,7 +128,10 @@ describe('Viewer3D', () => {
     canvas.boom = true;
     render(<Viewer3D doc={studioProject()} />);
     const err = await screen.findByTestId('viewer3d-render-error');
-    expect(err.textContent).toContain('Context WebGL pierdut');
+    // mesajul excepției (tehnic) nu ajunge în interfață; utilizatorul primește o explicație în română
+    expect(err.textContent).not.toContain('Context WebGL pierdut');
+    expect(err.textContent).toMatch(/Imaginea 3D nu a putut fi afișată/);
+    expect(err.textContent).toMatch(/Planul 2D și proiectul nu sunt afectate/);
     canvas.boom = false;
     fireEvent.click(screen.getByRole('button', { name: 'Încearcă din nou' }));
     expect(await screen.findByTestId('canvas-stub')).toBeTruthy();

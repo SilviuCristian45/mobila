@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  Component,
-  Suspense,
-  lazy,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ErrorInfo,
-  type ReactNode,
-} from 'react';
+import { Suspense, lazy, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   InvalidDocumentError,
   type FinishTarget,
@@ -19,6 +10,7 @@ import {
 import { resolveRecipe } from '@/catalog';
 import { selectScene } from '@/state/selectors';
 import { Button } from '@/ui/Button';
+import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Alert, Spinner } from '@/ui/feedback';
 import type { SceneStats } from './ViewerCanvas';
 import { webglAvailable } from './webgl';
@@ -40,43 +32,32 @@ function computeScene(doc: ProjectDocument): SceneResult {
   }
 }
 
-/** Prinde erorile de randare ale canvas-ului (context WebGL pierdut, geometrie degenerată) și le explică. */
-class RenderBoundary extends Component<
-  { children: ReactNode; onRetry: () => void },
-  { error: Error | null }
-> {
-  override state: { error: Error | null } = { error: null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  override componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Vizualizarea 3D a eșuat', error, info.componentStack);
-  }
-  override render() {
-    if (!this.state.error) return this.props.children;
-    return (
-      <div className="flex h-full items-center justify-center p-4">
-        <Alert
-          tone="error"
-          title="Vizualizarea 3D a întâmpinat o eroare"
-          testId="viewer3d-render-error"
-          actions={
-            <Button
-              onClick={() => {
-                this.setState({ error: null });
-                this.props.onRetry();
-              }}
-            >
-              Încearcă din nou
-            </Button>
-          }
-        >
-          {this.state.error.message || 'Eroare necunoscută la randare.'} Planul 2D și proiectul nu
-          sunt afectate.
-        </Alert>
-      </div>
-    );
-  }
+/**
+ * Prinde erorile de randare ale canvas-ului (context WebGL pierdut, geometrie degenerată). Mesajul excepției nu se
+ * afișează (poate fi tehnic sau neinteligibil); rămâne în consola dezvoltatorului. Planul 2D și documentul nu sunt afectate.
+ */
+function RenderBoundary({ children, onRetry }: { children: ReactNode; onRetry: () => void }) {
+  return (
+    <ErrorBoundary
+      label="vizualizarea 3D"
+      onReset={onRetry}
+      fallback={({ reset }) => (
+        <div className="flex h-full items-center justify-center p-4">
+          <Alert
+            tone="error"
+            title="Vizualizarea 3D a întâmpinat o eroare"
+            testId="viewer3d-render-error"
+            actions={<Button onClick={reset}>Încearcă din nou</Button>}
+          >
+            Imaginea 3D nu a putut fi afișată (de exemplu din cauza plăcii video sau a browserului).
+            Planul 2D și proiectul nu sunt afectate; ce era salvat a rămas salvat.
+          </Alert>
+        </div>
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }
 
 /**

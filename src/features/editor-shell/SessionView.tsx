@@ -5,7 +5,9 @@ import { dashboardHref } from '@/lib/asset';
 import { formatDateTime } from '@/lib/format';
 import { useSessionState } from '@/lib/project-runtime/hooks';
 import type { ProjectSession, SessionState } from '@/state/session';
-import { Button } from '@/ui/Button';
+import { Button, buttonClass } from '@/ui/Button';
+import { ErrorBoundary } from '@/ui/ErrorBoundary';
+import { Alert } from '@/ui/feedback';
 import { NameDialog } from '@/ui/NameDialog';
 import { SaveIndicator } from './SaveIndicator';
 import { exportBackupFile, SessionBanners } from './SessionBanners';
@@ -109,7 +111,38 @@ export function SessionView({
       <div className="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6">
         <SessionBanners session={session} state={state} takeOver={takeOver} />
 
-        {workspace?.(session, state)}
+        {workspace ? (
+          // Zona de lucru poate eșua fără să dărâme antetul: sesiunea (documentul, autosave-ul, undo) trăiește mai sus și
+          // rămâne activă, deci modificările se salvează în continuare, iar „Anulează” poate reveni peste o editare care strică randarea.
+          <ErrorBoundary
+            label="zona de lucru"
+            resetKey={session}
+            fallback={({ reset }) => (
+              <Alert
+                tone="error"
+                title="Zona de lucru a întâmpinat o eroare"
+                testId="workspace-error"
+                actions={
+                  <>
+                    <Button variant="primary" onClick={reset} data-testid="workspace-error-retry">
+                      Încearcă din nou
+                    </Button>
+                    <Button onClick={() => exportBackupFile(session)}>Exportă copie</Button>
+                    <a className={buttonClass('secondary')} href={dashboardHref()}>
+                      ← Înapoi la proiecte
+                    </a>
+                  </>
+                }
+              >
+                Planul sau panourile nu au putut fi afișate. Proiectul este în siguranță: ce era
+                salvat a rămas salvat, iar modificările se salvează în continuare. Dacă eroarea a
+                apărut după o modificare, o poți anula din bara de sus.
+              </Alert>
+            )}
+          >
+            {workspace(session, state)}
+          </ErrorBoundary>
+        ) : null}
 
         <section
           aria-label="Rezumatul proiectului"
