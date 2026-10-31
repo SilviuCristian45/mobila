@@ -27,6 +27,8 @@ export type MutationFailure =
   | { kind: 'not-found' }
   | { kind: 'conflict'; message: string }
   | { kind: 'open-elsewhere'; message: string }
+  /** Restaurarea ar fi distructivă (document mai nou/neconvertibil) sau copia nu poate fi citită; nu s-a scris nimic. */
+  | { kind: 'incompatible'; message: string }
   | { kind: 'storage'; error: StorageFailure };
 
 export interface ProjectManagerDeps {
@@ -62,9 +64,17 @@ export interface ProjectManager {
   listSnapshots(id: string): Promise<Outcome<SnapshotMeta[], StorageFailure>>;
   /**
    * Înlocuiește conținutul unui proiect (de obicei invalid) cu o copie de siguranță. Refuză dacă proiectul e deschis
-   * undeva; documentul înlocuit, dacă e valid, se arhivează ca `pre-overwrite`.
+   * undeva. Documentul înlocuit se arhivează întâi ca `pre-overwrite` (valid: documentul; invalid: datele brute).
+   * Refuză (`incompatible`, fără nicio scriere) dacă documentul curent e mai nou decât aplicația sau nu poate fi
+   * migrat — suprascrierea lui ar pierde date pe care această versiune nu le poate citi — sau dacă copia nu se citește.
    */
   restoreSnapshot(id: string, snapshotId: string): Promise<Outcome<void, MutationFailure>>;
+  /**
+   * Backup BRUT al unui proiect: datele din IndexedDB serializate exact așa cum sunt stocate (fără validare, migrare sau
+   * eliminarea câmpurilor necunoscute). Doar citire: nu blochează, nu scrie, nu schimbă revizia sau copiile. Fișierul nu
+   * e în formatul `.roomcraft.json` și nu poate fi neapărat deschis de versiunea curentă.
+   */
+  exportRaw(id: string): Promise<Outcome<{ text: string; revision: number }, MutationFailure>>;
   /** Sesiunile deschise în acest tab. */
   openSessions(): ReadonlyMap<string, ProjectSession>;
   /** Închide toate sesiunile (salvează ce se poate). */
@@ -325,13 +335,20 @@ export function createProjectManager(deps: ProjectManagerDeps): ProjectManager {
     try {
       const snap = await repo.loadSnapshot(snapshotId);
       if (!snap.ok) {
-        return {
-          ok: false,
-          error:
-            snap.failure.kind === 'storage'
-              ? { kind: 'storage', error: snap.failure.error }
-              : { kind: 'not-found' },
-        };
+        if (snap.failure.kind === 'storage')
+          return { ok: false, error: { kind: 'storage', error: snap.failure.error } };
+        if (snap.failure.kind === 'corrupt')
+          return {
+            ok: false,
+            error: {
+              kind: 'incompatible',
+              message:
+                snap.failure.stage === 'version'
+                  ? `Această copie a fost creată cu o versiune mai nouă a aplicației (${snap.failure.errors[0] ?? ''}) și nu poate fi restaurată aici. Nu s-a modificat nimic.`
+                  : `Această copie de siguranță nu poate fi citită (${snap.failure.errors[0] ?? snap.failure.stage}) și nu poate fi restaurată. Nu s-a modificat nimic.`,
+            },
+          };
+        return { ok: false, error: { kind: 'not-found' } };
       }
       const now = clock.nowIso();
       const current = await repo.load(id);
@@ -339,7 +356,19 @@ export function createProjectManager(deps: ProjectManagerDeps): ProjectManager {
         await repo.addSnapshot(current.value.doc, 'pre-overwrite', now);
         await repo.save({ ...snap.value.doc, id }, current.value.revision, now);
       } else if (current.failure.kind === 'corrupt') {
-        await repo.save({ ...snap.value.doc, id }, current.failure.revision, now);
+        if (current.failure.stage === 'version' || current.failure.stage === 'migrate')
+          return {
+            ok: false,
+            error: {
+              kind: 'incompatible',
+              message:
+                current.failure.stage === 'version'
+                  ? `Proiectul curent a fost salvat de o versiune mai nouă a aplicației (${current.failure.errors[0] ?? ''}). Restaurarea l-ar suprascrie și ar pierde date pe care această versiune nu le poate citi. Nu s-a modificat nimic: actualizează aplicația și deschide proiectul din nou.`
+                  : `Proiectul curent are un format pe care această versiune nu îl poate converti (${current.failure.errors[0] ?? ''}). Restaurarea l-ar suprascrie și ar pierde date. Nu s-a modificat nimic.`,
+            },
+          };
+        // document invalid, dar nu de altă versiune: datele brute se arhivează atomic înainte de suprascriere
+        await repo.overwriteUnreadable({ ...snap.value.doc, id }, current.failure.revision, now);
       } else if (current.failure.kind === 'not-found') {
         await repo.create({ ...snap.value.doc, id }, now);
       } else {
@@ -355,6 +384,24 @@ export function createProjectManager(deps: ProjectManagerDeps): ProjectManager {
     }
   }
 
+  async function exportRaw(
+    id: string,
+  ): Promise<Outcome<{ text: string; revision: number }, MutationFailure>> {
+    try {
+      const raw = await repo.loadRaw(id);
+      if (!raw) return { ok: false, error: { kind: 'not-found' } };
+      const text = JSON.stringify(raw.data, null, 2);
+      if (text === undefined)
+        return {
+          ok: false,
+          error: { kind: 'incompatible', message: 'Datele proiectului nu pot fi serializate.' },
+        };
+      return { ok: true, value: { text, revision: raw.revision } };
+    } catch (e) {
+      return { ok: false, error: { kind: 'storage', error: storageFailureOf(e) } };
+    }
+  }
+
   return {
     list,
     create,
@@ -365,6 +412,7 @@ export function createProjectManager(deps: ProjectManagerDeps): ProjectManager {
     inspect,
     listSnapshots,
     restoreSnapshot,
+    exportRaw,
     openSessions: () => sessions,
     closeAll: async () => {
       await Promise.all([...sessions.values()].map((s) => s.dispose()));

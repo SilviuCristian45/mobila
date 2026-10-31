@@ -48,6 +48,7 @@ export function describeMutationFailure(f: MutationFailure): string {
     case 'invalid-name':
     case 'conflict':
     case 'open-elsewhere':
+    case 'incompatible':
       return f.message;
     case 'not-found':
       return 'Proiectul nu mai există.';

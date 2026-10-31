@@ -56,7 +56,7 @@ export function RecoveryDialog({ manager, project, onRestored, onClose }: Recove
   return (
     <Modal
       title="Restaurează o copie de siguranță"
-      description={`Alege versiunea cu care înlocuiești proiectul „${project.name}”. Versiunea curentă, dacă e validă, se arhivează întâi.`}
+      description={`Alege versiunea cu care înlocuiești proiectul „${project.name}”. Versiunea curentă se arhivează întâi (dacă e invalidă, se păstrează datele ei brute ca „înainte de suprascriere”).`}
       onClose={busy ? () => {} : onClose}
     >
       {error ? (

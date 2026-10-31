@@ -56,10 +56,20 @@ export interface StorageFailure {
 export interface ProjectRepository {
   list(): Promise<ProjectMeta[]>;
   load(id: string): Promise<LoadResult>;
+  /**
+   * Citește rândul document EXACT cum e stocat (nevalidat, nemigrat, cu câmpurile necunoscute). Doar citire: nu
+   * validează, nu migrează, nu creează copii și nu modifică revizia. `null` dacă proiectul nu există.
+   */
+  loadRaw(id: string): Promise<{ data: unknown; revision: number } | null>;
   /** Creează un proiect nou (revizia 1). Aruncă `RevisionConflictError('exists')` dacă ID-ul există. */
   create(doc: ProjectDocument, now: string): Promise<number>;
   /** Salvare atomică (meta + document) cu concurență optimistă. Întoarce noua revizie. */
   save(doc: ProjectDocument, expectedRevision: number, now: string): Promise<number>;
+  /**
+   * Înlocuiește un document ILIZIBIL (invalid / mai nou) cu `doc`. Rândul brut, neatins și cu toate câmpurile lui, se
+   * arhivează ca `pre-overwrite` în aceeași tranzacție; dacă arhivarea eșuează, nu se scrie nimic.
+   */
+  overwriteUnreadable(doc: ProjectDocument, expectedRevision: number, now: string): Promise<number>;
   /** Redenumire = modificare de document (crește revizia). */
   rename(id: string, name: string, now: string): Promise<number>;
   remove(id: string): Promise<void>;

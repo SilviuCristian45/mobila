@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportProject } from '@/domain';
 import { Dashboard } from '@/features/projects/Dashboard';
 import { RuntimeUnavailableError } from '@/lib/project-runtime/browser-runtime';
@@ -10,6 +10,14 @@ import { studioProject } from '../reference/projects';
 import { renderWithRuntime, uiEnv, type UiEnv } from '../helpers/ui';
 
 const META = { exportedAt: '2026-10-27T12:00:00.000Z', appVersion: 'test' };
+const downloads: Array<{ name: string; text: string }> = [];
+vi.mock('@/lib/download', async (orig) => ({
+  ...(await orig<typeof import('@/lib/download')>()),
+  downloadTextFile: (name: string, text: string) => downloads.push({ name, text }),
+}));
+beforeEach(() => {
+  downloads.length = 0;
+});
 
 async function seed(e: UiEnv, names: string[]): Promise<string[]> {
   const ids: string[] = [];
@@ -326,6 +334,98 @@ describe('Dashboard — proiecte invalide', () => {
     );
     await waitFor(() => expect(within(cards()[0]!).queryByTestId('project-invalid')).toBeNull());
     expect(within(cards()[0]!).getByRole('link', { name: /Deschide/ })).toBeTruthy();
+  });
+
+  it('proiect creat cu o versiune mai nouă: nu se oferă restaurarea (ar pierde date), datele rămân neatinse', async () => {
+    const e = uiEnv();
+    const [id] = await seed(e, ['Din viitor']);
+    const row = await e.tab.db.documents.get(id!);
+    const newer = { ...(row!.data as object), schemaVersion: 99, camp_nou: 1 };
+    await e.tab.db.documents.update(id!, { data: newer });
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await waitFor(() => expect(within(cards()[0]!).getByTestId('project-invalid')).toBeTruthy());
+    const card = cards()[0]!;
+    expect(within(card).getByText('Proiect creat cu o versiune mai nouă')).toBeTruthy();
+    expect(within(card).getByText(/Actualizează aplicația/)).toBeTruthy();
+    expect(within(card).queryByRole('button', { name: /Restaurează o copie/ })).toBeNull();
+    expect(within(card).queryByRole('link', { name: /Deschide/ })).toBeNull();
+    expect(within(card).getByRole('button', { name: /Șterge/ })).toBeTruthy(); // decizia rămâne a utilizatorului
+    expect((await e.tab.db.documents.get(id!))!.data).toEqual(newer);
+  });
+
+  it('„Exportă datele brute” pe un proiect „mai nou”: descarcă datele stocate exact, explică natura fișierului, nu modifică nimic', async () => {
+    const e = uiEnv();
+    const [id] = await seed(e, ['Din viitor']);
+    const row = await e.tab.db.documents.get(id!);
+    const newer = { ...(row!.data as object), schemaVersion: 99, camp_nou: { a: [1, 2] } };
+    await e.tab.db.documents.update(id!, { data: newer });
+    const before = {
+      d: await e.tab.db.documents.toArray(),
+      p: await e.tab.db.projects.toArray(),
+      s: await e.tab.db.snapshots.toArray(),
+    };
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await waitFor(() => expect(within(cards()[0]!).getByTestId('project-invalid')).toBeTruthy());
+    const card = cards()[0]!;
+    expect(within(card).getByTestId('raw-export-hint').textContent).toMatch(/backup brut/);
+
+    await userEvent.click(within(card).getByRole('button', { name: /Exportă datele brute/ }));
+
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0]!.name).toBe('din-viitor-backup-raw.json');
+    expect(JSON.parse(downloads[0]!.text)).toEqual(newer);
+    const notice = (await screen.findByTestId('raw-export-notice')).textContent!;
+    expect(notice).toMatch(/backup brut/);
+    expect(notice).toMatch(/nu îl poate deschide neapărat/);
+    expect(notice).toMatch(/Proiectul nu a fost modificat/);
+    expect(notice).toContain('din-viitor-backup-raw.json');
+    expect({
+      d: await e.tab.db.documents.toArray(),
+      p: await e.tab.db.projects.toArray(),
+      s: await e.tab.db.snapshots.toArray(),
+    }).toEqual(before);
+  });
+
+  it('„Exportă datele brute” pe un proiect invalid: exportă brutul; pe unul valid butonul nu există', async () => {
+    const e = uiEnv();
+    const [bad] = await seed(e, ['Stricat', 'Bun']);
+    await corrupt(e, bad!);
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const badCard = cardNamed('Stricat');
+    await waitFor(() => expect(within(badCard).getByTestId('project-invalid')).toBeTruthy());
+    await userEvent.click(within(badCard).getByRole('button', { name: /Exportă datele brute/ }));
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0]!.name).toBe('stricat-backup-raw.json');
+    expect(JSON.parse(downloads[0]!.text)).toEqual({ gunoi: true });
+    const good = cardNamed('Bun');
+    await waitFor(() => expect(within(good).queryByText('Se verifică…')).toBeNull());
+    expect(within(good).queryByRole('button', { name: /Exportă datele brute/ })).toBeNull();
+  });
+
+  it('eroare la citirea datelor brute: mesaj de eroare, niciun fișier descărcat', async () => {
+    const e = uiEnv();
+    const [id] = await seed(e, ['Stricat']);
+    await corrupt(e, id!);
+    const manager = {
+      ...e.tab.manager,
+      exportRaw: async () => ({
+        ok: false as const,
+        error: {
+          kind: 'storage' as const,
+          error: { kind: 'unavailable' as const, message: 'Baza nu răspunde.' },
+        },
+      }),
+    } as ProjectManager;
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab, manager));
+    await waitFor(() => expect(within(cards()[0]!).getByTestId('project-invalid')).toBeTruthy());
+    await userEvent.click(
+      within(cards()[0]!).getByRole('button', { name: /Exportă datele brute/ }),
+    );
+    expect((await screen.findByTestId('raw-export-notice')).textContent).toMatch(
+      /Nu am putut exporta/,
+    );
+    expect(downloads).toHaveLength(0);
   });
 
   it('fără copii de siguranță: explicație clară; proiectul poate fi șters', async () => {

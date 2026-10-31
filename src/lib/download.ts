@@ -15,6 +15,10 @@ export function safeFileStem(name: string, fallback = 'proiect'): string {
 export const backupFileName = (projectName: string): string =>
   `${safeFileStem(projectName)}.roomcraft.json`;
 
+/** Backup brut (date din IndexedDB, nevalidate): nume distinct, ca să nu fie confundat cu un `.roomcraft.json`. */
+export const rawBackupFileName = (projectName: string): string =>
+  `${safeFileStem(projectName)}-backup-raw.json`;
+
 export function downloadTextFile(fileName: string, text: string, mime = 'application/json'): void {
   const url = URL.createObjectURL(new Blob([text], { type: `${mime};charset=utf-8` }));
   const a = document.createElement('a');

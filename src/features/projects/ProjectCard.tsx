@@ -32,12 +32,26 @@ export interface ProjectCardProps {
   onRename: () => void;
   onDelete: () => void;
   onRecover: () => void;
+  /** Descarcă datele brute din IndexedDB (backup nevalidat); oferit doar pentru proiectele care nu se deschid. */
+  onExportRaw: () => void;
 }
 
-export function ProjectCard({ project, manager, onRename, onDelete, onRecover }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  manager,
+  onRename,
+  onDelete,
+  onRecover,
+  onExportRaw,
+}: ProjectCardProps) {
   const health = useProjectHealth(manager, project.id);
   const invalid = health.phase === 'invalid';
   const failure = health.phase === 'invalid' ? describeOpenFailure(health.failure) : null;
+  // proiect mai nou / neconvertibil: restaurarea e refuzată (ar pierde date), deci nu o oferim
+  const unreadableByThisVersion =
+    health.phase === 'invalid' &&
+    health.failure.kind === 'corrupt' &&
+    (health.failure.stage === 'version' || health.failure.stage === 'migrate');
 
   return (
     <article
@@ -79,7 +93,16 @@ export function ProjectCard({ project, manager, onRename, onDelete, onRecover }:
         >
           <p className="font-medium">{failure.title}</p>
           <p className="mt-1">{failure.detail}</p>
-          <p className="mt-1">Poți restaura o copie de siguranță sau șterge proiectul.</p>
+          <p className="mt-1">
+            {unreadableByThisVersion
+              ? 'Datele nu au fost modificate. Actualizează aplicația pentru a deschide proiectul; până atunci nu îl șterge.'
+              : 'Poți restaura o copie de siguranță sau șterge proiectul.'}
+          </p>
+          <p className="mt-1" data-testid="raw-export-hint">
+            „Exportă datele brute” salvează un backup brut al datelor, exact cum sunt stocate. Nu e
+            un fișier .roomcraft.json și versiunea curentă a aplicației nu îl poate deschide
+            neapărat.
+          </p>
         </div>
       ) : null}
 
@@ -88,11 +111,16 @@ export function ProjectCard({ project, manager, onRename, onDelete, onRecover }:
           <a className={buttonClass('primary')} href={editorHref(project.id)}>
             Deschide<span className="sr-only"> proiectul {project.name}</span>
           </a>
-        ) : (
+        ) : unreadableByThisVersion ? null : (
           <Button variant="primary" onClick={onRecover}>
             Restaurează o copie<span className="sr-only"> pentru {project.name}</span>
           </Button>
         )}
+        {invalid ? (
+          <Button onClick={onExportRaw}>
+            Exportă datele brute<span className="sr-only"> ale proiectului {project.name}</span>
+          </Button>
+        ) : null}
         <Button onClick={onRename}>
           Redenumește<span className="sr-only"> {project.name}</span>
         </Button>

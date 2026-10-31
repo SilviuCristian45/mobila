@@ -10,7 +10,20 @@ import type {
   SnapshotReason,
 } from './types';
 
+/** Plafonul copiilor obișnuite (`auto`, `manual`): se păstrează cele mai noi. */
 export const SNAPSHOTS_KEPT = 5;
+/**
+ * Copiile de siguranță create înainte de o operație distructivă (`pre-migration`, `pre-overwrite`, `pre-import`) NU
+ * intră în plafonul de mai sus: altfel ar fi tăiate de copiile automate mai noi tocmai când sunt mai utile. Au plafon
+ * propriu, per motiv.
+ */
+export const SAFETY_SNAPSHOTS_KEPT = 3;
+
+const isSafetyReason = (reason: SnapshotReason): boolean => reason.startsWith('pre-');
+const versionOf = (raw: unknown): number => {
+  const v = (raw as { schemaVersion?: unknown } | null)?.schemaVersion;
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0;
+};
 
 const metaOf = (doc: ProjectDocument, revision: number, now: string): ProjectMeta => ({
   id: doc.id,
@@ -26,6 +39,7 @@ export class DexieProjectRepository implements ProjectRepository {
   constructor(
     private readonly db: RoomcraftDb,
     private readonly parseOptions: ParseOptions = {},
+    private readonly now: () => string = () => new Date().toISOString(),
   ) {}
 
   private async guard<T>(run: () => Promise<T>): Promise<T> {
@@ -48,6 +62,13 @@ export class DexieProjectRepository implements ProjectRepository {
     } catch (e) {
       return { ok: false, failure: { kind: 'storage', error: toStorageFailure(e) } };
     }
+  }
+
+  loadRaw(id: string): Promise<{ data: unknown; revision: number } | null> {
+    return this.guard(async () => {
+      const row = await this.db.documents.get(id);
+      return row ? { data: row.data, revision: row.revision } : null;
+    });
   }
 
   private async parseRow(
@@ -75,13 +96,19 @@ export class DexieProjectRepository implements ProjectRepository {
     }
     if (parsed.migratedFrom !== undefined && backupBeforeMigration) {
       // copie de siguranță a documentului brut, înainte ca versiunea migrată să-l înlocuiască
-      await this.db.snapshots.put({
-        id: `${id}:pre-migration:${revision}`,
-        projectId: id,
-        createdAt: parsed.doc.updatedAt,
-        reason: 'pre-migration',
-        schemaVersion: parsed.migratedFrom,
-        data: raw,
+      const key = `${id}:pre-migration:${revision}`;
+      const migratedFrom = parsed.migratedFrom;
+      await this.db.transaction('rw', this.db.snapshots, async () => {
+        if (await this.db.snapshots.get(key)) return; // aceeași revizie ⇒ același document brut, deja arhivat
+        await this.db.snapshots.put({
+          id: key,
+          projectId: id,
+          createdAt: this.now(), // momentul copierii, nu data documentului: copia nu e „cea mai veche”
+          reason: 'pre-migration',
+          schemaVersion: migratedFrom,
+          data: raw,
+        });
+        await this.prune(id);
       });
     }
     return {
@@ -120,6 +147,42 @@ export class DexieProjectRepository implements ProjectRepository {
         await this.db.projects.put(metaOf(stored, revision, now));
         return revision;
       }),
+    );
+  }
+
+  overwriteUnreadable(
+    doc: ProjectDocument,
+    expectedRevision: number,
+    now: string,
+  ): Promise<number> {
+    return this.guard(() =>
+      this.db.transaction(
+        'rw',
+        this.db.projects,
+        this.db.documents,
+        this.db.snapshots,
+        async () => {
+          const row = await this.db.documents.get(doc.id);
+          if (!row) throw new RevisionConflictError('deleted', expectedRevision, 0);
+          if (row.revision !== expectedRevision)
+            throw new RevisionConflictError('changed', expectedRevision, row.revision);
+          // rândul brut (cu orice câmpuri necunoscute) se arhivează în aceeași tranzacție cu suprascrierea
+          await this.db.snapshots.put({
+            id: `${doc.id}:${now}:pre-overwrite:r${row.revision}`,
+            projectId: doc.id,
+            createdAt: now,
+            reason: 'pre-overwrite',
+            schemaVersion: versionOf(row.data),
+            data: row.data,
+          });
+          const revision = row.revision + 1;
+          const stored = { ...doc, updatedAt: now };
+          await this.db.documents.put({ projectId: doc.id, revision, data: stored });
+          await this.db.projects.put(metaOf(stored, revision, now));
+          await this.prune(doc.id);
+          return revision;
+        },
+      ),
     );
   }
 
@@ -170,11 +233,25 @@ export class DexieProjectRepository implements ProjectRepository {
           schemaVersion: doc.schemaVersion,
           data: doc,
         });
-        const all = await this.db.snapshots.where('projectId').equals(doc.id).sortBy('createdAt');
-        const excess = all.slice(0, Math.max(0, all.length - SNAPSHOTS_KEPT));
-        await this.db.snapshots.bulkDelete(excess.map((s) => s.id));
+        await this.prune(doc.id);
       }),
     );
+  }
+
+  /** Retenția: SNAPSHOTS_KEPT pentru copii obișnuite, SAFETY_SNAPSHOTS_KEPT per motiv pentru cele `pre-*`. */
+  private async prune(projectId: string): Promise<void> {
+    const all = await this.db.snapshots.where('projectId').equals(projectId).sortBy('createdAt');
+    const groups = new Map<string, SnapshotRow[]>();
+    for (const row of all) {
+      const group = isSafetyReason(row.reason) ? row.reason : 'regular';
+      groups.set(group, [...(groups.get(group) ?? []), row]);
+    }
+    const excess: string[] = [];
+    for (const [group, rows] of groups) {
+      const limit = group === 'regular' ? SNAPSHOTS_KEPT : SAFETY_SNAPSHOTS_KEPT;
+      excess.push(...rows.slice(0, Math.max(0, rows.length - limit)).map((r) => r.id));
+    }
+    await this.db.snapshots.bulkDelete(excess);
   }
 
   listSnapshots(projectId: string): Promise<SnapshotMeta[]> {

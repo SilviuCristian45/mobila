@@ -8,6 +8,7 @@ import { useRuntimeState } from '@/lib/project-runtime/ProjectProvider';
 import type { ProjectRuntime } from '@/lib/project-runtime/browser-runtime';
 import type { ProjectMeta } from '@/state/types';
 import { editorHref } from '@/lib/asset';
+import { downloadTextFile, rawBackupFileName } from '@/lib/download';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert, Spinner } from '@/ui/feedback';
@@ -67,6 +68,10 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
   const { state, reload } = useProjectList(manager);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // mesajul despre backup-ul brut e mai lung și important: rămâne vizibil mai mult decât celelalte notificări
+  const [rawNotice, setRawNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!notice) return;
@@ -74,6 +79,22 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
     return () => clearTimeout(t);
   }, [notice]);
 
+  async function exportRaw(project: ProjectMeta) {
+    const r = await manager.exportRaw(project.id);
+    if (!r.ok) {
+      setRawNotice({
+        tone: 'error',
+        text: `Nu am putut exporta datele proiectului „${project.name}”: ${describeMutationFailure(r.error)}`,
+      });
+      return;
+    }
+    const fileName = rawBackupFileName(project.name);
+    downloadTextFile(fileName, r.value.text);
+    setRawNotice({
+      tone: 'success',
+      text: `Am descărcat ${fileName}: un backup brut al proiectului „${project.name}”, cu datele exact așa cum sunt stocate (nevalidate). Proiectul nu a fost modificat. Fișierul nu e în formatul .roomcraft.json și versiunea curentă a aplicației nu îl poate deschide neapărat; păstrează-l până actualizezi aplicația.`,
+    });
+  }
   async function create(name: string): Promise<string | null> {
     const r = await manager.create(name);
     if (!r.ok) return describeMutationFailure(r.error);
@@ -104,6 +125,12 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
           + Proiect nou
         </Button>
       </div>
+
+      {rawNotice ? (
+        <div className="mb-4">
+          <Alert tone={rawNotice.tone} title={rawNotice.text} testId="raw-export-notice" />
+        </div>
+      ) : null}
 
       {notice ? (
         <div className="mb-4">
@@ -152,6 +179,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
                 onRename={() => setDialog({ kind: 'rename', project: p })}
                 onDelete={() => setDialog({ kind: 'delete', project: p })}
                 onRecover={() => setDialog({ kind: 'recover', project: p })}
+                onExportRaw={() => void exportRaw(p)}
               />
             </li>
           ))}
