@@ -246,4 +246,50 @@ test.describe('camere prin drag & drop (build static)', () => {
     expect(await page.locator('polygon[data-testid^="wall-"]').count()).toBe(wallsFull);
     expect(errors).toEqual([]);
   });
+
+  test('cameră în L: se trage din paletă, R o rotește în orientări diferite, se redimensionează din mânerele laturilor (6), un pas de istoric, undo', async ({
+    page,
+  }, testInfo) => {
+    const errors = collectErrors(page);
+    await createProject(page, 'Cameră în L');
+    const box = (await page.getByTestId('plan-box').boundingBox())!;
+    const chip = (await page.getByTestId('room-preset-living-l').boundingBox())!;
+    await page.mouse.move(chip.x + chip.width / 2, chip.y + chip.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.5, { steps: 10 });
+    const ghostPolygon = page.getByTestId('room-ghost').locator('polygon').nth(1);
+    await expect(page.getByTestId('room-ghost')).toHaveAttribute('data-valid', 'true');
+    const pointsOf = async () => (await ghostPolygon.getAttribute('points'))!;
+    const first = await pointsOf();
+    expect(first.trim().split(/\s+/)).toHaveLength(6);
+    await page.keyboard.press('r');
+    await expect(page.getByTestId('room-ghost-label')).toContainText('500 cm × 600 cm');
+    expect(await pointsOf()).not.toBe(first);
+    await page.keyboard.press('r');
+    await page.keyboard.press('r');
+    await page.keyboard.press('r'); // înapoi la prima orientare
+    await expect(page.getByTestId('room-ghost-label')).toContainText('600 cm × 500 cm');
+    await page.mouse.up();
+
+    await expect(page.locator('[data-testid^="room-list-item-"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText('25 m²');
+    const handles = page.locator('[data-testid^="room-edge-handle-"]');
+    await expect(handles).toHaveCount(6);
+    await page.screenshot({ path: testInfo.outputPath('camera-l.png') });
+
+    // tragem unul dintre mânere (primul) spre exterior: aria se schimbă, un pas de istoric
+    const hist = Number(await page.getByTestId('history-size').textContent());
+    const hb = (await handles.first().boundingBox())!;
+    const zoom = Number(await page.getByTestId('plan-svg').getAttribute('data-zoom'));
+    await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 500 * zoom, { steps: 10 });
+    await page.mouse.up();
+    await expect(page.getByTestId('history-size')).toHaveText(String(hist + 1));
+    await expect(page.locator('[data-testid^="room-list-area-"]')).not.toHaveText('25 m²');
+    await expect(page.getByTestId('plan-invalid')).toHaveCount(0);
+    await page.getByTestId('undo').click();
+    await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText('25 m²');
+    expect(errors).toEqual([]);
+  });
 });

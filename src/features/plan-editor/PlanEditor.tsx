@@ -12,7 +12,11 @@ import {
 import {
   addOpening,
   addRectRoom,
+  addPolyRoomShared,
   addRectRoomShared,
+  axesFromInteriorPolygon,
+  moveRoomEdge,
+  roomEdges,
   rotateRoom,
   addWall,
   dot,
@@ -52,6 +56,7 @@ import { PlanCanvas, type CanvasHandlers } from './PlanCanvas';
 import { PropertiesPanel, ROOM_TYPES, type RunEdit } from './PropertiesPanel';
 import { RoomList } from './RoomList';
 import { RoomPalette } from './RoomPalette';
+import { orient, roomShape } from './roomPresets';
 import type {
   Drag,
   Notice,
@@ -90,6 +95,17 @@ type Gesture =
   | { type: 'pan'; startX: number; startY: number; view: View }
   | { type: 'node'; nodeId: string; startX: number; startY: number; active: boolean }
   | { type: 'opening'; openingId: string; startX: number; startY: number; active: boolean }
+  | {
+      type: 'edge';
+      roomId: string;
+      index: number;
+      startX: number;
+      startY: number;
+      /** Cursorul în lume la apăsare și normala exterioară a laturii. */
+      grab: Pt;
+      normal: Pt;
+      active: boolean;
+    }
   | {
       type: 'side';
       roomId: string;
@@ -149,6 +165,28 @@ const ELEMENT_LABEL: Record<SelectionKind, string> = {
   room: 'Cameră',
   opening: 'Gol',
 };
+
+/** Construiește camera presetului (dreptunghi sau formă) cu colțul casetei în `anchor`, cu pereți comuni. */
+function buildRoom(
+  doc: ProjectDocument,
+  preset: RoomPreset,
+  anchor: Pt,
+  genId: () => string,
+  name?: string,
+): Result<{ doc: ProjectDocument; roomId: string }> {
+  if (preset.notch) {
+    return addPolyRoomShared(
+      doc,
+      { interior: roomShape(preset).map((p) => ({ x: p.x + anchor.x, y: p.y + anchor.y })), name },
+      genId,
+    );
+  }
+  return addRectRoomShared(
+    doc,
+    { widthMm: preset.widthMm, depthMm: preset.depthMm, anchor, name },
+    genId,
+  );
+}
 
 /**
  * Editorul 2D (Etapa 2b): plan SVG cu zoom/deplasare, selecție, tragere de noduri și goluri, desenare de pereți,
@@ -210,11 +248,8 @@ export function PlanEditor({
   const [placing, setPlacing] = useState<RoomPreset | null>(null);
   const [pointerWorld, setPointerWorld] = useState<Pt | null>(null);
   /** Camera din paletă e rotită cu 90° (lățimea și adâncimea inversate); tasta R o comută cât timp se plasează. */
-  const [turned, setTurned] = useState(false);
-  const oriented = useCallback(
-    (p: RoomPreset): RoomPreset => (turned ? { ...p, widthMm: p.depthMm, depthMm: p.widthMm } : p),
-    [turned],
-  );
+  const [turns, setTurns] = useState(0);
+  const oriented = useCallback((p: RoomPreset): RoomPreset => orient(p, turns), [turns]);
   /** Apăsarea care a pornit de pe paletă: după ea decidem între „trage și lasă” și „armat, apoi clic pe plan”. */
   const press = useRef<{ x: number; y: number; moved: boolean } | null>(null);
 
@@ -259,18 +294,20 @@ export function PlanEditor({
     const r =
       drag.kind === 'node'
         ? moveNode(doc, drag.nodeId, drag.to)
-        : drag.kind === 'roomSide'
-          ? resizeRoomSide(doc, drag.roomId, drag.side, drag.lengthMm)
-          : drag.kind === 'room'
-            ? moveRoom(doc, drag.roomId, drag.delta)
-            : drag.kind === 'object'
-              ? drag.groupIds
-                ? moveObjects(doc, drag.groupIds, {
-                    x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
-                    y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
-                  })
-                : updateObject(doc, drag.objectId, { position: drag.to })
-              : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
+        : drag.kind === 'roomEdge'
+          ? moveRoomEdge(doc, drag.roomId, drag.index, drag.deltaMm)
+          : drag.kind === 'roomSide'
+            ? resizeRoomSide(doc, drag.roomId, drag.side, drag.lengthMm)
+            : drag.kind === 'room'
+              ? moveRoom(doc, drag.roomId, drag.delta)
+              : drag.kind === 'object'
+                ? drag.groupIds
+                  ? moveObjects(doc, drag.groupIds, {
+                      x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
+                      y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
+                    })
+                  : updateObject(doc, drag.objectId, { position: drag.to })
+                : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
     return r.ok ? r.value : doc;
   }, [doc, drag]);
   const geometry = useMemo(() => selectGeometry(draftDoc), [draftDoc]);
@@ -280,19 +317,25 @@ export function PlanEditor({
   /** Previzualizarea (și validarea) unei camere din paletă cu centrul în punctul `world`. */
   const ghostAt = useCallback(
     (preset: RoomPreset, world: Pt): PlacementGhost => {
-      const spec = { widthMm: preset.widthMm, depthMm: preset.depthMm };
+      const shape = roomShape(preset);
       const thicknessMm = doc.settings.defaultWallThicknessMm;
-      const raw = { x: world.x - spec.widthMm / 2, y: world.y - spec.depthMm / 2 };
+      const raw = { x: world.x - preset.widthMm / 2, y: world.y - preset.depthMm / 2 };
       const snap = snapRoomAnchor(
         doc,
-        spec,
+        {
+          widthMm: preset.widthMm,
+          depthMm: preset.depthMm,
+          shape: preset.notch ? shape : undefined,
+        },
         raw,
         doc.settings.gridMm,
         Math.max(60, 14 / view.zoom),
       );
       let n = 0;
-      const built = addRectRoomShared(doc, { ...spec, anchor: snap.anchor }, () => `ghost${++n}`);
+      const built = buildRoom(doc, preset, snap.anchor, () => `ghost${++n}`);
       const found = built.ok ? analyzeGeometry(built.value.doc).issues : [];
+      const interior = shape.map((p) => ({ x: p.x + snap.anchor.x, y: p.y + snap.anchor.y }));
+      const axes = axesFromInteriorPolygon(interior, thicknessMm);
       return {
         preset,
         anchor: snap.anchor,
@@ -300,6 +343,8 @@ export function PlanEditor({
         valid: built.ok && found.length === 0,
         error: !built.ok ? built.error : (found[0]?.message ?? null),
         snapped: snap.snappedX || snap.snappedY,
+        interior,
+        axes: axes.ok ? axes.value : [],
       };
     },
     [doc, view.zoom],
@@ -460,11 +505,7 @@ export function PlanEditor({
       const same = Object.values(doc.rooms).filter((r) => r.type === preset.type).length;
       const name = same === 0 ? preset.label : `${preset.label} ${same + 1}`;
       const err = addAndSelect('Adaugă cameră', 'room', (d) => {
-        const r = addRectRoomShared(
-          d,
-          { widthMm: preset.widthMm, depthMm: preset.depthMm, anchor, name },
-          genId,
-        );
+        const r = buildRoom(d, preset, anchor, genId, name);
         if (!r.ok) return r;
         const u = updateRoom(r.value.doc, r.value.roomId, { type: preset.type });
         return u.ok ? { ok: true, value: { doc: u.value, id: r.value.roomId } } : u;
@@ -502,7 +543,7 @@ export function PlanEditor({
   const dropGhost = useCallback(() => {
     if (placing && pointerWorld && dropAt(oriented(placing), pointerWorld)) {
       setPlacing(null);
-      setTurned(false);
+      setTurns(0);
     }
   }, [placing, pointerWorld, dropAt, oriented]);
   const startPlacing = (preset: RoomPreset, e: ReactPointerEvent<HTMLButtonElement>) => {
@@ -516,20 +557,23 @@ export function PlanEditor({
     onSelectObject?.(null);
     setNotice(null);
     setPointerWorld(null);
-    setTurned(false);
+    setTurns(0);
     setPlacing(preset);
     press.current = { x: e.clientX, y: e.clientY, moved: false };
   };
   /** Plasare de la tastatură: în centrul planului; dacă nu încape, alipită în dreapta construcției existente. */
   const placeCentered = (preset: RoomPreset) => {
     if (!editable) return;
-    const spec = { widthMm: preset.widthMm, depthMm: preset.depthMm };
     const t = doc.settings.defaultWallThicknessMm;
     const c = toWorld(view, size.w / 2, size.h / 2);
     const centered = snapRoomAnchor(
       doc,
-      spec,
-      { x: c.x - spec.widthMm / 2, y: c.y - spec.depthMm / 2 },
+      {
+        widthMm: preset.widthMm,
+        depthMm: preset.depthMm,
+        shape: preset.notch ? roomShape(preset) : undefined,
+      },
+      { x: c.x - preset.widthMm / 2, y: c.y - preset.depthMm / 2 },
       doc.settings.gridMm,
       Math.max(60, 14 / view.zoom),
     ).anchor;
@@ -543,7 +587,7 @@ export function PlanEditor({
     }
     const fits = (anchor: Pt) => {
       let n = 0;
-      const built = addRectRoomShared(doc, { ...spec, anchor }, () => `probe${++n}`);
+      const built = buildRoom(doc, preset, anchor, () => `probe${++n}`);
       return built.ok && analyzeGeometry(built.value.doc).issues.length === 0;
     };
     placeRoom(preset, candidates.find(fits) ?? centered);
@@ -575,7 +619,7 @@ export function PlanEditor({
       const at = overPlan(e);
       if (at && placing) dropAt(oriented(placing), toWorld(view, at.x, at.y));
       setPlacing(null);
-      setTurned(false); // tras și lăsat (pe plan sau în afara lui): s-a terminat
+      setTurns(0); // tras și lăsat (pe plan sau în afara lui): s-a terminat
       setPointerWorld(null);
     };
     window.addEventListener('pointermove', onMove);
@@ -770,6 +814,25 @@ export function PlanEditor({
       gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
       capture(e);
     },
+    onEdgeDown: (roomId, index, e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      if (placing || !editable) return;
+      const edges = roomEdges(doc, roomId);
+      const edge = edges.ok ? edges.value[index] : undefined;
+      if (!edge) return;
+      gesture.current = {
+        type: 'edge',
+        roomId,
+        index,
+        startX: e.clientX,
+        startY: e.clientY,
+        grab: worldOf(e),
+        normal: edge.normal,
+        active: false,
+      };
+      capture(e);
+    },
     onSideDown: (roomId, side, e) => {
       if (e.button !== 0) return;
       e.stopPropagation();
@@ -889,6 +952,11 @@ export function PlanEditor({
       g.active = true;
       if (g.type === 'node') {
         setDrag({ kind: 'node', nodeId: g.nodeId, to: snapPoint(e) });
+      } else if (g.type === 'edge') {
+        const w = worldOf(e);
+        const along = (w.x - g.grab.x) * g.normal.x + (w.y - g.grab.y) * g.normal.y;
+        const deltaMm = e.altKey ? Math.round(along) : Math.round(along / grid) * grid;
+        setDrag({ kind: 'roomEdge', roomId: g.roomId, index: g.index, deltaMm });
       } else if (g.type === 'side') {
         const w = worldOf(e);
         // spre exterior = dimensiune mai mare: est/sud cresc cu deplasarea pozitivă, vest/nord cu cea negativă
@@ -952,6 +1020,13 @@ export function PlanEditor({
         if (!ok)
           setNotice((n) =>
             n ? { ...n, text: `${n.text} Nodul a revenit la poziția anterioară.` } : n,
+          );
+      } else if (finished.kind === 'roomEdge') {
+        const { roomId, index, deltaMm } = finished;
+        const ok = runNotice('Mută latura camerei', (d) => moveRoomEdge(d, roomId, index, deltaMm));
+        if (!ok)
+          setNotice((n) =>
+            n ? { ...n, text: `${n.text} Camera a revenit la dimensiunea anterioară.` } : n,
           );
       } else if (finished.kind === 'roomSide') {
         const { roomId, side, lengthMm } = finished;
@@ -1061,7 +1136,7 @@ export function PlanEditor({
       else if (k === 'Escape') {
         if (placing) {
           setPlacing(null);
-          setTurned(false);
+          setTurns(0);
           setPointerWorld(null);
           press.current = null;
         } else if (gesture.current || drag) {
@@ -1075,7 +1150,7 @@ export function PlanEditor({
           setExtraIds([], null);
         } else handled = false;
       } else if ((k === 'r' || k === 'R') && placing) {
-        setTurned((t) => !t);
+        setTurns((t) => (t + 1) % 4);
       } else if (
         (k === 'r' || k === 'R') &&
         !selectedObjectId &&

@@ -4,8 +4,10 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
 import {
+  analyzeGeometry,
   exportProject,
   rectInteriorSize,
+  roomEdges,
   roomsUsingWall,
   type ProjectDocument,
   type SceneDescription,
@@ -329,5 +331,102 @@ describe('planul 2D: camere noi din paletă și mutarea camerelor', () => {
     fireEvent.click(screen.getByTestId('room-rotate-cw'));
     expect(JSON.stringify(docOf(session).nodes)).toBe(snapshot);
     expect(screen.getByTestId('room-rotate-error').textContent).toMatch(/comune|împarte/);
+  });
+
+  it('cameră în L din paletă: fantoma poligonală (verde) urmărește cursorul, la eliberare se creează un L cu 6 colțuri și aria casetei fără colțul tăiat; un pas de undo', async () => {
+    const { session, before } = await open();
+    fireEvent.pointerDown(screen.getByTestId('room-preset-living-l'), CHIP);
+    moveOnPlan(FAR.x, FAR.y);
+    const ghost = screen.getByTestId('room-ghost');
+    expect(ghost.getAttribute('data-valid')).toBe('true');
+    expect(screen.getByTestId('room-ghost-label').textContent).toContain('Living în L');
+    expect(screen.getByTestId('room-ghost-label').textContent).toContain('600 cm × 500 cm');
+    // fantoma e un poligon cu 6 colțuri (nu un dreptunghi)
+    const interior = ghost.querySelectorAll('polygon')[1]!;
+    expect(interior.getAttribute('points')!.trim().split(/\s+/)).toHaveLength(6);
+    up(FAR.x, FAR.y);
+    const room = newest(session, before);
+    expect(room.nodeLoop).toHaveLength(6);
+    expect(room.type).toBe('living');
+    expect(room.name).toBe('Living în L 2'); // proiectul de referință are deja un living
+    expect(analyzeGeometry(docOf(session)).rooms.get(room.id)!.areaMm2).toBe(
+      6000 * 5000 - 2500 * 2000,
+    );
+    expect(session.getState().undoLabel).toBe('Adaugă cameră');
+    act(() => {
+      session.undo();
+    });
+    expect(roomCount(session)).toBe(before.length);
+  });
+
+  it('R în timpul plasării rotește L-ul în 4 orientări (dimensiunile casetei se inversează la fiecare pas, forma se schimbă)', async () => {
+    await open();
+    fireEvent.pointerDown(screen.getByTestId('room-preset-living-l'), CHIP);
+    moveOnPlan(FAR.x, FAR.y);
+    const shape = () =>
+      screen.getByTestId('room-ghost').querySelectorAll('polygon')[1]!.getAttribute('points')!;
+    const label = () => screen.getByTestId('room-ghost-label').textContent!;
+    const seen = new Set<string>([shape()]);
+    expect(label()).toContain('600 cm × 500 cm');
+    await key('r');
+    expect(label()).toContain('500 cm × 600 cm');
+    seen.add(shape());
+    await key('r');
+    expect(label()).toContain('600 cm × 500 cm');
+    seen.add(shape());
+    await key('r');
+    expect(label()).toContain('500 cm × 600 cm');
+    seen.add(shape());
+    expect(seen.size).toBe(4); // patru orientări distincte
+    await key('r');
+    expect(shape()).toBe([...seen][0]); // al cincilea clic readuce prima orientare
+  });
+
+  it('mânerele unei camere în L: câte unul pe fiecare latură; tragerea unuia schimbă aria (previzualizare fără scriere, un singur commit, undo)', async () => {
+    const { session, before } = await open();
+    fireEvent.pointerDown(screen.getByTestId('room-preset-living-l'), CHIP);
+    moveOnPlan(FAR.x, FAR.y);
+    up(FAR.x, FAR.y);
+    const room = newest(session, before);
+    const areaOf = () => analyzeGeometry(docOf(session)).rooms.get(room.id)!.areaMm2;
+    const handles = () =>
+      Array.from(document.querySelectorAll(`[data-testid^="room-edge-handle-${room.id}-"]`));
+    expect(handles()).toHaveLength(6);
+    expect(screen.queryByTestId(`room-handle-${room.id}-e`)).toBeNull(); // nu mânerele dreptunghiului
+
+    const edges = roomEdges(docOf(session), room.id);
+    if (!edges.ok) throw new Error(edges.error);
+    const west = edges.value.find((e) => e.normal.x === -1)!;
+    const start = areaOf();
+    const apply = vi.spyOn(session, 'apply');
+    const el = screen.getByTestId(`room-edge-handle-${room.id}-${west.index}`);
+    const x = Number(el.getAttribute('x')) + Number(el.getAttribute('width')) / 2;
+    const y = Number(el.getAttribute('y')) + Number(el.getAttribute('height')) / 2;
+    fireEvent.pointerDown(el, ptr(x, y));
+    for (let k = 1; k <= 4; k++) fireEvent.pointerMove(svg(), ptr(x - 250 * k, y)); // spre vest = spre exterior
+    expect(apply).not.toHaveBeenCalled(); // doar previzualizare
+    expect(areaOf()).toBe(start);
+    fireEvent.pointerUp(svg(), ptr(x - 1000, y));
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(areaOf()).toBeGreaterThan(start + 800 * 5000 - 1); // ~ +1000 mm × 5000 mm (cu snap la grilă)
+    expect(session.getState().undoLabel).toBe('Mută latura camerei');
+    act(() => {
+      session.undo();
+    });
+    expect(areaOf()).toBe(start);
+  });
+
+  it('un L se poate așeza lângă o cameră existentă împărțind peretele; a doua pe același loc e refuzată (fantomă roșie)', async () => {
+    const { session, before } = await open();
+    fireEvent.pointerDown(screen.getByTestId('room-preset-other-l'), CHIP);
+    moveOnPlan(FAR.x, FAR.y);
+    up(FAR.x, FAR.y);
+    const first = newest(session, before);
+    expect(first.nodeLoop).toHaveLength(6);
+    fireEvent.pointerDown(screen.getByTestId('room-preset-other-l'), CHIP);
+    moveOnPlan(FAR.x, FAR.y); // exact peste primul
+    expect(screen.getByTestId('room-ghost').getAttribute('data-valid')).toBe('false');
+    up(FAR.x, FAR.y);
+    expect(roomCount(session)).toBe(before.length + 1);
   });
 });

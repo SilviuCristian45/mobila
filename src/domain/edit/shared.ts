@@ -7,6 +7,7 @@ import {
   pairKey,
   pointInPolygon,
   rectAxesFromInterior,
+  signedArea,
   type Pt,
 } from '../geometry';
 import type { Result } from '../result';
@@ -98,43 +99,75 @@ export function splitWall(
 }
 
 /**
- * Cameră dreptunghiulară nouă cu pereți comuni: colțurile care coincid cu noduri existente le refolosesc; un colț aflat
- * pe un perete existent îl desparte; nodurile existente aflate pe laturile camerei intră în bucla ei; între două noduri
- * consecutive se refolosește peretele existent sau se creează unul nou. Fără nicio coincidență, rezultatul e identic cu
- * `addRectRoom`. Validitatea geometrică completă o verifică commit-ul.
+ * Axele pereților unei camere cu laturi aliniate la axe, din poligonul ei INTERIOR (puncte în ordine, orare sau
+ * antiorare): fiecare latură se mută spre exterior cu jumătate din grosime, iar vârfurile sunt intersecțiile laturilor
+ * vecine (la colț intrând sau ieșind la fel). Refuză laturi oblice, puncte neîntregi și grosimi neamintite.
  */
-export function addRectRoomShared(
+export function axesFromInteriorPolygon(
+  interior: readonly Pt[],
+  thicknessMm: number,
+): Result<Pt[]> {
+  const n = interior.length;
+  if (n < 4) return { ok: false, error: 'O cameră are cel puțin 4 colțuri.' };
+  if (!Number.isInteger(thicknessMm) || thicknessMm <= 0 || thicknessMm % 2 !== 0)
+    return { ok: false, error: 'Grosimea trebuie să fie un număr par pozitiv de mm.' };
+  if (interior.some((p) => !Number.isInteger(p.x) || !Number.isInteger(p.y)))
+    return { ok: false, error: 'Coordonatele trebuie să fie numere întregi (mm).' };
+  const outward = signedArea(interior) > 0 ? 1 : -1; // orar pe ecran: normala exterioară = (dy, −dx)
+  const normal = (a: Pt, b: Pt): Pt | null => {
+    const dx = Math.sign(b.x - a.x);
+    const dy = Math.sign(b.y - a.y);
+    if ((dx === 0) === (dy === 0)) return null; // oblică sau latură de lungime zero
+    return { x: outward * dy, y: -outward * dx };
+  };
+  const h = thicknessMm / 2;
+  const out: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const prev = interior[(i - 1 + n) % n]!;
+    const cur = interior[i]!;
+    const next = interior[(i + 1) % n]!;
+    const n1 = normal(prev, cur);
+    const n2 = normal(cur, next);
+    if (!n1 || !n2) return { ok: false, error: 'Camera trebuie să aibă laturi paralele cu axele.' };
+    out.push({ x: cur.x + (n1.x + n2.x) * h, y: cur.y + (n1.y + n2.y) * h });
+  }
+  return { ok: true, value: out };
+}
+
+/** `p` e pe conturul poligonului (pe o latură sau într-un vârf)? */
+function onBoundary(p: Pt, poly: readonly Pt[]): boolean {
+  return poly.some((a, i) => onSegment(p, a, poly[(i + 1) % poly.length]!) !== 0);
+}
+
+/**
+ * Cameră nouă (poligon cu laturi aliniate la axe, dat prin axele pereților) cu pereți comuni: colțurile care coincid cu
+ * noduri existente le refolosesc; un colț aflat pe un perete existent îl desparte; nodurile existente aflate pe laturile
+ * camerei intră în bucla ei; între două noduri consecutive se refolosește peretele existent sau se creează unul nou.
+ * Fără nicio coincidență rezultatul e o cameră cu pereți proprii. Validitatea geometrică completă o verifică commit-ul.
+ */
+function addRoomFromAxes(
   doc: ProjectDocument,
-  spec: NewRectRoom,
+  axes: readonly Pt[],
+  t: number,
+  name: string | undefined,
   genId: IdGenerator,
 ): Result<{ doc: ProjectDocument; roomId: string }> {
   const levelId = Object.keys(doc.levels)[0];
   if (!levelId) return { ok: false, error: 'Proiectul nu are niciun nivel.' };
-  const t = spec.thicknessMm ?? doc.settings.defaultWallThicknessMm;
-  const axes = rectAxesFromInterior(
-    spec.widthMm,
-    spec.depthMm,
-    { n: t, e: t, s: t, w: t },
-    spec.anchor,
-  );
-  if (!axes.ok) return axes;
   // fără suprapuneri: geometria prinde pereții care se taie, dar nu o cameră cuprinsă într-alta sau una peste alta cu un
   // singur perete comun
-  const [c0, , c2] = axes.value;
-  const [x0, x1, y0, y1] = [c0.x, c2.x, c0.y, c2.y];
   const overlap = 'Camera ar suprapune o cameră sau alte elemente existente.';
   for (const room of analyzeGeometry(doc).rooms.values())
-    if (axes.value.some((p) => pointInPolygon(p, room.polygon)))
-      return { ok: false, error: overlap };
+    if (axes.some((p) => pointInPolygon(p, room.polygon))) return { ok: false, error: overlap };
   for (const n of Object.values(doc.nodes))
-    if (n.levelId === levelId && n.x > x0 && n.x < x1 && n.y > y0 && n.y < y1)
+    if (n.levelId === levelId && pointInPolygon(n, axes) && !onBoundary(n, axes))
       return { ok: false, error: overlap };
   const next = cloneDocument(doc);
   const idErr = { ok: false as const, error: 'Nu s-a putut genera un identificator nou.' };
 
   // 1) colțurile: nod existent, nod nou pe un perete (îl desparte) sau nod nou liber
   const corners: string[] = [];
-  for (const p of axes.value) {
+  for (const p of axes) {
     const same = Object.values(next.nodes).find(
       (n) => n.levelId === levelId && n.x === p.x && n.y === p.y,
     );
@@ -156,20 +189,23 @@ export function addRectRoomShared(
     }
     corners.push(id);
   }
+  if (new Set(corners).size !== corners.length)
+    return { ok: false, error: 'Camera are două colțuri în același punct.' };
 
   // 2) laturile: colț → (noduri existente de pe latură, în ordine) → colț următor
   const loop: string[] = [];
   const edges: Array<[string, string]> = [];
-  for (let i = 0; i < 4; i++) {
+  const m = corners.length;
+  for (let i = 0; i < m; i++) {
     const aId = corners[i]!;
-    const bId = corners[(i + 1) % 4]!;
+    const bId = corners[(i + 1) % m]!;
     const a = next.nodes[aId]!;
     const b = next.nodes[bId]!;
     const between = Object.values(next.nodes)
       .filter(
         (n) => n.levelId === levelId && n.id !== aId && n.id !== bId && onSegment(n, a, b) === 1,
       )
-      .sort((m, n) => Math.hypot(m.x - a.x, m.y - a.y) - Math.hypot(n.x - a.x, n.y - a.y));
+      .sort((p, q) => Math.hypot(p.x - a.x, p.y - a.y) - Math.hypot(q.x - a.x, q.y - a.y));
     const chain = [aId, ...between.map((n) => n.id), bId];
     loop.push(...chain.slice(0, -1));
     for (let k = 0; k + 1 < chain.length; k++) edges.push([chain[k]!, chain[k + 1]!]);
@@ -195,15 +231,47 @@ export function addRectRoomShared(
   }
   const key = [...loop].sort().join('|');
   if (Object.values(next.rooms).some((r) => [...r.nodeLoop].sort().join('|') === key))
-    return { ok: false, error: 'Există deja o cameră cu aceleași pereți.' };
+    return { ok: false, error: 'Există deja o cameră cu aceiași pereți.' };
   const roomId = freshId(genId, (c) => c in next.rooms);
   if (!roomId) return idErr;
   next.rooms[roomId] = {
     id: roomId,
     levelId,
-    name: spec.name ?? `Cameră ${Object.keys(next.rooms).length + 1}`,
+    name: name ?? `Cameră ${Object.keys(next.rooms).length + 1}`,
     type: 'other',
     nodeLoop: loop,
   };
   return { ok: true, value: { doc: next, roomId } };
+}
+
+/** Cameră dreptunghiulară nouă cu pereți comuni (vezi `addRoomFromAxes`). Dimensiunile sunt interioare. */
+export function addRectRoomShared(
+  doc: ProjectDocument,
+  spec: NewRectRoom,
+  genId: IdGenerator,
+): Result<{ doc: ProjectDocument; roomId: string }> {
+  const t = spec.thicknessMm ?? doc.settings.defaultWallThicknessMm;
+  const axes = rectAxesFromInterior(
+    spec.widthMm,
+    spec.depthMm,
+    { n: t, e: t, s: t, w: t },
+    spec.anchor,
+  );
+  if (!axes.ok) return axes;
+  return addRoomFromAxes(doc, axes.value, t, spec.name, genId);
+}
+
+/**
+ * Cameră nouă cu formă oarecare cu laturi aliniate la axe (L, T, U…), dată prin poligonul ei INTERIOR (coordonate
+ * absolute, mm), cu pereți comuni cu vecinii ca la `addRectRoomShared`.
+ */
+export function addPolyRoomShared(
+  doc: ProjectDocument,
+  spec: { interior: readonly Pt[]; thicknessMm?: number; name?: string },
+  genId: IdGenerator,
+): Result<{ doc: ProjectDocument; roomId: string }> {
+  const t = spec.thicknessMm ?? doc.settings.defaultWallThicknessMm;
+  const axes = axesFromInteriorPolygon(spec.interior, t);
+  if (!axes.ok) return axes;
+  return addRoomFromAxes(doc, axes.value, t, spec.name, genId);
 }

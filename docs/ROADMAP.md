@@ -254,6 +254,8 @@
 
 > **Etapa 8c (livrată):** ștergerea unei camere poate șterge și pereții ei proprii (cei comuni cu vecinii rămân); opțiunea „Doar camera” păstrează comportamentul vechi. Vezi ADR-048 și [STAGE8C_REPORT](STAGE8C_REPORT.md).
 
+> **Etapa 9a (livrată):** camere în formă de L din paletă (cu pereți comuni, rotire în 4 orientări) și mânere pe fiecare latură pentru orice cameră cu laturi paralele cu axele. Vezi ADR-049 și [STAGE9A_REPORT](STAGE9A_REPORT.md).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**

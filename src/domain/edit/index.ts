@@ -16,7 +16,7 @@ import {
 } from '../geometry';
 import type { Result } from '../result';
 import type { Opening, ProjectDocument, Room, Wall } from '../schema';
-import { addRectRoomShared } from './shared';
+import { addPolyRoomShared, addRectRoomShared, axesFromInteriorPolygon } from './shared';
 
 export type { IdGenerator, NewRectRoom } from './types';
 import type { IdGenerator, NewRectRoom } from './types';
@@ -629,7 +629,13 @@ export interface RoomSnap {
  */
 export function snapRoomAnchor(
   doc: ProjectDocument,
-  spec: { widthMm: number; depthMm: number; thicknessMm?: number },
+  spec: {
+    widthMm: number;
+    depthMm: number;
+    thicknessMm?: number;
+    /** Poligonul interior față de colțul stânga-sus al casetei (pentru camere care nu sunt dreptunghiuri, ex. L). */
+    shape?: readonly Pt[];
+  },
   raw: Pt,
   gridMm: number,
   thresholdMm: number,
@@ -647,21 +653,37 @@ export function snapRoomAnchor(
   let probe = 0;
   const gen = () => `snap${++probe}`;
   const valid = (x: number, y: number): boolean => {
-    const r = addRectRoomShared(
-      doc,
-      { widthMm: spec.widthMm, depthMm: spec.depthMm, anchor: { x, y }, thicknessMm: t },
-      gen,
-    );
+    const r = spec.shape
+      ? addPolyRoomShared(
+          doc,
+          { interior: spec.shape.map((p) => ({ x: p.x + x, y: p.y + y })), thicknessMm: t },
+          gen,
+        )
+      : addRectRoomShared(
+          doc,
+          { widthMm: spec.widthMm, depthMm: spec.depthMm, anchor: { x, y }, thicknessMm: t },
+          gen,
+        );
     return r.ok && analyzeGeometry(r.value.doc).issues.length === 0;
   };
+  // axele camerei față de colțul ei: capetele casetei (dreptunghi) sau toate vârfurile conturului (formă)
+  const rel = spec.shape ? axesFromInteriorPolygon(spec.shape, t) : null;
+  const axesX = rel?.ok ? [...new Set(rel.value.map((p) => p.x))] : [-t / 2, spec.widthMm + t / 2];
+  const axesY = rel?.ok ? [...new Set(rel.value.map((p) => p.y))] : [-t / 2, spec.depthMm + t / 2];
   /** Deplasările care aduc o axă a camerei pe o axă existentă, de la cea mai mică. */
   const shifts = (edges: number[], candidates: Set<number>): number[] =>
     [...new Set(edges.flatMap((e) => [...candidates].map((c) => c - e)))]
       .filter((s) => Math.abs(s) <= thresholdMm)
       .sort((p, q) => Math.abs(p) - Math.abs(q));
   // combinații (deplasare pe X, deplasare pe Y): întâi cele care aliniază ambele axe, apoi doar una; de la cele mai mici
-  const sx = shifts([ax - t / 2, ax + spec.widthMm + t / 2], xs);
-  const sy = shifts([ay - t / 2, ay + spec.depthMm + t / 2], ys);
+  const sx = shifts(
+    axesX.map((v) => ax + v),
+    xs,
+  );
+  const sy = shifts(
+    axesY.map((v) => ay + v),
+    ys,
+  );
   const combos: Array<{ dx: number | null; dy: number | null; cost: number }> = [];
   for (const dx of sx)
     for (const dy of sy) combos.push({ dx, dy, cost: Math.abs(dx) + Math.abs(dy) });
@@ -710,3 +732,4 @@ export function resizeRoomSide(
 }
 
 export * from './shared';
+export * from './roomEdges';

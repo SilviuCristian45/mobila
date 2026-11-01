@@ -4,6 +4,7 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import {
   rectInteriorSize,
   resolveLook,
+  roomEdges,
   type GeometryModel,
   type Opening,
   type Pt,
@@ -27,12 +28,16 @@ export interface CanvasHandlers {
   onUp: (e: ReactPointerEvent<SVGSVGElement>) => void;
   onCancel: () => void;
   onSideDown: (roomId: string, side: RoomSide, e: ReactPointerEvent<SVGElement>) => void;
+  onEdgeDown: (roomId: string, index: number, e: ReactPointerEvent<SVGElement>) => void;
   onElementDown: (
     kind: SelectionKind | 'object',
     id: string,
     e: ReactPointerEvent<SVGElement>,
   ) => void;
 }
+
+/** Poziția mânerului pe latură (fracțiune din lungime): departe de cota din mijloc, ca să nu se acopere. */
+const HANDLE_AT = 0.3;
 
 interface Props {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -297,16 +302,29 @@ export function PlanCanvas({
     const xs = poly.map((p) => p.x);
     const ys = poly.map((p) => p.y);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-    const cx = (x0 + x1) / 2;
-    const cy = (y0 + y1) / 2;
     // puțin în interior, ca mânerul să nu acopere peretele (clicul pe perete trebuie să-l selecteze)
     const inset = 12 / zoom;
     return [
-      { side: 'n' as const, at: { x: cx, y: y0 + inset } },
-      { side: 'e' as const, at: { x: x1 - inset, y: cy } },
-      { side: 's' as const, at: { x: cx, y: y1 - inset } },
-      { side: 'w' as const, at: { x: x0 + inset, y: cy } },
+      { side: 'n' as const, at: { x: x0 + (x1 - x0) * HANDLE_AT, y: y0 + inset } },
+      { side: 'e' as const, at: { x: x1 - inset, y: y0 + (y1 - y0) * HANDLE_AT } },
+      { side: 's' as const, at: { x: x0 + (x1 - x0) * HANDLE_AT, y: y1 - inset } },
+      { side: 'w' as const, at: { x: x0 + inset, y: y0 + (y1 - y0) * HANDLE_AT } },
     ];
+  })();
+  // camerele cu forme oarecare (L, T…), cu laturi paralele cu axele: un mâner la mijlocul fiecărei laturi
+  const edgeHandles = (() => {
+    if (selection?.kind !== 'room' || sideHandles) return null;
+    const edges = roomEdges(doc, selection.id);
+    if (!edges.ok) return null;
+    const inset = 12 / zoom;
+    return edges.value.map((e) => ({
+      index: e.index,
+      vertical: e.normal.x !== 0,
+      at: {
+        x: e.a.x + (e.b.x - e.a.x) * HANDLE_AT - e.normal.x * (e.thicknessMm / 2 + inset),
+        y: e.a.y + (e.b.y - e.a.y) * HANDLE_AT - e.normal.y * (e.thicknessMm / 2 + inset),
+      },
+    }));
   })();
   const isSel = (kind: SelectionKind, id: string) =>
     selection?.kind === kind && selection.id === id;
@@ -600,34 +618,25 @@ export function PlanCanvas({
         {/* previzualizarea camerei care se plasează (trage din paletă) */}
         {ghost ? (
           <g data-testid="room-ghost" data-valid={ghost.valid} pointerEvents="none">
-            <rect
-              x={ghost.anchor.x - ghost.thicknessMm}
-              y={ghost.anchor.y - ghost.thicknessMm}
-              width={ghost.preset.widthMm + 2 * ghost.thicknessMm}
-              height={ghost.preset.depthMm + 2 * ghost.thicknessMm}
-              className={
-                ghost.valid ? 'fill-teal-600/25 stroke-teal-700' : 'fill-red-500/25 stroke-red-600'
-              }
-              strokeWidth={2}
-              strokeDasharray={`${8 / zoom} ${5 / zoom}`}
-              vectorEffect="non-scaling-stroke"
+            {/* banda pereților (axele, cu grosimea peretelui) și interiorul camerei */}
+            <polygon
+              points={pts(ghost.axes)}
+              fill="none"
+              strokeWidth={ghost.thicknessMm}
+              strokeLinejoin="miter"
+              className={ghost.valid ? 'stroke-teal-700/40' : 'stroke-red-600/40'}
             />
-            <rect
-              x={ghost.anchor.x}
-              y={ghost.anchor.y}
-              width={ghost.preset.widthMm}
-              height={ghost.preset.depthMm}
+            <polygon
+              points={pts(ghost.interior)}
               className={
                 ghost.valid ? 'fill-white/70 stroke-teal-700' : 'fill-white/60 stroke-red-600'
               }
               strokeWidth={1}
+              strokeDasharray={`${8 / zoom} ${5 / zoom}`}
               vectorEffect="non-scaling-stroke"
             />
             <Label
-              at={{
-                x: ghost.anchor.x + ghost.preset.widthMm / 2,
-                y: ghost.anchor.y + ghost.preset.depthMm / 2,
-              }}
+              at={polygonCentroid(ghost.interior)}
               text={`${ghost.preset.label} · ${formatLength(ghost.preset.widthMm, unit)} × ${formatLength(ghost.preset.depthMm, unit)}`}
               zoom={zoom}
               tone="strong"
@@ -687,6 +696,25 @@ export function PlanCanvas({
                 vectorEffect="non-scaling-stroke"
                 style={{ cursor: h.side === 'n' || h.side === 's' ? 'ns-resize' : 'ew-resize' }}
                 onPointerDown={(e) => handlers.onSideDown(selection.id, h.side, e)}
+              />
+            ))
+          : null}
+
+        {drawable && editable && tool === 'select' && selection?.kind === 'room' && edgeHandles
+          ? edgeHandles.map((h) => (
+              <rect
+                key={h.index}
+                x={h.at.x - 7 / zoom}
+                y={h.at.y - 7 / zoom}
+                width={14 / zoom}
+                height={14 / zoom}
+                rx={3 / zoom}
+                data-testid={`room-edge-handle-${selection.id}-${h.index}`}
+                className="fill-white stroke-teal-700"
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
+                style={{ cursor: h.vertical ? 'ew-resize' : 'ns-resize' }}
+                onPointerDown={(e) => handlers.onEdgeDown(selection.id, h.index, e)}
               />
             ))
           : null}
