@@ -221,7 +221,9 @@
 
 ## Etapa 6 — Buget
 
-> **Etapa 6a (livrată):** tab „Buget” în editor — tabel editabil (preț, cantitate, TVA, excludere, notă, „Modificat”, „Preț demonstrativ”), linii manuale (inclusiv legate de aria podelei/pereților), totaluri pe cameră/categorie și general, rezervă, mod prețuri cu/fără TVA, moneda, urma de calcul „De unde vine cifra?” și export **CSV**. Vezi ADR-041 și [STAGE6A_REPORT](STAGE6A_REPORT.md). **Rămâne (6b):** export XLSX (cere o dependență nouă, necesită aprobare).
+> **Etapa 6a (livrată):** tab „Buget” în editor — tabel editabil (preț, cantitate, TVA, excludere, notă, „Modificat”, „Preț demonstrativ”), linii manuale (inclusiv legate de aria podelei/pereților), totaluri pe cameră/categorie și general, rezervă, mod prețuri cu/fără TVA, moneda, urma de calcul „De unde vine cifra?” și export **CSV**. Vezi ADR-041 și [STAGE6A_REPORT](STAGE6A_REPORT.md). 
+>
+> **Etapa 6b (livrată):** export **XLSX** (foile Rezumat / Pe cameră / Linii, numere reale cu format, text mereu șir) cu `write-excel-file`, încărcat la cerere. Vezi ADR-042 și [STAGE6B_REPORT](STAGE6B_REPORT.md). **Rămâne:** deschiderea manuală a CSV/XLSX în Excel (RO) și LibreOffice.
 
 **Conținut**
 - Tabel de buget: linii derivate (obiecte, finisaje) + manuale + manoperă (cu legare la arii).

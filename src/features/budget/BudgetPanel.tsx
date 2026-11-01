@@ -23,7 +23,7 @@ import {
   type ProjectDocument,
   type Totals,
 } from '@/domain';
-import { budgetFileName, downloadTextFile } from '@/lib/download';
+import { budgetFileName, budgetXlsxFileName, downloadBlob, downloadTextFile } from '@/lib/download';
 import { formatMoney } from '@/lib/format';
 import { newId } from '@/lib/ids';
 import { describeCommitFailure } from '@/lib/messages';
@@ -86,6 +86,7 @@ export function BudgetPanel({
   const [manual, setManual] = useState<{ line?: ManualLine } | null>(null);
   const [removing, setRemoving] = useState<ManualLine | null>(null);
   const [separator, setSeparator] = useState<CsvSeparator>(';');
+  const [xlsxBusy, setXlsxBusy] = useState(false);
 
   /** Aplică o operație de domeniu; întoarce mesajul de eroare (pentru câmpuri) sau `null`. */
   const edit = (
@@ -114,6 +115,21 @@ export function BudgetPanel({
       budgetToCsv(doc, result.summary, { separator }),
       'text/csv',
     );
+  };
+
+  const exportXlsx = async () => {
+    if (!result.ok) return;
+    setXlsxBusy(true);
+    try {
+      // biblioteca XLSX se încarcă abia acum: nu intră în pachetul inițial
+      const { budgetXlsxBlob } = await import('./xlsxExport');
+      downloadBlob(budgetXlsxFileName(doc.name), await budgetXlsxBlob(doc, result.summary));
+      setError(null);
+    } catch {
+      setError('Exportul XLSX nu a reușit. Încearcă din nou sau exportă CSV.');
+    } finally {
+      setXlsxBusy(false);
+    }
   };
 
   const percent = (bp: number): number => bp / 100;
@@ -161,6 +177,13 @@ export function BudgetPanel({
           </label>
           <Button disabled={!result.ok} onClick={exportCsv} data-testid="budget-export-csv">
             Exportă CSV
+          </Button>
+          <Button
+            disabled={!result.ok || xlsxBusy}
+            onClick={() => void exportXlsx()}
+            data-testid="budget-export-xlsx"
+          >
+            {xlsxBusy ? 'Se generează…' : 'Exportă XLSX'}
           </Button>
         </div>
       </div>

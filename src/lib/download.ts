@@ -31,6 +31,24 @@ export function downloadTextFile(fileName: string, text: string, mime = 'applica
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+export function downloadBlob(fileName: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Export CSV al bugetului. */
 export const budgetFileName = (projectName: string): string =>
   `${safeFileStem(projectName)}-buget.csv`;
+
+/** Export XLSX al bugetului. */
+export const budgetXlsxFileName = (projectName: string): string =>
+  `${safeFileStem(projectName)}-buget.xlsx`;
+
+export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

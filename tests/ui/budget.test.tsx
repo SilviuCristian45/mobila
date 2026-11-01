@@ -13,10 +13,12 @@ import { renderWithRuntime, uiEnv, type UiEnv } from '../helpers/ui';
 let query = '';
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(query) }));
 const downloads: Array<{ name: string; text: string; mime?: string }> = [];
+const blobs: Array<{ name: string; blob: Blob }> = [];
 vi.mock('@/lib/download', async (orig) => ({
   ...(await orig<typeof import('@/lib/download')>()),
   downloadTextFile: (name: string, text: string, mime?: string) =>
     downloads.push({ name, text, mime }),
+  downloadBlob: (name: string, blob: Blob) => blobs.push({ name, blob }),
 }));
 const invalid = vi.hoisted(() => ({ on: false }));
 vi.mock('@/state/selectors', async (orig) => {
@@ -37,6 +39,7 @@ vi.mock('@/state/selectors', async (orig) => {
 beforeEach(() => {
   query = '';
   downloads.length = 0;
+  blobs.length = 0;
   invalid.on = false;
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -458,5 +461,32 @@ describe('tab-ul Buget: doar citire', () => {
       );
     expect((screen.getByTestId('budget-export-csv') as HTMLButtonElement).disabled).toBe(false);
     void InvalidDocumentError;
+  });
+});
+
+describe('tab-ul Buget: export XLSX', () => {
+  it('descarcă un fișier .xlsx (zip valid, tip și nume corecte) și biblioteca se încarcă abia la clic', async () => {
+    const e = uiEnv();
+    await openBudget(e);
+    expect(blobs).toHaveLength(0);
+    await userEvent.click(screen.getByTestId('budget-export-xlsx'));
+    await waitFor(() => expect(blobs).toHaveLength(1));
+    expect(blobs[0]!.name).toBe('studio-buget.xlsx');
+    expect(blobs[0]!.blob.size).toBeGreaterThan(500);
+    const bytes = await new Promise<Uint8Array>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(blobs[0]!.blob);
+    });
+    expect(Array.from(bytes.slice(0, 2))).toEqual([0x50, 0x4b]); // „PK”: antet de zip
+    expect(screen.queryByTestId('budget-error')).toBeNull();
+  });
+
+  it('este dezactivat când bugetul nu se poate calcula', async () => {
+    const e = uiEnv();
+    invalid.on = true;
+    await openBudget(e);
+    expect((screen.getByTestId('budget-export-xlsx') as HTMLButtonElement).disabled).toBe(true);
   });
 });

@@ -1,8 +1,18 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { expect, test, type Page } from '@playwright/test';
 
 // Etapa 6a, în build-ul static și în cele trei browsere: tabelul de buget, editarea, persistența, linia manuală legată de
 // aria camerei, exportul CSV și marcarea prețurilor demonstrative (în tabel și în fișier).
+
+interface FflateLike {
+  unzipSync(data: Uint8Array): Record<string, Uint8Array>;
+  strFromU8(data: Uint8Array): string;
+}
+// `fflate` e dependența bibliotecii XLSX (nu a proiectului): se rezolvă din locul ei
+const { unzipSync, strFromU8 } = createRequire(require.resolve('write-excel-file/node'))(
+  'fflate',
+) as FflateLike;
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -153,6 +163,21 @@ test.describe('buget (build static)', () => {
     const totalRow = rows.find((r) => r[3]?.startsWith('Total ('))!;
     const uiTotal = minorOf((await page.getByTestId('budget-total').textContent())!);
     expect(Math.round(Number(totalRow[11]!.replace(',', '.')) * 100)).toBe(uiTotal);
+
+    // export XLSX: zip valid cu cele 3 foi; aceleași linii demonstrative și același total ca în tabel
+    const xlsxPromise = page.waitForEvent('download');
+    await page.getByTestId('budget-export-xlsx').click();
+    const xlsx = await xlsxPromise;
+    expect(xlsx.suggestedFilename()).toBe('buget-e2e-buget.xlsx');
+    const files = unzipSync(new Uint8Array(readFileSync((await xlsx.path())!)));
+    expect(strFromU8(files['xl/workbook.xml']!)).toContain('name="Linii"');
+    const xml = Object.keys(files)
+      .filter((n) => /^xl\/(worksheets\/sheet\d+|sharedStrings)\.xml$/.test(n))
+      .map((n) => strFromU8(files[n]!))
+      .join(' ');
+    // textele repetate sunt deduplicate în sharedStrings: aici doar prezența marcajului (numărul exact e verificat în CSV)
+    expect(xml).toContain('Preț demonstrativ');
+    expect(xml).toContain(String(uiTotal / 100));
     expect(errors).toEqual([]);
   });
 

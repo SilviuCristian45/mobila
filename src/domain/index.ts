@@ -9,6 +9,7 @@ export * from './geometry';
 export * from './quantities';
 export * from './budget';
 export * from './budget/csv'; // separat de `budget/index` ca să nu creeze ciclu (csv importă tipurile bugetului)
+export * from './budget/xlsx'; // la fel ca csv
 export * from './scene';
 export * from './integrity';
 export * from './cascade';

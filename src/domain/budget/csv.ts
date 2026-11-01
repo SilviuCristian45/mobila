@@ -62,18 +62,25 @@ const OVERRIDE_LABELS: Record<keyof BudgetLine['overridden'], string> = {
   vatBp: 'TVA',
 };
 
-function rowOf(line: BudgetLine, doc: ProjectDocument, decimal: string): string[] {
-  const rooms = Object.keys(line.byRoom)
+/** Numele camerelor unei linii, separate prin „; ”. */
+export const lineRoomsText = (line: BudgetLine, doc: ProjectDocument): string =>
+  Object.keys(line.byRoom)
     .sort()
     .map((r) => roomLabel(doc.rooms, r))
     .join('; ');
-  const modified =
-    line.origin === 'manual'
-      ? ''
-      : (Object.keys(OVERRIDE_LABELS) as Array<keyof BudgetLine['overridden']>)
-          .filter((k) => line.overridden[k])
-          .map((k) => OVERRIDE_LABELS[k])
-          .join(', ');
+
+/** Ce a modificat utilizatorul la o linie derivată (gol pentru linii manuale sau nemodificate). */
+export const lineModifiedText = (line: BudgetLine): string =>
+  line.origin === 'manual'
+    ? ''
+    : (Object.keys(OVERRIDE_LABELS) as Array<keyof BudgetLine['overridden']>)
+        .filter((k) => line.overridden[k])
+        .map((k) => OVERRIDE_LABELS[k])
+        .join(', ');
+
+function rowOf(line: BudgetLine, doc: ProjectDocument, decimal: string): string[] {
+  const rooms = lineRoomsText(line, doc);
+  const modified = lineModifiedText(line);
   return [
     line.key,
     line.origin === 'manual' ? 'Manuală' : 'Derivată din model',

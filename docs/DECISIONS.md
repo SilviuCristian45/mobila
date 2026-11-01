@@ -89,7 +89,7 @@
 **Decizie:** permise MIT/ISC/Apache-2.0/BSD/0BSD/CC0/OFL; interzise GPL/AGPL/SSPL/comerciale/necunoscute/NC/ND; CC-BY doar cu atribuire; verificare automată în CI. Resurse doar proprii sau cu licență verificată. SheetJS de pe npm evitat.
 
 ### ADR-018 — Export XLSX cu bibliotecă MIT, încărcată leneș
-**Stare:** Propus
+**Stare:** Acceptat (implementat în Etapa 6b cu `write-excel-file`, vezi ADR-042)
 
 ### ADR-019 — Modele 3D exclusiv parametrice în MVP
 **Stare:** Acceptat (întărit de D6)
@@ -295,3 +295,12 @@ Acceptate: interfață în română; RON implicit; TVA configurabil cu 21% impli
 - **Moneda proiectului nu se poate schimba** dacă un obiect din proiect are preț de catalog în altă monedă: prețurile nu se convertesc, iar integritatea cere aceeași monedă (`currency-mismatch`). Operația refuză din start, cu explicație; în proiecte fără astfel de obiecte moneda se schimbă normal. Conversia valutară e în afara etapei.
 - **Fără XLSX în 6a:** cere o bibliotecă nouă (încărcată leneș), deci o decizie separată despre dependențe (Etapa 6b).
 - **Limite asumate:** manopera legată de „atribuire” nu se poate crea din formular (se păstrează dacă linia o are); fără ordonare sau filtrare a tabelului; fără paginare; testul manual în Excel RO / LibreOffice nu s-a făcut (CSV verificat prin parsare automată).
+
+### ADR-042 — Export XLSX al bugetului (Etapa 6b): `write-excel-file`, foi construite în domeniu, scriere încărcată la cerere
+**Stare:** Acceptat (implementat și testat)
+- **Dependență nouă, aprobată explicit:** `write-excel-file` 4.1.1 (MIT; singura dependență proprie, `fflate`, MIT, era deja în arbore). Fixată exact în `package.json`; `license:check` verde (536 pachete). Alternative respinse: ExcelJS (mult mai mare), XLSX scris de mână (cod propriu de întreținut), SheetJS de pe npm (veche, vulnerabilități).
+- **Foile sunt funcție pură în domeniu** (`budgetToSheets` în `src/domain/budget/xlsx.ts`, fără bibliotecă): **Rezumat** (setări, subtotal / rezervă / total, nr. de linii demonstrative, avertisment), **Pe cameră** (apoi pe categorie), **Linii** (aceleași coloane ca în CSV). Sumele sunt numere reale (`bani / 100`) cu format `#,##0.00`, nu text; cantitatea are format `#,##0.###`.
+- **Scrierea** (`src/features/budget/xlsxExport.ts`) se importă dinamic la clic: biblioteca (≈ 87 KB) stă într-un chunk separat, neadresat de pagina de start sau de editor (verificat în `out/`).
+- **Text de utilizator = mereu șir, niciodată formulă.** Nu e nevoie de apostroful din CSV; testul desface fișierul și verifică lipsa oricărui element `<f>`. `=HYPERLINK(...)` dintr-o notă apare ca text.
+- **Abateri față de planul inițial:** fără foaia „Cantități” (cantitatea e o coloană în „Linii”) și fără urma de calcul în fișier (rămâne în interfață). Disponibil la cerere, fără schimbare de model.
+- **Limite asumate:** fișierul nu s-a deschis în Excel (RO) sau LibreOffice (verificat doar structural: zip valid, foi, șiruri, lipsa formulelor); nu există alegere de separator/format (nu se aplică la XLSX).
