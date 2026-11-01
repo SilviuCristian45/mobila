@@ -24,6 +24,8 @@ import {
   removeOpening,
   removeRoom,
   removeWall,
+  rectInteriorSize,
+  resizeRoomSide,
   roomDeletionImpact,
   snapRoomAnchor,
   updateRoom,
@@ -45,12 +47,14 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert } from '@/ui/feedback';
 import { PlanCanvas, type CanvasHandlers } from './PlanCanvas';
 import { PropertiesPanel, ROOM_TYPES, type RunEdit } from './PropertiesPanel';
+import { RoomList } from './RoomList';
 import { RoomPalette } from './RoomPalette';
 import type {
   Drag,
   Notice,
   PlacementGhost,
   RoomPreset,
+  RoomSide,
   Selection,
   SelectionKind,
   Tool,
@@ -83,6 +87,17 @@ type Gesture =
   | { type: 'pan'; startX: number; startY: number; view: View }
   | { type: 'node'; nodeId: string; startX: number; startY: number; active: boolean }
   | { type: 'opening'; openingId: string; startX: number; startY: number; active: boolean }
+  | {
+      type: 'side';
+      roomId: string;
+      side: RoomSide;
+      startX: number;
+      startY: number;
+      /** Cursorul în lume la apăsare și dimensiunea interioară de pornire pe direcția laturii. */
+      grab: Pt;
+      startLengthMm: number;
+      active: boolean;
+    }
   | {
       type: 'room';
       roomId: string;
@@ -228,16 +243,18 @@ export function PlanEditor({
     const r =
       drag.kind === 'node'
         ? moveNode(doc, drag.nodeId, drag.to)
-        : drag.kind === 'room'
-          ? moveRoom(doc, drag.roomId, drag.delta)
-          : drag.kind === 'object'
-            ? drag.groupIds
-              ? moveObjects(doc, drag.groupIds, {
-                  x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
-                  y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
-                })
-              : updateObject(doc, drag.objectId, { position: drag.to })
-            : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
+        : drag.kind === 'roomSide'
+          ? resizeRoomSide(doc, drag.roomId, drag.side, drag.lengthMm)
+          : drag.kind === 'room'
+            ? moveRoom(doc, drag.roomId, drag.delta)
+            : drag.kind === 'object'
+              ? drag.groupIds
+                ? moveObjects(doc, drag.groupIds, {
+                    x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
+                    y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
+                  })
+                : updateObject(doc, drag.objectId, { position: drag.to })
+              : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
     return r.ok ? r.value : doc;
   }, [doc, drag]);
   const geometry = useMemo(() => selectGeometry(draftDoc), [draftDoc]);
@@ -399,6 +416,26 @@ export function PlanEditor({
         return r.ok ? { ok: true, value: { doc: r.value.doc, id: r.value.roomId } } : r;
       }),
     [addAndSelect, genId],
+  );
+
+  /** Selectează o cameră din listă; dacă e în afara ferestrei, centrează vederea pe ea (zoom neschimbat). */
+  const focusRoom = useCallback(
+    (roomId: string) => {
+      setSelection({ kind: 'room', id: roomId });
+      onSelectObject?.(null);
+      setNotice(null);
+      const poly = geometry.rooms.get(roomId)?.polygon;
+      if (!poly || poly.length === 0) return;
+      const cx = poly.reduce((s, p) => s + p.x, 0) / poly.length;
+      const cy = poly.reduce((s, p) => s + p.y, 0) / poly.length;
+      const sx = cx * view.zoom + view.panX;
+      const sy = cy * view.zoom + view.panY;
+      if (sx < 0 || sy < 0 || sx > size.w || sy > size.h) {
+        autoFit.current = false;
+        setView({ ...view, panX: size.w / 2 - cx * view.zoom, panY: size.h / 2 - cy * view.zoom });
+      }
+    },
+    [geometry.rooms, view, size, onSelectObject],
   );
 
   /** Creează camera din paletă în `anchor` (colț interior), cu numele și tipul presetului. */
@@ -682,6 +719,24 @@ export function PlanEditor({
       gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
       capture(e);
     },
+    onSideDown: (roomId, side, e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      if (placing || !editable) return;
+      const size = rectInteriorSize(doc, roomId);
+      if (!size.ok) return;
+      gesture.current = {
+        type: 'side',
+        roomId,
+        side,
+        startX: e.clientX,
+        startY: e.clientY,
+        grab: worldOf(e),
+        startLengthMm: side === 'n' || side === 's' ? size.value.depthMm : size.value.widthMm,
+        active: false,
+      };
+      capture(e);
+    },
     onElementDown: (kind, id, e) => {
       if (e.button !== 0) return;
       e.stopPropagation();
@@ -783,6 +838,20 @@ export function PlanEditor({
       g.active = true;
       if (g.type === 'node') {
         setDrag({ kind: 'node', nodeId: g.nodeId, to: snapPoint(e) });
+      } else if (g.type === 'side') {
+        const w = worldOf(e);
+        // spre exterior = dimensiune mai mare: est/sud cresc cu deplasarea pozitivă, vest/nord cu cea negativă
+        const along =
+          g.side === 'e'
+            ? w.x - g.grab.x
+            : g.side === 'w'
+              ? g.grab.x - w.x
+              : g.side === 's'
+                ? w.y - g.grab.y
+                : g.grab.y - w.y;
+        const raw = g.startLengthMm + along;
+        const lengthMm = e.altKey ? Math.round(raw) : Math.round(raw / grid) * grid;
+        setDrag({ kind: 'roomSide', roomId: g.roomId, side: g.side, lengthMm });
       } else if (g.type === 'room') {
         if (g.blocked) {
           setNotice({ tone: 'info', text: g.blocked });
@@ -832,6 +901,15 @@ export function PlanEditor({
         if (!ok)
           setNotice((n) =>
             n ? { ...n, text: `${n.text} Nodul a revenit la poziția anterioară.` } : n,
+          );
+      } else if (finished.kind === 'roomSide') {
+        const { roomId, side, lengthMm } = finished;
+        const ok = runNotice('Redimensionează camera', (d) =>
+          resizeRoomSide(d, roomId, side, lengthMm),
+        );
+        if (!ok)
+          setNotice((n) =>
+            n ? { ...n, text: `${n.text} Camera a revenit la dimensiunea anterioară.` } : n,
           );
       } else if (finished.kind === 'room') {
         const { roomId, delta } = finished;
@@ -1199,6 +1277,12 @@ export function PlanEditor({
               {notice.text}
             </Alert>
           ) : null}
+          <RoomList
+            doc={doc}
+            geometry={geometry}
+            selectedId={selection?.kind === 'room' ? selection.id : null}
+            onSelect={focusRoom}
+          />
           <div className="rounded-xl border border-stone-200 bg-white p-4">
             <PropertiesPanel
               doc={doc}

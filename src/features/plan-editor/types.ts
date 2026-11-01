@@ -10,7 +10,11 @@ export type Drag =
   | { kind: 'opening'; openingId: string; offsetMm: number }
   /** `groupIds`: obiectele mutate împreună cu `objectId` (selecție multiplă); `to` e poziția propusă a lui `objectId`. */
   | { kind: 'object'; objectId: string; to: Pt; groupIds?: string[] }
-  | { kind: 'room'; roomId: string; delta: Pt };
+  | { kind: 'room'; roomId: string; delta: Pt }
+  /** Redimensionarea unei camere dreptunghiulare din mânerul unei laturi: noua dimensiune interioară pe acea direcție. */
+  | { kind: 'roomSide'; roomId: string; side: RoomSide; lengthMm: number };
+
+export type RoomSide = 'n' | 'e' | 's' | 'w';
 
 /** Firul în curs al uneltei „Perete”: începutul ales (nod existent sau punct nou) și cursorul curent. */
 export interface WallDraft {

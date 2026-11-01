@@ -2,6 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import {
+  rectInteriorSize,
   resolveLook,
   type GeometryModel,
   type Opening,
@@ -9,7 +10,15 @@ import {
   type ProjectDocument,
 } from '@/domain';
 import { formatAreaM2, formatLength } from '@/lib/format';
-import type { Drag, PlacementGhost, Selection, SelectionKind, Tool, WallDraft } from './types';
+import type {
+  Drag,
+  PlacementGhost,
+  RoomSide,
+  Selection,
+  SelectionKind,
+  Tool,
+  WallDraft,
+} from './types';
 import { polygonCentroid, readableAngleDeg, type Size, type View } from './view';
 
 export interface CanvasHandlers {
@@ -17,6 +26,7 @@ export interface CanvasHandlers {
   onMove: (e: ReactPointerEvent<SVGSVGElement>) => void;
   onUp: (e: ReactPointerEvent<SVGSVGElement>) => void;
   onCancel: () => void;
+  onSideDown: (roomId: string, side: RoomSide, e: ReactPointerEvent<SVGElement>) => void;
   onElementDown: (
     kind: SelectionKind | 'object',
     id: string,
@@ -278,6 +288,26 @@ export function PlanCanvas({
   const valid = geometry.issues.length === 0;
   /** Amprentele pereților există (chiar dacă un gol sau o cameră are probleme): se poate desena planul complet. */
   const drawable = geometry.footprints.size === Object.keys(doc.walls).length;
+  // mânerele apar doar la camerele dreptunghiulare (4 noduri, laturi aliniate cu axele)
+  const sideHandles = (() => {
+    if (selection?.kind !== 'room') return null;
+    if (!rectInteriorSize(doc, selection.id).ok) return null;
+    const poly = geometry.rooms.get(selection.id)?.polygon;
+    if (!poly || poly.length < 4) return null;
+    const xs = poly.map((p) => p.x);
+    const ys = poly.map((p) => p.y);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    // puțin în interior, ca mânerul să nu acopere peretele (clicul pe perete trebuie să-l selecteze)
+    const inset = 12 / zoom;
+    return [
+      { side: 'n' as const, at: { x: cx, y: y0 + inset } },
+      { side: 'e' as const, at: { x: x1 - inset, y: cy } },
+      { side: 's' as const, at: { x: cx, y: y1 - inset } },
+      { side: 'w' as const, at: { x: x0 + inset, y: cy } },
+    ];
+  })();
   const isSel = (kind: SelectionKind, id: string) =>
     selection?.kind === kind && selection.id === id;
   const badOpenings = new Set(
@@ -640,6 +670,26 @@ export function PlanCanvas({
             />
           </g>
         ) : null}
+
+        {/* mânere de redimensionare ale camerei dreptunghiulare selectate (câte unul la mijlocul fiecărei laturi) */}
+        {drawable && editable && tool === 'select' && selection?.kind === 'room' && sideHandles
+          ? sideHandles.map((h) => (
+              <rect
+                key={h.side}
+                x={h.at.x - 7 / zoom}
+                y={h.at.y - 7 / zoom}
+                width={14 / zoom}
+                height={14 / zoom}
+                rx={3 / zoom}
+                data-testid={`room-handle-${selection.id}-${h.side}`}
+                className="fill-white stroke-teal-700"
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
+                style={{ cursor: h.side === 'n' || h.side === 's' ? 'ns-resize' : 'ew-resize' }}
+                onPointerDown={(e) => handlers.onSideDown(selection.id, h.side, e)}
+              />
+            ))
+          : null}
 
         {/* noduri */}
         {nodes.map((n) => {

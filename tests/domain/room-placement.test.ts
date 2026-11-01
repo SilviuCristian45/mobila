@@ -7,6 +7,8 @@ import {
   analyzeGeometry,
   createEmptyProject,
   moveRoom,
+  rectInteriorSize,
+  resizeRoomSide,
   snapRoomAnchor,
   type ProjectDocument,
 } from '@/domain';
@@ -125,5 +127,42 @@ describe('moveRoom', () => {
     const shared = structuredClone(other.doc);
     shared.rooms[other.roomId]!.nodeLoop[0] = doc.rooms[roomId]!.nodeLoop[0]!;
     expect(moveRoom(shared, roomId, { x: 100, y: 0 }).ok).toBe(false);
+  });
+});
+
+describe('resizeRoomSide', () => {
+  const size = (doc: ProjectDocument, id: string) => {
+    const r = rectInteriorSize(doc, id);
+    if (!r.ok) throw new Error(r.error);
+    return r.value;
+  };
+
+  it('fiecare latură: dimensiunea interioară devine cea cerută, latura opusă rămâne fixă, geometria rămâne validă', () => {
+    const { doc, roomId } = oneRoom();
+    const nodes = (d: ProjectDocument) => d.rooms[roomId]!.nodeLoop.map((n) => d.nodes[n]!);
+    const b = nodes(doc);
+    const [minX, maxX] = [Math.min(...b.map((n) => n.x)), Math.max(...b.map((n) => n.x))];
+    const [minY, maxY] = [Math.min(...b.map((n) => n.y)), Math.max(...b.map((n) => n.y))];
+    const e = unwrap(resizeRoomSide(doc, roomId, 'e', 5000));
+    expect(size(e, roomId)).toEqual({ widthMm: 5000, depthMm: 3000 });
+    expect(Math.min(...nodes(e).map((n) => n.x))).toBe(minX);
+    const w = unwrap(resizeRoomSide(doc, roomId, 'w', 5000));
+    expect(size(w, roomId).widthMm).toBe(5000);
+    expect(Math.max(...nodes(w).map((n) => n.x))).toBe(maxX);
+    const s = unwrap(resizeRoomSide(doc, roomId, 's', 2500));
+    expect(size(s, roomId).depthMm).toBe(2500);
+    expect(Math.min(...nodes(s).map((n) => n.y))).toBe(minY);
+    const n = unwrap(resizeRoomSide(doc, roomId, 'n', 2500));
+    expect(Math.max(...nodes(n).map((p) => p.y))).toBe(maxY);
+    for (const d of [e, w, s, n]) expect(analyzeGeometry(d).issues).toEqual([]);
+  });
+
+  it('refuză dimensiuni sub minim sau zecimale; documentul primit rămâne neatins', () => {
+    const { doc, roomId } = oneRoom();
+    const before = JSON.stringify(doc);
+    expect(resizeRoomSide(doc, roomId, 'e', 500).ok).toBe(false);
+    expect(resizeRoomSide(doc, roomId, 'e', 1000.5).ok).toBe(false);
+    expect(resizeRoomSide(doc, 'lipsa', 'e', 2000).ok).toBe(false);
+    expect(JSON.stringify(doc)).toBe(before);
   });
 });

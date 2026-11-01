@@ -118,4 +118,37 @@ test.describe('camere prin drag & drop (build static)', () => {
     await expect(page.getByTestId('room-preset-bathroom')).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('[data-testid^="room-area-"]')).toHaveCount(before);
   });
+
+  test('lista camerelor arată aria; tragerea mânerului de est o schimbă (lista și panoul rămân în acord); undo', async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    await createProject(page, 'Mânere');
+    await page.getByTestId('room-form-submit').click(); // 4000 × 3000 = 12 m²
+    const item = page.locator('[data-testid^="room-list-item-"]');
+    await expect(item).toHaveCount(1);
+    await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText('12 m²');
+    await expect(page.getByTestId('room-list-total')).toContainText('12 m²');
+
+    await item.click();
+    const handle = page.locator('[data-testid^="room-handle-"][data-testid$="-e"]');
+    await expect(handle).toBeVisible();
+    const zoom = Number(await page.getByTestId('plan-svg').getAttribute('data-zoom'));
+    const hb = (await handle.boundingBox())!;
+    const hist = Number(await page.getByTestId('history-size').textContent());
+    await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(hb.x + hb.width / 2 + 1000 * zoom, hb.y + hb.height / 2, { steps: 10 });
+    await page.mouse.up();
+    // ~ +1000 mm pe lățime: 5000 × 3000 = 15 m² (grila poate rotunji cu o treaptă)
+    await expect(page.locator('[data-testid^="room-list-area-"]')).not.toHaveText('12 m²');
+    await expect(page.getByTestId('room-width')).not.toHaveValue('4000');
+    await expect(page.getByTestId('history-size')).toHaveText(String(hist + 1));
+    const area = await page.locator('[data-testid^="room-list-area-"]').innerText();
+    await expect(page.getByTestId('room-list-total')).toHaveText(`Total ${area}`);
+
+    await page.getByTestId('undo').click();
+    await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText('12 m²');
+    expect(errors).toEqual([]);
+  });
 });

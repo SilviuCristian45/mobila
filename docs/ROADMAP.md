@@ -246,6 +246,8 @@
 
 > **Etapa 7a — UX (livrată):** camere prin drag & drop din paletă (cu lipire și validare), mutarea camerelor întregi și layout fără derulare (plan/3D și panou lateral cu înălțimea ecranului, panou lateral derulabil separat). Vezi ADR-044 și [STAGE7A_REPORT](STAGE7A_REPORT.md).
 
+> **Etapa 7b — UX (livrată):** lista camerelor cu arii și total, redimensionarea camerelor dreptunghiulare din mânerele laturilor. Vezi ADR-045 și [STAGE7B_REPORT](STAGE7B_REPORT.md).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**

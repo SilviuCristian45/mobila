@@ -5,6 +5,10 @@ import { cloneDocument } from '../factory';
 import {
   analyzeGeometry,
   pointInPolygon,
+  rectInteriorSize,
+  resizeRectInterior,
+  withNodePositions,
+  type RectSide,
   rectAxesFromInterior,
   openingRange,
   pairKey,
@@ -583,4 +587,33 @@ export function snapRoomAnchor(
   );
   if (dy !== null) ay += dy;
   return { anchor: { x: ax, y: ay }, snappedX: dx !== null, snappedY: dy !== null };
+}
+
+/** Dimensiunea interioară minimă la redimensionarea din mânere (mm); sub ea o cameră nu mai are sens practic. */
+export const MIN_ROOM_SIDE_MM = 600;
+
+/**
+ * Redimensionează o cameră dreptunghiulară mutând latura `side` (latura opusă rămâne fixă) până când dimensiunea
+ * interioară pe acea direcție devine `lengthMm`. Nodurile comune cu alte camere se mută odată cu latura (vecinii se
+ * deformează); dacă rezultatul e invalid, îl respinge commit-ul sesiunii, ca la orice altă editare.
+ */
+export function resizeRoomSide(
+  doc: ProjectDocument,
+  roomId: string,
+  side: RectSide,
+  lengthMm: number,
+): Result<ProjectDocument> {
+  if (!Number.isInteger(lengthMm))
+    return { ok: false, error: 'Dimensiunea trebuie să fie în milimetri întregi.' };
+  if (lengthMm < MIN_ROOM_SIDE_MM)
+    return {
+      ok: false,
+      error: `Camera nu poate fi mai mică de ${MIN_ROOM_SIDE_MM} mm pe o latură.`,
+    };
+  const size = rectInteriorSize(doc, roomId);
+  if (!size.ok)
+    return { ok: false, error: 'Doar camerele dreptunghiulare se redimensionează din mânere.' };
+  const r = resizeRectInterior(doc, roomId, side, lengthMm);
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, value: withNodePositions(doc, r.value) };
 }
