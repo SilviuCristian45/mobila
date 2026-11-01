@@ -1,4 +1,4 @@
-import type { Pt } from '@/domain';
+import type { Pt, Room } from '@/domain';
 
 export type SelectionKind = 'node' | 'wall' | 'room' | 'opening';
 export type Selection = { kind: SelectionKind; id: string } | null;
@@ -9,7 +9,8 @@ export type Drag =
   | { kind: 'node'; nodeId: string; to: Pt }
   | { kind: 'opening'; openingId: string; offsetMm: number }
   /** `groupIds`: obiectele mutate împreună cu `objectId` (selecție multiplă); `to` e poziția propusă a lui `objectId`. */
-  | { kind: 'object'; objectId: string; to: Pt; groupIds?: string[] };
+  | { kind: 'object'; objectId: string; to: Pt; groupIds?: string[] }
+  | { kind: 'room'; roomId: string; delta: Pt };
 
 /** Firul în curs al uneltei „Perete”: începutul ales (nod existent sau punct nou) și cursorul curent. */
 export interface WallDraft {
@@ -23,4 +24,24 @@ export interface WallDraft {
 export interface Notice {
   tone: 'error' | 'success' | 'info';
   text: string;
+}
+
+/** Cameră predefinită din paletă: dimensiuni INTERIOARE (mm) și tipul camerei create. */
+export interface RoomPreset {
+  id: string;
+  label: string;
+  type: Room['type'];
+  widthMm: number;
+  depthMm: number;
+}
+
+/** Previzualizarea camerei care urmează să fie plasată (în coordonatele lumii, mm). */
+export interface PlacementGhost {
+  preset: RoomPreset;
+  /** Colțul interior stânga-sus, după lipire. */
+  anchor: Pt;
+  thicknessMm: number;
+  valid: boolean;
+  error: string | null;
+  snapped: boolean;
 }

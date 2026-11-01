@@ -2,7 +2,14 @@
 // generează ID-uri (vin din `genId`). Validitatea geometrică completă o verifică `ProjectSession.commit` (schemă + integritate
 // + geometrie) — aici se verifică doar precondițiile care dau mesaje mai clare decât o listă de coduri de integritate.
 import { cloneDocument } from '../factory';
-import { analyzeGeometry, rectAxesFromInterior, openingRange, pairKey, type Pt } from '../geometry';
+import {
+  analyzeGeometry,
+  pointInPolygon,
+  rectAxesFromInterior,
+  openingRange,
+  pairKey,
+  type Pt,
+} from '../geometry';
 import type { Result } from '../result';
 import type { Opening, ProjectDocument, Room, Wall } from '../schema';
 
@@ -452,4 +459,128 @@ export function removeOpening(doc: ProjectDocument, openingId: string): Result<P
   const openings = { ...doc.openings };
   delete openings[openingId];
   return { ok: true, value: { ...doc, openings } };
+}
+
+// ───────────── mutarea și plasarea camerelor ─────────────
+
+/**
+ * Mută o cameră întreagă cu `delta` (mm întregi): nodurile buclei ei și obiectele aflate în interiorul ei (golurile
+ * merg cu pereții). Refuză o cameră ai cărei pereți sau noduri sunt comune cu alte camere sau pereți: acolo mutarea ar
+ * deforma vecinii, deci nodurile se mută separat.
+ */
+export function moveRoom(doc: ProjectDocument, roomId: string, delta: Pt): Result<ProjectDocument> {
+  const room = doc.rooms[roomId];
+  if (!room) return { ok: false, error: 'Camera nu mai există.' };
+  if (!isInt(delta.x) || !isInt(delta.y))
+    return { ok: false, error: 'Deplasarea trebuie să fie în milimetri întregi.' };
+  if (delta.x === 0 && delta.y === 0) return { ok: true, value: doc };
+  const loop = room.nodeLoop;
+  const own = new Set(loop);
+  const loopEdges = new Set(loop.map((n, i) => pairKey(n, loop[(i + 1) % loop.length]!)));
+  for (const w of Object.values(doc.walls)) {
+    const touches = own.has(w.startNodeId) || own.has(w.endNodeId);
+    if (touches && !loopEdges.has(pairKey(w.startNodeId, w.endNodeId)))
+      return {
+        ok: false,
+        error: 'Camera are pereți sau noduri comune cu alte elemente; mută-i nodurile separat.',
+      };
+  }
+  for (const other of Object.values(doc.rooms))
+    if (other.id !== roomId && other.nodeLoop.some((n) => own.has(n)))
+      return {
+        ok: false,
+        error: 'Camera împarte noduri cu o altă cameră; mută-i nodurile separat.',
+      };
+  const interior = analyzeGeometry(doc).rooms.get(roomId)?.polygon;
+  const next = cloneDocument(doc);
+  for (const id of own) {
+    const n = next.nodes[id];
+    if (n) next.nodes[id] = { ...n, x: n.x + delta.x, y: n.y + delta.y };
+  }
+  if (interior)
+    for (const o of Object.values(next.objects))
+      if (o.levelId === room.levelId && pointInPolygon(o.position, interior))
+        next.objects[o.id] = {
+          ...o,
+          position: { x: o.position.x + delta.x, y: o.position.y + delta.y },
+        };
+  return { ok: true, value: next };
+}
+
+export interface RoomSnap {
+  /** Colțul interior stânga-sus după lipire. */
+  anchor: Pt;
+  /** Lipit de elemente existente pe X / pe Y (față exterioară la față exterioară sau aliniere). */
+  snappedX: boolean;
+  snappedY: boolean;
+}
+
+/**
+ * Lipirea unei camere dreptunghiulare noi: întâi grila (colțul interior), apoi, dacă o față EXTERIOARĂ a camerei cade la
+ * cel mult `thresholdMm` de o față exterioară existentă (un vârf al conturului vreunui perete), camera se aliniază
+ * sau se alipește de ea. Funcție pură; nu verifică validitatea (o face `addRectRoom` + geometria).
+ */
+export function snapRoomAnchor(
+  doc: ProjectDocument,
+  spec: { widthMm: number; depthMm: number; thicknessMm?: number },
+  raw: Pt,
+  gridMm: number,
+  thresholdMm: number,
+): RoomSnap {
+  const t = spec.thicknessMm ?? doc.settings.defaultWallThicknessMm;
+  const g = gridMm > 0 ? gridMm : 1;
+  let ax = Math.round(raw.x / g) * g;
+  let ay = Math.round(raw.y / g) * g;
+  // contururile pereților existenți (casete) și coordonatele vârfurilor lor = fețele la care ne putem lipi
+  const boxes: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+  const xs = new Set<number>();
+  const ys = new Set<number>();
+  for (const fp of analyzeGeometry(doc).footprints.values()) {
+    const px = fp.polygon.map((p) => p.x);
+    const py = fp.polygon.map((p) => p.y);
+    boxes.push({
+      x0: Math.min(...px),
+      x1: Math.max(...px),
+      y0: Math.min(...py),
+      y1: Math.max(...py),
+    });
+    for (const p of fp.polygon) {
+      xs.add(Math.round(p.x));
+      ys.add(Math.round(p.y));
+    }
+  }
+  const w = spec.widthMm;
+  const d = spec.depthMm;
+  /** Fața exterioară a camerei în [x0, x1] × [y0, y1] suprapune (peste 1 mm) conturul vreunui perete existent? */
+  const overlaps = (x0: number, x1: number, y0: number, y1: number): boolean =>
+    boxes.some((b) => x0 < b.x1 - 1 && x1 > b.x0 + 1 && y0 < b.y1 - 1 && y1 > b.y0 + 1);
+  // cea mai mică deplasare care aduce o față exterioară pe o față existentă, fără să urce camera peste un perete
+  const best = (
+    edges: number[],
+    candidates: Set<number>,
+    free: (shift: number) => boolean,
+  ): number | null => {
+    let delta: number | null = null;
+    for (const e of edges)
+      for (const c of candidates) {
+        const shift = c - e;
+        if (Math.abs(shift) > thresholdMm) continue;
+        if (delta !== null && Math.abs(shift) >= Math.abs(delta)) continue;
+        if (free(shift)) delta = shift;
+      }
+    return delta;
+  };
+  const dx = best(
+    [ax - t, ax + w + t],
+    xs,
+    (s) => !overlaps(ax + s - t, ax + s + w + t, ay - t, ay + d + t),
+  );
+  if (dx !== null) ax += dx;
+  const dy = best(
+    [ay - t, ay + d + t],
+    ys,
+    (s) => !overlaps(ax - t, ax + w + t, ay + s - t, ay + s + d + t),
+  );
+  if (dy !== null) ay += dy;
+  return { anchor: { x: ax, y: ay }, snappedX: dx !== null, snappedY: dy !== null };
 }

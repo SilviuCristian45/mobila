@@ -9,7 +9,7 @@ import {
   type ProjectDocument,
 } from '@/domain';
 import { formatAreaM2, formatLength } from '@/lib/format';
-import type { Drag, Selection, SelectionKind, Tool, WallDraft } from './types';
+import type { Drag, PlacementGhost, Selection, SelectionKind, Tool, WallDraft } from './types';
 import { polygonCentroid, readableAngleDeg, type Size, type View } from './view';
 
 export interface CanvasHandlers {
@@ -36,6 +36,7 @@ interface Props {
   editable: boolean;
   drag: Drag | null;
   draft: WallDraft | null;
+  ghost?: PlacementGhost | null;
   handlers: CanvasHandlers;
 }
 
@@ -269,6 +270,7 @@ export function PlanCanvas({
   editable,
   drag,
   draft,
+  ghost = null,
   handlers,
 }: Props) {
   const { zoom } = view;
@@ -564,6 +566,45 @@ export function PlanCanvas({
                 );
               })
           : null}
+
+        {/* previzualizarea camerei care se plasează (trage din paletă) */}
+        {ghost ? (
+          <g data-testid="room-ghost" data-valid={ghost.valid} pointerEvents="none">
+            <rect
+              x={ghost.anchor.x - ghost.thicknessMm}
+              y={ghost.anchor.y - ghost.thicknessMm}
+              width={ghost.preset.widthMm + 2 * ghost.thicknessMm}
+              height={ghost.preset.depthMm + 2 * ghost.thicknessMm}
+              className={
+                ghost.valid ? 'fill-teal-600/25 stroke-teal-700' : 'fill-red-500/25 stroke-red-600'
+              }
+              strokeWidth={2}
+              strokeDasharray={`${8 / zoom} ${5 / zoom}`}
+              vectorEffect="non-scaling-stroke"
+            />
+            <rect
+              x={ghost.anchor.x}
+              y={ghost.anchor.y}
+              width={ghost.preset.widthMm}
+              height={ghost.preset.depthMm}
+              className={
+                ghost.valid ? 'fill-white/70 stroke-teal-700' : 'fill-white/60 stroke-red-600'
+              }
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+            <Label
+              at={{
+                x: ghost.anchor.x + ghost.preset.widthMm / 2,
+                y: ghost.anchor.y + ghost.preset.depthMm / 2,
+              }}
+              text={`${ghost.preset.label} · ${formatLength(ghost.preset.widthMm, unit)} × ${formatLength(ghost.preset.depthMm, unit)}`}
+              zoom={zoom}
+              tone="strong"
+              testId="room-ghost-label"
+            />
+          </g>
+        ) : null}
 
         {/* previzualizarea peretelui nou */}
         {draft ? (

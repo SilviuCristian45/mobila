@@ -14,7 +14,9 @@ import {
   addRectRoom,
   addWall,
   dot,
+  analyzeGeometry,
   moveNode,
+  moveRoom,
   openingCenterRange,
   removeObjects,
   moveObjects,
@@ -23,6 +25,8 @@ import {
   removeRoom,
   removeWall,
   roomDeletionImpact,
+  snapRoomAnchor,
+  updateRoom,
   updateObject,
   updateOpening,
   wallDeletionImpact,
@@ -41,7 +45,17 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert } from '@/ui/feedback';
 import { PlanCanvas, type CanvasHandlers } from './PlanCanvas';
 import { PropertiesPanel, ROOM_TYPES, type RunEdit } from './PropertiesPanel';
-import type { Drag, Notice, Selection, SelectionKind, Tool, WallDraft } from './types';
+import { RoomPalette } from './RoomPalette';
+import type {
+  Drag,
+  Notice,
+  PlacementGhost,
+  RoomPreset,
+  Selection,
+  SelectionKind,
+  Tool,
+  WallDraft,
+} from './types';
 import {
   ZOOM_STEP,
   fitView,
@@ -69,6 +83,17 @@ type Gesture =
   | { type: 'pan'; startX: number; startY: number; view: View }
   | { type: 'node'; nodeId: string; startX: number; startY: number; active: boolean }
   | { type: 'opening'; openingId: string; startX: number; startY: number; active: boolean }
+  | {
+      type: 'room';
+      roomId: string;
+      startX: number;
+      startY: number;
+      /** Cursorul în lume la apăsare (deplasarea e relativă la el). */
+      grab: Pt;
+      /** Motivul pentru care camera nu se poate muta ca întreg (noduri comune), altfel `null`. */
+      blocked: string | null;
+      active: boolean;
+    }
   | {
       type: 'object';
       objectId: string;
@@ -156,6 +181,11 @@ export function PlanEditor({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const gesture = useRef<Gesture | null>(null);
+  /** Camera din paletă care se plasează (trasă cu mouse-ul sau armată cu un clic) și poziția cursorului în lume. */
+  const [placing, setPlacing] = useState<RoomPreset | null>(null);
+  const [pointerWorld, setPointerWorld] = useState<Pt | null>(null);
+  /** Apăsarea care a pornit de pe paletă: după ea decidem între „trage și lasă” și „armat, apoi clic pe plan”. */
+  const press = useRef<{ x: number; y: number; moved: boolean } | null>(null);
 
   // fără drept de editare nu există unealtă de desenare și nici fir în curs (derivat, nu efect)
   const tool: Tool = editable ? toolRaw : 'select';
@@ -198,18 +228,53 @@ export function PlanEditor({
     const r =
       drag.kind === 'node'
         ? moveNode(doc, drag.nodeId, drag.to)
-        : drag.kind === 'object'
-          ? drag.groupIds
-            ? moveObjects(doc, drag.groupIds, {
-                x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
-                y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
-              })
-            : updateObject(doc, drag.objectId, { position: drag.to })
-          : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
+        : drag.kind === 'room'
+          ? moveRoom(doc, drag.roomId, drag.delta)
+          : drag.kind === 'object'
+            ? drag.groupIds
+              ? moveObjects(doc, drag.groupIds, {
+                  x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
+                  y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
+                })
+              : updateObject(doc, drag.objectId, { position: drag.to })
+            : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
     return r.ok ? r.value : doc;
   }, [doc, drag]);
   const geometry = useMemo(() => selectGeometry(draftDoc), [draftDoc]);
   const issues = geometry.issues;
+
+  // ───────────── plasarea unei camere din paletă ─────────────
+  /** Previzualizarea (și validarea) unei camere din paletă cu centrul în punctul `world`. */
+  const ghostAt = useCallback(
+    (preset: RoomPreset, world: Pt): PlacementGhost => {
+      const spec = { widthMm: preset.widthMm, depthMm: preset.depthMm };
+      const thicknessMm = doc.settings.defaultWallThicknessMm;
+      const raw = { x: world.x - spec.widthMm / 2, y: world.y - spec.depthMm / 2 };
+      const snap = snapRoomAnchor(
+        doc,
+        spec,
+        raw,
+        doc.settings.gridMm,
+        Math.max(60, 14 / view.zoom),
+      );
+      let n = 0;
+      const built = addRectRoom(doc, { ...spec, anchor: snap.anchor }, () => `ghost${++n}`);
+      const found = built.ok ? analyzeGeometry(built.value.doc).issues : [];
+      return {
+        preset,
+        anchor: snap.anchor,
+        thicknessMm,
+        valid: built.ok && found.length === 0,
+        error: !built.ok ? built.error : (found[0]?.message ?? null),
+        snapped: snap.snappedX || snap.snappedY,
+      };
+    },
+    [doc, view.zoom],
+  );
+  const ghost = useMemo<PlacementGhost | null>(
+    () => (placing && pointerWorld && editable ? ghostAt(placing, pointerWorld) : null),
+    [placing, pointerWorld, editable, ghostAt],
+  );
 
   // ───────────── vizualizare ─────────────
   const fit = useCallback(() => {
@@ -335,6 +400,123 @@ export function PlanEditor({
       }),
     [addAndSelect, genId],
   );
+
+  /** Creează camera din paletă în `anchor` (colț interior), cu numele și tipul presetului. */
+  const placeRoom = useCallback(
+    (preset: RoomPreset, anchor: Pt): boolean => {
+      const same = Object.values(doc.rooms).filter((r) => r.type === preset.type).length;
+      const name = same === 0 ? preset.label : `${preset.label} ${same + 1}`;
+      const err = addAndSelect('Adaugă cameră', 'room', (d) => {
+        const r = addRectRoom(
+          d,
+          { widthMm: preset.widthMm, depthMm: preset.depthMm, anchor, name },
+          genId,
+        );
+        if (!r.ok) return r;
+        const u = updateRoom(r.value.doc, r.value.roomId, { type: preset.type });
+        return u.ok ? { ok: true, value: { doc: u.value, id: r.value.roomId } } : u;
+      });
+      if (err) setNotice({ tone: 'error', text: err });
+      return err === null;
+    },
+    [doc.rooms, addAndSelect, genId],
+  );
+  /** Plasează camera din paletă cu centrul în `world`; dacă nu încape, spune de ce și nu creează nimic. */
+  const dropAt = useCallback(
+    (preset: RoomPreset, world: Pt): boolean => {
+      const gh = ghostAt(preset, world);
+      if (!gh.valid) {
+        setNotice({
+          tone: 'error',
+          text: `Camera nu încape aici${gh.error ? `: ${gh.error}` : ''}. Alege alt loc.`,
+        });
+        return false;
+      }
+      return placeRoom(preset, gh.anchor);
+    },
+    [ghostAt, placeRoom],
+  );
+  const dropGhost = useCallback(() => {
+    if (placing && pointerWorld && dropAt(placing, pointerWorld)) setPlacing(null);
+  }, [placing, pointerWorld, dropAt]);
+  const startPlacing = (preset: RoomPreset, e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (placing?.id === preset.id && !press.current) {
+      setPlacing(null); // apăsat din nou pe cea armată: anulează
+      return;
+    }
+    setToolRaw('select');
+    setDraft(null);
+    setSelection(null);
+    onSelectObject?.(null);
+    setNotice(null);
+    setPointerWorld(null);
+    setPlacing(preset);
+    press.current = { x: e.clientX, y: e.clientY, moved: false };
+  };
+  /** Plasare de la tastatură: în centrul planului; dacă nu încape, alipită în dreapta construcției existente. */
+  const placeCentered = (preset: RoomPreset) => {
+    if (!editable) return;
+    const spec = { widthMm: preset.widthMm, depthMm: preset.depthMm };
+    const t = doc.settings.defaultWallThicknessMm;
+    const c = toWorld(view, size.w / 2, size.h / 2);
+    const centered = snapRoomAnchor(
+      doc,
+      spec,
+      { x: c.x - spec.widthMm / 2, y: c.y - spec.depthMm / 2 },
+      doc.settings.gridMm,
+      Math.max(60, 14 / view.zoom),
+    ).anchor;
+    const outer = [...geometry.footprints.values()].flatMap((fp) => fp.polygon);
+    const candidates = [centered];
+    if (outer.length > 0) {
+      candidates.push({
+        x: Math.round(Math.max(...outer.map((p) => p.x))) + t,
+        y: Math.round(Math.min(...outer.map((p) => p.y))) + t,
+      });
+    }
+    const fits = (anchor: Pt) => {
+      let n = 0;
+      const built = addRectRoom(doc, { ...spec, anchor }, () => `probe${++n}`);
+      return built.ok && analyzeGeometry(built.value.doc).issues.length === 0;
+    };
+    placeRoom(preset, candidates.find(fits) ?? centered);
+  };
+  // cât timp se plasează o cameră, urmărim pointerul pe tot ecranul (tragerea pornește de pe paletă, în afara planului)
+  useEffect(() => {
+    if (!placing) return;
+    const overPlan = (e: PointerEvent) => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return null;
+      const inside =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+      return inside ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null;
+    };
+    const onMove = (e: PointerEvent) => {
+      const p = press.current;
+      if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) >= DRAG_THRESHOLD_PX) p.moved = true;
+      const at = overPlan(e);
+      setPointerWorld(at ? toWorld(view, at.x, at.y) : null);
+    };
+    const onUp = (e: PointerEvent) => {
+      const p = press.current;
+      press.current = null;
+      if (!p) return;
+      if (!p.moved) return; // simplu clic pe paletă: camera rămâne armată până la clicul pe plan
+      const at = overPlan(e);
+      if (at && placing) dropAt(placing, toWorld(view, at.x, at.y));
+      setPlacing(null); // tras și lăsat (pe plan sau în afara lui): s-a terminat
+      setPointerWorld(null);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [placing, view, dropAt]);
 
   const deleteSelected = useCallback(() => {
     if (!editable) return;
@@ -488,6 +670,10 @@ export function PlanEditor({
   const handlers: CanvasHandlers = {
     onBackgroundDown: (e) => {
       if (e.button !== 0 && e.button !== 1) return;
+      if (placing) {
+        if (e.button === 0) dropGhost();
+        return;
+      }
       if (tool === 'wall' && e.button === 0) return wallToolClick(e);
       setSelection(null);
       onSelectObject?.(null);
@@ -499,6 +685,7 @@ export function PlanEditor({
     onElementDown: (kind, id, e) => {
       if (e.button !== 0) return;
       e.stopPropagation();
+      if (placing) return dropGhost();
       if (tool === 'wall') return wallToolClick(e);
       setNotice(null);
       if (kind === 'object') {
@@ -552,7 +739,25 @@ export function PlanEditor({
           startY: e.clientY,
           active: false,
         };
-      else return;
+      else if (kind === 'room') {
+        if (selection?.kind === 'room' && selection.id === id) {
+          // camera deja selectată: tragerea ei o mută întreagă (cu obiectele din ea)
+          const probe = moveRoom(doc, id, { x: 1, y: 0 });
+          gesture.current = {
+            type: 'room',
+            roomId: id,
+            startX: e.clientX,
+            startY: e.clientY,
+            grab: worldOf(e),
+            blocked: probe.ok ? null : probe.error,
+            active: false,
+          };
+        } else {
+          // prima apăsare doar selectează; tragerea continuă să deplaseze planul (camerele sunt mari)
+          autoFit.current = false;
+          gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
+        }
+      } else return;
       capture(e);
     },
     onMove: (e) => {
@@ -578,6 +783,19 @@ export function PlanEditor({
       g.active = true;
       if (g.type === 'node') {
         setDrag({ kind: 'node', nodeId: g.nodeId, to: snapPoint(e) });
+      } else if (g.type === 'room') {
+        if (g.blocked) {
+          setNotice({ tone: 'info', text: g.blocked });
+          gesture.current = null;
+          return;
+        }
+        const w = worldOf(e);
+        const snap = (v: number) => (e.altKey ? Math.round(v) : Math.round(v / grid) * grid);
+        setDrag({
+          kind: 'room',
+          roomId: g.roomId,
+          delta: { x: snap(w.x - g.grab.x), y: snap(w.y - g.grab.y) },
+        });
       } else if (g.type === 'object') {
         const w = worldOf(e);
         const at = { x: w.x - g.grab.x, y: w.y - g.grab.y };
@@ -614,6 +832,13 @@ export function PlanEditor({
         if (!ok)
           setNotice((n) =>
             n ? { ...n, text: `${n.text} Nodul a revenit la poziția anterioară.` } : n,
+          );
+      } else if (finished.kind === 'room') {
+        const { roomId, delta } = finished;
+        const ok = runNotice('Mută camera', (d) => moveRoom(d, roomId, delta));
+        if (!ok)
+          setNotice((n) =>
+            n ? { ...n, text: `${n.text} Camera a revenit la poziția anterioară.` } : n,
           );
       } else if (finished.kind === 'object') {
         const { objectId, to, groupIds: moved } = finished;
@@ -705,7 +930,11 @@ export function PlanEditor({
       let handled = true;
       if (k === 'Delete' || k === 'Backspace') deleteSelected();
       else if (k === 'Escape') {
-        if (gesture.current || drag) {
+        if (placing) {
+          setPlacing(null);
+          setPointerWorld(null);
+          press.current = null;
+        } else if (gesture.current || drag) {
           gesture.current = null;
           setDrag(null);
         } else if (draft) setDraft(null);
@@ -754,6 +983,7 @@ export function PlanEditor({
     duplicateSelected,
     groupIds,
     onSelectObject,
+    placing,
     setExtraIds,
     runNotice,
     selection,
@@ -823,126 +1053,142 @@ export function PlanEditor({
         </Alert>
       ) : null}
 
-      <div
-        role="toolbar"
-        aria-label="Unelte plan"
-        className="flex flex-wrap items-center gap-2"
-        data-testid="plan-toolbar"
-      >
-        <Button
-          variant={tool === 'select' ? 'primary' : 'secondary'}
-          aria-pressed={tool === 'select'}
-          onClick={() => setTool('select')}
-          title="Selectează și mută (V)"
-          data-testid="tool-select"
-        >
-          Selectează
-        </Button>
-        <Button
-          variant={tool === 'wall' ? 'primary' : 'secondary'}
-          aria-pressed={tool === 'wall'}
-          disabled={!editable}
-          onClick={() => setTool(tool === 'wall' ? 'select' : 'wall')}
-          title="Desenează pereți (W)"
-          data-testid="tool-wall"
-        >
-          Perete nou
-        </Button>
-        <span className="mx-1 hidden h-6 w-px bg-stone-300 sm:block" aria-hidden="true" />
-        <Button
-          onClick={() => zoomBy(1 / ZOOM_STEP)}
-          aria-label="Micșorează"
-          title="Micșorează (−)"
-          data-testid="zoom-out"
-        >
-          −
-        </Button>
-        <Button
-          onClick={() => zoomBy(ZOOM_STEP)}
-          aria-label="Mărește"
-          title="Mărește (+)"
-          data-testid="zoom-in"
-        >
-          +
-        </Button>
-        <Button onClick={fit} title="Potrivește planul în fereastră (0)" data-testid="zoom-fit">
-          Potrivește
-        </Button>
-        <span className="text-xs text-stone-600" data-testid="zoom-level">
-          Scară: 100 px ≈ {formatLength(100 / view.zoom, unit)}
-        </span>
-        <span className="ml-auto" />
-        <Button
-          variant="danger"
-          disabled={!editable || !selection || selection.kind === 'node'}
-          onClick={deleteSelected}
-          title="Șterge elementul selectat (Delete)"
-          data-testid="toolbar-delete"
-        >
-          Șterge
-        </Button>
-      </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 lg:sticky lg:top-2 lg:h-[calc(100dvh-12rem)] lg:min-h-[28rem]">
+          <div
+            role="toolbar"
+            aria-label="Unelte plan"
+            className="flex flex-wrap items-center gap-2"
+            data-testid="plan-toolbar"
+          >
+            <Button
+              variant={tool === 'select' ? 'primary' : 'secondary'}
+              aria-pressed={tool === 'select'}
+              onClick={() => setTool('select')}
+              title="Selectează și mută (V)"
+              data-testid="tool-select"
+            >
+              Selectează
+            </Button>
+            <Button
+              variant={tool === 'wall' ? 'primary' : 'secondary'}
+              aria-pressed={tool === 'wall'}
+              disabled={!editable}
+              onClick={() => setTool(tool === 'wall' ? 'select' : 'wall')}
+              title="Desenează pereți (W)"
+              data-testid="tool-wall"
+            >
+              Perete nou
+            </Button>
+            <span className="mx-1 hidden h-6 w-px bg-stone-300 sm:block" aria-hidden="true" />
+            <Button
+              onClick={() => zoomBy(1 / ZOOM_STEP)}
+              aria-label="Micșorează"
+              title="Micșorează (−)"
+              data-testid="zoom-out"
+            >
+              −
+            </Button>
+            <Button
+              onClick={() => zoomBy(ZOOM_STEP)}
+              aria-label="Mărește"
+              title="Mărește (+)"
+              data-testid="zoom-in"
+            >
+              +
+            </Button>
+            <Button onClick={fit} title="Potrivește planul în fereastră (0)" data-testid="zoom-fit">
+              Potrivește
+            </Button>
+            <span className="text-xs text-stone-600" data-testid="zoom-level">
+              Scară: 100 px ≈ {formatLength(100 / view.zoom, unit)}
+            </span>
+            <span className="ml-auto" />
+            <Button
+              variant="danger"
+              disabled={!editable || !selection || selection.kind === 'node'}
+              onClick={deleteSelected}
+              title="Șterge elementul selectat (Delete)"
+              data-testid="toolbar-delete"
+            >
+              Șterge
+            </Button>
+          </div>
 
-      <p className="text-xs text-stone-600" data-testid="plan-hint">
-        {tool === 'wall'
-          ? draft
-            ? 'Alege sfârșitul peretelui. Esc oprește desenarea.'
-            : 'Alege începutul peretelui (un nod existent sau un punct din grilă).'
-          : 'Trage nodurile ca să muți pereții și golurile ca să le repoziționezi; trage fundalul ca să deplasezi planul. Săgețile mută elementul selectat.'}
-      </p>
-
-      {groupIds.length > 1 ? (
-        <p
-          className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900"
-          data-testid="multi-selection"
-        >
-          {groupIds.length} obiecte selectate. Trage-le sau folosește săgețile ca să le muți
-          împreună; Delete le șterge, Ctrl+D le duplică, Shift + clic scoate un obiect din selecție.
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-4 lg:flex-row">
-        <div
-          ref={boxRef}
-          className="relative h-[55vh] min-h-80 flex-1 overflow-hidden rounded-xl border border-stone-300 bg-stone-50"
-          data-testid="plan-box"
-        >
-          <PlanCanvas
-            svgRef={svgRef}
-            doc={draftDoc}
-            geometry={geometry}
-            view={view}
-            size={size}
-            selection={selection}
-            selectedObjectIds={groupSet}
-            tool={tool}
+          <RoomPalette
+            unit={unit}
             editable={editable}
-            drag={drag}
-            draft={draft}
-            handlers={handlers}
+            activeId={placing?.id ?? null}
+            onPress={startPlacing}
+            onPlaceCentered={placeCentered}
           />
-          {Object.keys(doc.nodes).length === 0 ? (
-            <p
-              className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-white/90 p-3 text-center text-sm text-stone-700"
-              data-testid="plan-empty"
-            >
-              Planul este gol. Adaugă o cameră dreptunghiulară din panoul din dreapta sau desenează
-              pereți cu unealta „Perete nou”.
-            </p>
-          ) : null}
-          {invalidLive ? (
-            <p
-              role="status"
-              className="pointer-events-none absolute inset-x-4 bottom-4 rounded-lg border border-red-300 bg-red-50 p-2 text-center text-sm text-red-900"
-              data-testid="drag-invalid"
-            >
-              Poziția aceasta ar produce un plan invalid. Dacă o eliberezi aici, mutarea se
-              anulează.
-            </p>
-          ) : null}
+
+          <p className="min-h-8 text-xs text-stone-600" data-testid="plan-hint">
+            {placing
+              ? 'Mută cursorul pe plan: camera se lipește de grilă și de pereții existenți (roșu = nu încape). Apasă ca s-o plasezi, Esc anulează.'
+              : tool === 'wall'
+                ? draft
+                  ? 'Alege sfârșitul peretelui. Esc oprește desenarea.'
+                  : 'Alege începutul peretelui (un nod existent sau un punct din grilă).'
+                : 'Trage o cameră din paletă pe plan. Trage nodurile ca să muți pereții, golurile ca să le repoziționezi, o cameră deja selectată ca s-o muți întreagă; trage fundalul ca să deplasezi planul. Săgețile mută elementul selectat.'}
+          </p>
+
+          <div
+            ref={boxRef}
+            className="relative h-[60vh] min-h-80 flex-1 overflow-hidden rounded-xl border border-stone-300 bg-stone-50 lg:h-auto"
+            data-testid="plan-box"
+          >
+            <PlanCanvas
+              svgRef={svgRef}
+              doc={draftDoc}
+              geometry={geometry}
+              view={view}
+              size={size}
+              selection={selection}
+              selectedObjectIds={groupSet}
+              tool={tool}
+              editable={editable}
+              drag={drag}
+              draft={draft}
+              ghost={ghost}
+              handlers={handlers}
+            />
+            {groupIds.length > 1 ? (
+              <p
+                className="pointer-events-none absolute inset-x-3 top-3 rounded-lg bg-teal-50/95 px-3 py-2 text-sm text-teal-900 shadow-sm"
+                data-testid="multi-selection"
+              >
+                {groupIds.length} obiecte selectate. Trage-le sau folosește săgețile ca să le muți
+                împreună; Delete le șterge, Ctrl+D le duplică, Shift + clic scoate un obiect din
+                selecție.
+              </p>
+            ) : null}
+            {Object.keys(doc.nodes).length === 0 ? (
+              <p
+                className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-white/90 p-3 text-center text-sm text-stone-700"
+                data-testid="plan-empty"
+              >
+                Planul este gol. Adaugă o cameră dreptunghiulară din panoul din dreapta sau
+                desenează pereți cu unealta „Perete nou”.
+              </p>
+            ) : null}
+            {invalidLive ? (
+              <p
+                role="status"
+                className="pointer-events-none absolute inset-x-4 bottom-4 rounded-lg border border-red-300 bg-red-50 p-2 text-center text-sm text-red-900"
+                data-testid="drag-invalid"
+              >
+                Poziția aceasta ar produce un plan invalid. Dacă o eliberezi aici, mutarea se
+                anulează.
+              </p>
+            ) : null}
+          </div>
         </div>
 
-        <aside aria-label="Proprietăți" className="space-y-4 lg:w-80 lg:shrink-0">
+        <aside
+          aria-label="Proprietăți"
+          className="space-y-4 lg:sticky lg:top-2 lg:max-h-[calc(100dvh-12rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1"
+        >
           {sidePanel}
           {notice ? (
             <Alert

@@ -101,10 +101,10 @@ export function Viewer3D({
     : 0;
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
       <section
         aria-label="Vizualizare 3D"
-        className="min-w-0 flex-1 space-y-3"
+        className="flex min-w-0 flex-1 flex-col gap-3 lg:sticky lg:top-2 lg:h-[calc(100dvh-12rem)] lg:min-h-[28rem]"
         data-testid="viewer-3d"
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -123,7 +123,7 @@ export function Viewer3D({
         </div>
 
         <div
-          className="relative h-[60vh] min-h-80 overflow-hidden rounded-xl border border-stone-300 bg-stone-100"
+          className="relative h-[60vh] min-h-80 flex-1 overflow-hidden rounded-xl border border-stone-300 bg-stone-100 lg:h-auto"
           data-testid="viewer3d-box"
           data-walls={stats?.walls ?? ''}
           data-objects={stats?.objects ?? ''}
@@ -206,7 +206,10 @@ export function Viewer3D({
         ) : null}
       </section>
       {sidePanel ? (
-        <aside aria-label="Obiecte" className="space-y-4 lg:w-80 lg:shrink-0">
+        <aside
+          aria-label="Obiecte"
+          className="space-y-4 lg:sticky lg:top-2 lg:max-h-[calc(100dvh-12rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1"
+        >
           {sidePanel}
         </aside>
       ) : null}
