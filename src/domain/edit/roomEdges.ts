@@ -1,6 +1,7 @@
 // Laturile unei camere cu laturi aliniate la axe (dreptunghi, L, T, U…) și mutarea unei laturi (Etapa 9a): baza mânerelor
 // de redimensionare ale camerelor care nu sunt dreptunghiuri. Pure: întorc un document nou sau o eroare în română.
 import { cloneDocument } from '../factory';
+import { keepObjectsInRooms } from './keepInside';
 import { pairKey, signedArea, type Pt } from '../geometry';
 import type { Result } from '../result';
 import type { ProjectDocument } from '../schema';
@@ -126,5 +127,5 @@ export function moveRoomEdge(
         y: node.y + edge.normal.y * deltaMm,
       };
   }
-  return { ok: true, value: next };
+  return { ok: true, value: keepObjectsInRooms(doc, next) };
 }

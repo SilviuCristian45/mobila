@@ -16,6 +16,7 @@ import {
 } from '../geometry';
 import type { Result } from '../result';
 import type { Opening, ProjectDocument, Room, Wall } from '../schema';
+import { keepObjectsInRooms } from './keepInside';
 import { addPolyRoomShared, addRectRoomShared, axesFromInteriorPolygon } from './shared';
 
 export type { IdGenerator, NewRectRoom } from './types';
@@ -43,7 +44,8 @@ export function moveNode(doc: ProjectDocument, nodeId: string, to: Pt): Result<P
   if (!isInt(to.x) || !isInt(to.y))
     return { ok: false, error: 'Coordonatele trebuie să fie numere întregi (mm).' };
   if (node.x === to.x && node.y === to.y) return { ok: true, value: doc };
-  return { ok: true, value: { ...doc, nodes: { ...doc.nodes, [nodeId]: { ...node, ...to } } } };
+  const moved = { ...doc, nodes: { ...doc.nodes, [nodeId]: { ...node, ...to } } };
+  return { ok: true, value: keepObjectsInRooms(doc, moved) };
 }
 
 // ───────────── pereți ─────────────
@@ -563,7 +565,7 @@ export function moveRoom(doc: ProjectDocument, roomId: string, delta: Pt): Resul
           ...o,
           position: { x: o.position.x + delta.x, y: o.position.y + delta.y },
         };
-  return { ok: true, value: next };
+  return { ok: true, value: keepObjectsInRooms(doc, next) };
 }
 
 /**
@@ -728,8 +730,9 @@ export function resizeRoomSide(
     return { ok: false, error: 'Doar camerele dreptunghiulare se redimensionează din mânere.' };
   const r = resizeRectInterior(doc, roomId, side, lengthMm);
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, value: withNodePositions(doc, r.value) };
+  return { ok: true, value: keepObjectsInRooms(doc, withNodePositions(doc, r.value)) };
 }
 
 export * from './shared';
+export { keepObjectsInRooms } from './keepInside';
 export * from './roomEdges';

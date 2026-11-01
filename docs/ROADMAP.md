@@ -256,6 +256,8 @@
 
 > **Etapa 9a (livrată):** camere în formă de L din paletă (cu pereți comuni, rotire în 4 orientări) și mânere pe fiecare latură pentru orice cameră cu laturi paralele cu axele. Vezi ADR-049 și [STAGE9A_REPORT](STAGE9A_REPORT.md).
 
+> **Etapa 9b (livrată):** mobilierul rămâne în camera lui când conturul camerei se schimbă (perete comun mutat, latură, redimensionare, nod tras). Vezi ADR-050 și [STAGE9B_REPORT](STAGE9B_REPORT.md).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**

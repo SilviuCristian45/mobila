@@ -1,15 +1,20 @@
 // @vitest-environment jsdom
 // Etapa 7b: lista camerelor cu arii și redimensionarea camerelor din mânerele laturilor.
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
 import {
+  addObject,
+  addRectRoom,
   analyzeGeometry,
+  createEmptyProject,
+  pointInPolygon,
   exportProject,
   rectInteriorSize,
   type ProjectDocument,
   type SceneDescription,
 } from '@/domain';
+import { getBuiltinItem } from '@/catalog';
 import { formatAreaM2 } from '@/lib/format';
 import { EditorClient } from '@/app/editor/EditorClient';
 import type { ProjectSession } from '@/state/session';
@@ -200,5 +205,50 @@ describe('planul 2D: lista camerelor și redimensionarea din mânere', () => {
     dragHandle(session, 'e', -(before.widthMm + 500), 0);
     expect(sizeOf(session)).toEqual(before);
     expect(screen.getByTestId('plan-notice').textContent).toContain('mai mică');
+  });
+
+  it('micșorarea camerei din mâner nu lasă mobilierul în afara ei: obiectul revine în interior, în același pas de undo', async () => {
+    // proiect curat: o cameră 4000 × 3000 (fără goluri) și o canapea lângă latura de est
+    let doc = createEmptyProject('p1', 'Mobilat', '2026-11-01T00:00:00.000Z');
+    let n = 0;
+    const gen = () => `m${++n}`;
+    const room = addRectRoom(doc, { widthMm: 4000, depthMm: 3000, anchor: { x: 0, y: 0 } }, gen);
+    if (!room.ok) throw new Error(room.error);
+    const added = addObject(
+      room.value.doc,
+      getBuiltinItem('living.sofa-3')!,
+      { position: { x: 3300, y: 1500 } },
+      gen,
+    );
+    if (!added.ok) throw new Error(added.error);
+    doc = added.value.doc;
+    const e = uiEnv();
+    const { session } = await openEditor(e, doc);
+    const sofaId = added.value.objectId;
+    const roomId = room.value.roomId;
+    const polyOf = () => analyzeGeometry(docOf(session)).rooms.get(roomId)!.polygon;
+    expect(pointInPolygon(docOf(session).objects[sofaId]!.position, polyOf())).toBe(true);
+    fireEvent.click(screen.getByTestId(`room-list-item-${roomId}`));
+    const xMax = Math.max(...polyOf().map((p) => p.x));
+    const newEast = 2500; // sub poziția canapelei (x = 3300)
+    const apply = vi.spyOn(session, 'apply');
+    const el = screen.getByTestId(`room-handle-${roomId}-e`);
+    const x = Number(el.getAttribute('x')) + Number(el.getAttribute('width')) / 2;
+    const y = Number(el.getAttribute('y')) + Number(el.getAttribute('height')) / 2;
+    fireEvent.pointerDown(el, ptr(x, y));
+    fireEvent.pointerMove(svg(), ptr(x + (newEast - xMax) / 2, y));
+    fireEvent.pointerMove(svg(), ptr(x + (newEast - xMax), y));
+    fireEvent.pointerUp(svg(), ptr(x + (newEast - xMax), y));
+    expect(apply).toHaveBeenCalledTimes(1);
+    const poly1 = polyOf();
+    expect(Math.max(...poly1.map((p) => p.x))).toBeLessThan(3300); // camera s-a micșorat sub canapea
+    const sofa = docOf(session).objects[sofaId]!;
+    expect(pointInPolygon(sofa.position, poly1)).toBe(true); // dar canapeaua a rămas în cameră
+    expect(sofa.position.x).toBeLessThan(3300);
+    act(() => {
+      session.undo();
+    });
+    expect(docOf(session).objects[sofaId]!.position).toEqual({ x: 3300, y: 1500 });
+    expect(Math.max(...polyOf().map((p) => p.x))).toBe(xMax);
   });
 });
