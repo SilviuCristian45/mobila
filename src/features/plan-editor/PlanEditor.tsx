@@ -14,10 +14,11 @@ import {
   addRectRoom,
   addWall,
   dot,
-  duplicateObject,
   moveNode,
   openingCenterRange,
-  removeObject,
+  removeObjects,
+  moveObjects,
+  duplicateObjects,
   removeOpening,
   removeRoom,
   removeWall,
@@ -71,6 +72,8 @@ type Gesture =
   | {
       type: 'object';
       objectId: string;
+      /** Obiectele trase împreună (selecție multiplă), altfel `undefined`. */
+      groupIds?: string[];
       startX: number;
       startY: number;
       /** Decalajul cursor → centrul obiectului la apăsare (fără salt la începutul tragerii). */
@@ -132,6 +135,15 @@ export function PlanEditor({
   const [view, setView] = useState<View>(() => fitView(Object.values(doc.nodes), DEFAULT_SIZE));
   const autoFit = useRef(true);
   const [selectionRaw, setSelection] = useState<Selection>(null);
+  /** Obiecte selectate în plus față de cel principal (`selectedObjectId`): selecție multiplă cu Shift / Ctrl + clic. */
+  const [extra, setExtra] = useState<{ owner: string | null; ids: string[] }>({
+    owner: null,
+    ids: [],
+  });
+  const setExtraIds = useCallback(
+    (ids: string[], owner: string | null) => setExtra({ owner, ids }),
+    [],
+  );
   const [toolRaw, setToolRaw] = useState<Tool>('select');
   const [drag, setDragState] = useState<Drag | null>(null);
   /** Ultima poziție propusă de gest, citită SINCRON la eliberare (starea React poate fi încă neactualizată după ultimul pointermove). */
@@ -156,6 +168,22 @@ export function PlanEditor({
   const selectedObjectId =
     selectedObjectIdProp && selectedObjectIdProp in doc.objects ? selectedObjectIdProp : null;
   const grid = doc.settings.gridMm;
+  // grupul = obiectul principal + cele adăugate; fără obiect principal nu există grup (extrasele vechi nu reapar)
+  // extrasele aparțin obiectului principal pentru care au fost alese: dacă principalul se schimbă din altă parte
+  // (panou, 3D), ele nu mai contează
+  const groupIds = useMemo(
+    () =>
+      selectedObjectId
+        ? [
+            selectedObjectId,
+            ...(extra.owner === selectedObjectId ? extra.ids : []).filter(
+              (id) => id !== selectedObjectId && id in doc.objects,
+            ),
+          ]
+        : [],
+    [selectedObjectId, extra, doc.objects],
+  );
+  const groupSet = useMemo(() => new Set(groupIds), [groupIds]);
   // o selecție de nod/perete/cameră/gol elimină selecția de obiect (și invers, în gesturi)
   useEffect(() => {
     if (selection) onSelectObject?.(null);
@@ -171,7 +199,12 @@ export function PlanEditor({
       drag.kind === 'node'
         ? moveNode(doc, drag.nodeId, drag.to)
         : drag.kind === 'object'
-          ? updateObject(doc, drag.objectId, { position: drag.to })
+          ? drag.groupIds
+            ? moveObjects(doc, drag.groupIds, {
+                x: drag.to.x - (doc.objects[drag.objectId]?.position.x ?? drag.to.x),
+                y: drag.to.y - (doc.objects[drag.objectId]?.position.y ?? drag.to.y),
+              })
+            : updateObject(doc, drag.objectId, { position: drag.to })
           : updateOpening(doc, drag.openingId, { offsetMm: drag.offsetMm });
     return r.ok ? r.value : doc;
   }, [doc, drag]);
@@ -306,8 +339,12 @@ export function PlanEditor({
   const deleteSelected = useCallback(() => {
     if (!editable) return;
     if (selectedObjectId) {
-      const id = selectedObjectId;
-      if (runNotice('Șterge obiect', (d) => removeObject(d, id))) onSelectObject?.(null);
+      const ids = groupIds;
+      const label = ids.length > 1 ? `Șterge ${ids.length} obiecte` : 'Șterge obiect';
+      if (runNotice(label, (d) => removeObjects(d, ids))) {
+        onSelectObject?.(null);
+        setExtraIds([], null);
+      }
       return;
     }
     if (!selection) return;
@@ -359,20 +396,36 @@ export function PlanEditor({
         return err;
       },
     });
-  }, [selection, selectedObjectId, onSelectObject, editable, doc, run, runNotice]);
+  }, [
+    selection,
+    selectedObjectId,
+    groupIds,
+    onSelectObject,
+    setExtraIds,
+    editable,
+    doc,
+    run,
+    runNotice,
+  ]);
 
   const duplicateSelected = useCallback(() => {
     if (!editable || !selectedObjectId) return;
-    const src = selectedObjectId;
-    let created: string | null = null;
-    const ok = runNotice('Duplică obiect', (d) => {
-      const r = duplicateObject(d, src, genId);
-      if (!r.ok) return r;
-      created = r.value.objectId;
-      return { ok: true, value: r.value.doc };
-    });
-    if (ok && created) onSelectObject?.(created);
-  }, [editable, selectedObjectId, runNotice, genId, onSelectObject]);
+    const src = groupIds;
+    let created: string[] = [];
+    const ok = runNotice(
+      src.length > 1 ? `Duplică ${src.length} obiecte` : 'Duplică obiect',
+      (d) => {
+        const r = duplicateObjects(d, src, genId);
+        if (!r.ok) return r;
+        created = r.value.objectIds;
+        return { ok: true, value: r.value.doc };
+      },
+    );
+    if (ok && created.length > 0) {
+      onSelectObject?.(created[0]!);
+      setExtraIds(created.slice(1), created[0]!);
+    }
+  }, [editable, selectedObjectId, groupIds, runNotice, genId, onSelectObject, setExtraIds]);
 
   // ───────────── gesturi cu pointerul ─────────────
   const worldOf = (e: { clientX: number; clientY: number }) => {
@@ -438,6 +491,7 @@ export function PlanEditor({
       if (tool === 'wall' && e.button === 0) return wallToolClick(e);
       setSelection(null);
       onSelectObject?.(null);
+      setExtraIds([], null);
       setNotice(null);
       gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
       capture(e);
@@ -449,12 +503,28 @@ export function PlanEditor({
       setNotice(null);
       if (kind === 'object') {
         setSelection(null);
-        onSelectObject?.(id);
         const o = doc.objects[id];
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          // Shift / Ctrl + clic: adaugă sau scoate obiectul din selecție (fără tragere)
+          if (groupSet.has(id)) {
+            const rest = groupIds.filter((g) => g !== id);
+            onSelectObject?.(rest[0] ?? null);
+            setExtraIds(rest.slice(1), rest[0] ?? null);
+          } else {
+            onSelectObject?.(id);
+            setExtraIds(groupIds, id);
+          }
+          return;
+        }
+        // clic pe un membru al unui grup: grupul rămâne selectat și se trage împreună
+        const inGroup = groupSet.has(id) && groupIds.length > 1;
+        onSelectObject?.(id);
+        setExtraIds(inGroup ? groupIds.filter((g) => g !== id) : [], id);
         if (!editable || !o) return;
         const w = worldOf(e);
         gesture.current = {
           type: 'object',
+          groupIds: inGroup ? groupIds : undefined,
           objectId: id,
           startX: e.clientX,
           startY: e.clientY,
@@ -514,6 +584,7 @@ export function PlanEditor({
         setDrag({
           kind: 'object',
           objectId: g.objectId,
+          groupIds: g.groupIds,
           to: e.altKey ? { x: Math.round(at.x), y: Math.round(at.y) } : snapToGrid(at, grid),
         });
       } else {
@@ -545,11 +616,21 @@ export function PlanEditor({
             n ? { ...n, text: `${n.text} Nodul a revenit la poziția anterioară.` } : n,
           );
       } else if (finished.kind === 'object') {
-        const { objectId, to } = finished;
-        const ok = runNotice('Mută obiectul', (d) => updateObject(d, objectId, { position: to }));
+        const { objectId, to, groupIds: moved } = finished;
+        const ok = moved
+          ? runNotice(`Mută ${moved.length} obiecte`, (d) => {
+              const from = d.objects[objectId]?.position ?? to;
+              return moveObjects(d, moved, { x: to.x - from.x, y: to.y - from.y });
+            })
+          : runNotice('Mută obiectul', (d) => updateObject(d, objectId, { position: to }));
         if (!ok)
           setNotice((n) =>
-            n ? { ...n, text: `${n.text} Obiectul a revenit la poziția anterioară.` } : n,
+            n
+              ? {
+                  ...n,
+                  text: `${n.text} ${moved ? 'Obiectele au revenit' : 'Obiectul a revenit'} la poziția anterioară.`,
+                }
+              : n,
           );
       } else {
         const { openingId, offsetMm } = finished;
@@ -571,6 +652,16 @@ export function PlanEditor({
     const onKey = (e: KeyboardEvent) => {
       if (confirm || e.defaultPrevented || isTyping(e.target) || e.altKey) return;
       if (e.ctrlKey || e.metaKey) {
+        if ((e.key === 'a' || e.key === 'A') && tool === 'select') {
+          const all = Object.keys(doc.objects);
+          if (all.length > 0) {
+            e.preventDefault();
+            setSelection(null);
+            onSelectObject?.(all[0]!);
+            setExtraIds(all.slice(1), all[0]!);
+          }
+          return;
+        }
         if ((e.key === 'd' || e.key === 'D') && selectedObjectId) {
           e.preventDefault();
           duplicateSelected();
@@ -583,7 +674,11 @@ export function PlanEditor({
         if (!editable && (selection || selectedObjectId)) return;
         if (selectedObjectId) {
           const o = doc.objects[selectedObjectId];
-          if (o)
+          if (o && groupIds.length > 1)
+            runNotice(`Mută ${groupIds.length} obiecte`, (d) =>
+              moveObjects(d, groupIds, { x: dx * step, y: dy * step }),
+            );
+          else if (o)
             runNotice('Mută obiectul', (d) =>
               updateObject(d, o.id, {
                 position: { x: o.position.x + dx * step, y: o.position.y + dy * step },
@@ -616,9 +711,16 @@ export function PlanEditor({
         } else if (draft) setDraft(null);
         else if (tool === 'wall') setTool('select');
         else if (selection) setSelection(null);
-        else if (selectedObjectId) onSelectObject?.(null);
-        else handled = false;
-      } else if ((k === 'r' || k === 'R') && selectedObjectId && editable) {
+        else if (selectedObjectId) {
+          onSelectObject?.(null);
+          setExtraIds([], null);
+        } else handled = false;
+      } else if (
+        (k === 'r' || k === 'R') &&
+        selectedObjectId &&
+        editable &&
+        groupIds.length === 1
+      ) {
         const o = doc.objects[selectedObjectId];
         if (o)
           runNotice('Rotește obiectul', (d) =>
@@ -650,7 +752,9 @@ export function PlanEditor({
     grid,
     deleteSelected,
     duplicateSelected,
+    groupIds,
     onSelectObject,
+    setExtraIds,
     runNotice,
     selection,
     selectedObjectId,
@@ -787,6 +891,16 @@ export function PlanEditor({
           : 'Trage nodurile ca să muți pereții și golurile ca să le repoziționezi; trage fundalul ca să deplasezi planul. Săgețile mută elementul selectat.'}
       </p>
 
+      {groupIds.length > 1 ? (
+        <p
+          className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900"
+          data-testid="multi-selection"
+        >
+          {groupIds.length} obiecte selectate. Trage-le sau folosește săgețile ca să le muți
+          împreună; Delete le șterge, Ctrl+D le duplică, Shift + clic scoate un obiect din selecție.
+        </p>
+      ) : null}
+
       <div className="flex flex-col gap-4 lg:flex-row">
         <div
           ref={boxRef}
@@ -800,7 +914,7 @@ export function PlanEditor({
             view={view}
             size={size}
             selection={selection}
-            selectedObjectId={selectedObjectId}
+            selectedObjectIds={groupSet}
             tool={tool}
             editable={editable}
             drag={drag}

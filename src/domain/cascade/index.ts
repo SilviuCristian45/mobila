@@ -90,3 +90,19 @@ export const clearLineOverride = (doc: ProjectDocument, key: string): ProjectDoc
   delete next.budget.overrides[key];
   return next;
 };
+
+/** Șterge un grup de obiecte (cu tot ce depinde de ele) într-o singură operație; atomic. */
+export function removeObjects(
+  doc: ProjectDocument,
+  objectIds: readonly string[],
+): Result<ProjectDocument> {
+  const ids = [...new Set(objectIds)];
+  if (ids.length === 0) return { ok: false, error: 'Nu e selectat niciun obiect.' };
+  let cur = doc;
+  for (const id of ids) {
+    const r = removeObject(cur, id);
+    if (!r.ok) return r;
+    cur = r.value;
+  }
+  return { ok: true, value: cur };
+}

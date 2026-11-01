@@ -8,7 +8,8 @@ export type Tool = 'select' | 'wall';
 export type Drag =
   | { kind: 'node'; nodeId: string; to: Pt }
   | { kind: 'opening'; openingId: string; offsetMm: number }
-  | { kind: 'object'; objectId: string; to: Pt };
+  /** `groupIds`: obiectele mutate împreună cu `objectId` (selecție multiplă); `to` e poziția propusă a lui `objectId`. */
+  | { kind: 'object'; objectId: string; to: Pt; groupIds?: string[] };
 
 /** Firul în curs al uneltei „Perete”: începutul ales (nod existent sau punct nou) și cursorul curent. */
 export interface WallDraft {

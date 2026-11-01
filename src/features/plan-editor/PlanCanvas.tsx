@@ -31,7 +31,7 @@ interface Props {
   view: View;
   size: Size;
   selection: Selection;
-  selectedObjectId: string | null;
+  selectedObjectIds: ReadonlySet<string>;
   tool: Tool;
   editable: boolean;
   drag: Drag | null;
@@ -264,7 +264,7 @@ export function PlanCanvas({
   view,
   size,
   selection,
-  selectedObjectId,
+  selectedObjectIds,
   tool,
   editable,
   drag,
@@ -492,7 +492,7 @@ export function PlanCanvas({
             doc={doc}
             o={o}
             zoom={zoom}
-            selected={o.id === selectedObjectId}
+            selected={selectedObjectIds.has(o.id)}
             editable={editable && tool === 'select'}
             down={(e) => handlers.onElementDown('object', o.id, e)}
           />

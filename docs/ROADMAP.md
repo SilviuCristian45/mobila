@@ -177,7 +177,7 @@
 
 ## Etapa 4 — Catalog și obiecte
 
-> **Stare:** livrată în cea mai mare parte prin Etapa 3b (41 de obiecte parametrice, plasare, rotire, dimensiuni numerice, duplicare, ștergere, snapshot în proiect), considerată **încheiată pentru MVP**. **Amânate:** selecție multiplă și mutare în grup (singurul criteriu de acceptare neîndeplinit), itemi definiți de utilizator (`userCatalog`), redimensionare prin mânere, snap la pereți/obiecte, detecție de coliziuni.
+> **Stare:** livrată în cea mai mare parte prin Etapa 3b (41 de obiecte parametrice, plasare, rotire, dimensiuni numerice, duplicare, ștergere, snapshot în proiect), considerată **încheiată pentru MVP**. **Livrat ulterior (6c, ADR-043):** selecție multiplă (Shift/Ctrl + clic, Ctrl+A) cu mutare, duplicare și ștergere în grup, în planul 2D. **Amânate:** selecție prin dreptunghi, rotire de grup, selecție multiplă în 3D, itemi definiți de utilizator (`userCatalog`), redimensionare prin mânere, snap la pereți/obiecte, detecție de coliziuni.
 
 **Conținut**
 - Catalog încorporat de **40 de obiecte parametrice** (PRODUCT_SPEC Anexa A: 20 mobilier, 8 sanitare, 3 oglinzi, 9 iluminat) — fiecare cu `defaultSize`, `sizeLimits`, `paramSpecs`, montare, elevație implicită, preț **demonstrativ** (`origin: 'demo'`), proveniență/licență `original`.

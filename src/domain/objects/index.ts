@@ -375,3 +375,51 @@ export function duplicateObject(
   next.objects[id] = copy;
   return { ok: true, value: { doc: copyObjectFinishes(next, objectId, id, genId), objectId: id } };
 }
+
+const uniqueIds = (ids: readonly string[]): string[] => [...new Set(ids)];
+
+/**
+ * Mută un grup de obiecte cu aceeași deplasare, atomic: dacă vreunul e respins (obiect inexistent, poziție invalidă),
+ * documentul rămâne neschimbat și eroarea spune care.
+ */
+export function moveObjects(
+  doc: ProjectDocument,
+  objectIds: readonly string[],
+  delta: Pt,
+): Result<ProjectDocument> {
+  const ids = uniqueIds(objectIds);
+  if (ids.length === 0) return { ok: false, error: 'Nu e selectat niciun obiect.' };
+  if (!isInt(delta.x) || !isInt(delta.y))
+    return { ok: false, error: 'Deplasarea trebuie să fie în milimetri întregi.' };
+  let cur = doc;
+  for (const id of ids) {
+    const o = cur.objects[id];
+    if (!o) return { ok: false, error: 'Un obiect din selecție nu mai există.' };
+    const r = updateObject(cur, id, {
+      position: { x: o.position.x + delta.x, y: o.position.y + delta.y },
+    });
+    if (!r.ok) return r;
+    cur = r.value;
+  }
+  return { ok: true, value: cur };
+}
+
+/** Copii ale unui grup de obiecte (fiecare decalat la fel); întoarce documentul și id-urile copiilor, în ordinea primită. */
+export function duplicateObjects(
+  doc: ProjectDocument,
+  objectIds: readonly string[],
+  genId: () => string,
+  offset: Pt = { x: DUPLICATE_OFFSET_MM, y: DUPLICATE_OFFSET_MM },
+): Result<{ doc: ProjectDocument; objectIds: string[] }> {
+  const ids = uniqueIds(objectIds);
+  if (ids.length === 0) return { ok: false, error: 'Nu e selectat niciun obiect.' };
+  let cur = doc;
+  const created: string[] = [];
+  for (const id of ids) {
+    const r = duplicateObject(cur, id, genId, offset);
+    if (!r.ok) return r;
+    cur = r.value.doc;
+    created.push(r.value.objectId);
+  }
+  return { ok: true, value: { doc: cur, objectIds: created } };
+}
