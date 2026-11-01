@@ -78,17 +78,23 @@ test.describe('camere prin drag & drop (build static)', () => {
     await expect(page.getByTestId('plan-invalid')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('plan-camere.png') });
 
-    // 3) camerele împart un perete: bucătăria nu se mută întreagă (ar deforma Living-ul), cu explicație, fără schimbare
+    // 3) camerele împart un perete: bucătăria se mută întreagă, iar nodurile comune o urmează (Living-ul se deformează);
+    //    un singur pas de istoric, planul rămâne valid; undo readuce totul
     const hist = Number(await page.getByTestId('history-size').textContent());
     const selectedRoom = page.locator('g[data-testid^="room-"][data-selected="true"]').first();
     const sb = (await selectedRoom.locator('polygon').boundingBox())!;
     const grab = { x: sb.x + sb.width * 0.25, y: sb.y + sb.height * 0.25 };
     await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
-    await page.mouse.move(grab.x, grab.y + 120, { steps: 8 });
+    await page.mouse.move(grab.x + 60, grab.y, { steps: 8 });
     await page.mouse.up();
-    await expect(page.getByTestId('plan-notice')).toContainText('noduri');
-    await expect(page.getByTestId('history-size')).toHaveText(String(hist));
+    await expect(page.getByTestId('history-size')).toHaveText(String(hist + 1));
+    await expect(page.getByTestId('plan-invalid')).toHaveCount(0);
+    const after = (await selectedRoom.locator('polygon').boundingBox())!;
+    expect(after.x - sb.x).toBeGreaterThan(20);
+    await page.getByTestId('undo').click();
+    const back = (await selectedRoom.locator('polygon').boundingBox())!;
+    expect(Math.abs(back.x - sb.x)).toBeLessThan(2);
     expect(errors).toEqual([]);
   });
 

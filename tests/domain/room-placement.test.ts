@@ -87,15 +87,23 @@ describe('moveRoom', () => {
     expect(same).toBe(doc);
   });
 
-  it('refuză o cameră care împarte noduri cu alta', () => {
+  it('o cameră cu noduri comune se mută odată cu ele: vecina se deformează (nodurile comune se mută), restul rămâne', () => {
     const { doc, roomId } = oneRoom();
     const other = unwrap(
       addRectRoom(doc, { widthMm: 1000, depthMm: 1000, anchor: { x: 9000, y: 0 } }, gen),
     );
-    // a doua cameră folosește un nod al primei: se "lipesc" prin bucla de noduri
+    // a doua cameră folosește un nod al primei (bucla de noduri comună)
     const shared = structuredClone(other.doc);
-    shared.rooms[other.roomId]!.nodeLoop[0] = doc.rooms[roomId]!.nodeLoop[0]!;
-    expect(moveRoom(shared, roomId, { x: 100, y: 0 }).ok).toBe(false);
+    const sharedNode = doc.rooms[roomId]!.nodeLoop[0]!;
+    const own = shared.rooms[other.roomId]!.nodeLoop[3]!;
+    shared.rooms[other.roomId]!.nodeLoop[0] = sharedNode;
+    const moved = unwrap(moveRoom(shared, roomId, { x: 100, y: 50 }));
+    expect(moved.nodes[sharedNode]).toEqual({
+      ...shared.nodes[sharedNode]!,
+      x: shared.nodes[sharedNode]!.x + 100,
+      y: shared.nodes[sharedNode]!.y + 50,
+    });
+    expect(moved.nodes[own]).toEqual(shared.nodes[own]); // nodul propriu al vecinei nu se mișcă
   });
 });
 

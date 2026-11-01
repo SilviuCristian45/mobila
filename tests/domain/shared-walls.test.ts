@@ -290,7 +290,7 @@ describe('rotateRoom', () => {
     expect(r.objects[outside.objectId]!.position).toEqual({ x: 9000, y: 9000 });
   });
 
-  it('camera cu perete comun nu se rotește întreagă (mesaj), nici nu se mută', () => {
+  it('camera cu perete comun nu se rotește (mesaj), dar se mută: nodurile comune merg cu ea și vecina se deformează', () => {
     const { doc, a } = withA();
     const r = ok(
       addRectRoomShared(doc, { widthMm: 3000, depthMm: 3000, anchor: { x: EAST, y: 0 } }, gen),
@@ -298,7 +298,16 @@ describe('rotateRoom', () => {
     const rot = rotateRoom(r.doc, a, 1);
     expect(rot.ok).toBe(false);
     if (!rot.ok) expect(rot.error).toMatch(/comune|împarte/);
-    expect(moveRoom(r.doc, a, { x: 100, y: 0 }).ok).toBe(false);
+    // vecina B se mută pe orizontală: nodurile comune (colțurile lui A) o urmează
+    const moved = ok(moveRoom(r.doc, r.roomId, { x: 400, y: 0 }));
+    const sharedIds = r.doc.rooms[r.roomId]!.nodeLoop.filter((n) =>
+      r.doc.rooms[a]!.nodeLoop.includes(n),
+    );
+    expect(sharedIds.length).toBeGreaterThanOrEqual(2);
+    for (const id of sharedIds) expect(moved.nodes[id]!.x).toBe(r.doc.nodes[id]!.x + 400);
+    const geo = analyzeGeometry(moved);
+    expect(geo.rooms.get(r.roomId)!.areaMm2).toBe(3000 * 3000);
+    expect(geo.issues).toEqual([]);
   });
 
   it('refuză sferturi zecimale și camera inexistentă', () => {

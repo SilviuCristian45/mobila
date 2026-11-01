@@ -250,6 +250,8 @@
 
 > **Etapa 8a — Pereți comuni și rotire (livrată):** camerele vecine împart un singur perete (despărțire în T, goluri și finisaje păstrate), fără suprapuneri; camerele se rotesc în pași de 90° (R, butoane, și în timpul plasării). Aplicația rămâne **doar pentru desktop** (decizie de produs: fără dezvoltare mobilă deocamdată). Vezi ADR-046 și [STAGE8A_REPORT](STAGE8A_REPORT.md).
 
+> **Etapa 8b (livrată):** camerele cu pereți comuni se pot muta întregi (nodurile comune merg cu ele, vecinii se deformează). Vezi ADR-047 și [STAGE8B_REPORT](STAGE8B_REPORT.md).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**

@@ -488,7 +488,8 @@ function ownedLoopNodes(doc: ProjectDocument, roomId: string): Result<Set<string
 
 /**
  * Mută o cameră întreagă cu `delta` (mm întregi): nodurile buclei ei și obiectele aflate în interiorul ei (golurile
- * merg cu pereții). Refuză o cameră cu pereți sau noduri comune (vezi `ownedLoopNodes`).
+ * merg cu pereții). Nodurile comune cu alte camere se mută odată cu ea: pereții vecinilor care pleacă din ele se întind
+ * (vecinii se deformează), iar dacă planul rezultat e invalid îl respinge commit-ul sesiunii, ca la orice editare.
  */
 export function moveRoom(doc: ProjectDocument, roomId: string, delta: Pt): Result<ProjectDocument> {
   const room = doc.rooms[roomId];
@@ -496,11 +497,9 @@ export function moveRoom(doc: ProjectDocument, roomId: string, delta: Pt): Resul
   if (!isInt(delta.x) || !isInt(delta.y))
     return { ok: false, error: 'Deplasarea trebuie să fie în milimetri întregi.' };
   if (delta.x === 0 && delta.y === 0) return { ok: true, value: doc };
-  const owned = ownedLoopNodes(doc, roomId);
-  if (!owned.ok) return owned;
   const interior = analyzeGeometry(doc).rooms.get(roomId)?.polygon;
   const next = cloneDocument(doc);
-  for (const id of owned.value) {
+  for (const id of new Set(room.nodeLoop)) {
     const n = next.nodes[id];
     if (n) next.nodes[id] = { ...n, x: n.x + delta.x, y: n.y + delta.y };
   }
