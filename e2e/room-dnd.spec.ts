@@ -78,24 +78,63 @@ test.describe('camere prin drag & drop (build static)', () => {
     await expect(page.getByTestId('plan-invalid')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('plan-camere.png') });
 
-    // 3) camera ultima e selectată; o trag cu mouse-ul (mutare întreagă) = un pas de istoric
+    // 3) camerele împart un perete: bucătăria nu se mută întreagă (ar deforma Living-ul), cu explicație, fără schimbare
     const hist = Number(await page.getByTestId('history-size').textContent());
     const selectedRoom = page.locator('g[data-testid^="room-"][data-selected="true"]').first();
     const sb = (await selectedRoom.locator('polygon').boundingBox())!;
-    // în afara etichetei din centrul camerei (în WebKit eticheta poate intercepta apăsarea)
     const grab = { x: sb.x + sb.width * 0.25, y: sb.y + sb.height * 0.25 };
     await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
     await page.mouse.move(grab.x, grab.y + 120, { steps: 8 });
     await page.mouse.up();
-    const after = (await selectedRoom.locator('polygon').boundingBox())!;
-    expect(Math.abs(after.y - sb.y)).toBeGreaterThan(40);
-    await expect(page.getByTestId('history-size')).toHaveText(String(hist + 1));
+    await expect(page.getByTestId('plan-notice')).toContainText('noduri');
+    await expect(page.getByTestId('history-size')).toHaveText(String(hist));
+    expect(errors).toEqual([]);
+  });
 
-    // undo readuce poziția
+  test('cameră singură: se mută cu mouse-ul (un pas), se rotește cu R și cu butoanele (dimensiunile se inversează), undo; R rotește camera și în timpul plasării', async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    await createProject(page, 'Rotire');
+    await page.getByTestId('room-form-submit').click(); // 4000 × 3000
+    await expect(page.getByTestId('room-width')).toHaveValue('4000');
+    const room = page.locator('g[data-testid^="room-"][data-selected="true"]').first();
+    await expect(room).toBeVisible();
+
+    // mutare
+    const hist = Number(await page.getByTestId('history-size').textContent());
+    const sb = (await room.locator('polygon').boundingBox())!;
+    const grab = { x: sb.x + sb.width * 0.25, y: sb.y + sb.height * 0.25 };
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+    await page.mouse.move(grab.x, grab.y + 80, { steps: 8 });
+    await page.mouse.up();
+    await expect(page.getByTestId('history-size')).toHaveText(String(hist + 1));
     await page.getByTestId('undo').click();
-    const back = (await selectedRoom.locator('polygon').boundingBox())!;
-    expect(Math.abs(back.y - sb.y)).toBeLessThan(2);
+
+    // rotire: R și buton; dimensiunile se inversează, aria rămâne
+    await page.getByTestId('plan-svg').focus();
+    await page.keyboard.press('r');
+    await expect(page.getByTestId('room-width')).toHaveValue('3000');
+    await expect(page.getByTestId('room-depth')).toHaveValue('4000');
+    await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText('12 m²');
+    await page.getByTestId('room-rotate-ccw').click();
+    await expect(page.getByTestId('room-width')).toHaveValue('4000');
+    await page.getByTestId('undo').click();
+    await expect(page.getByTestId('room-width')).toHaveValue('3000');
+
+    // în timpul plasării, R inversează dimensiunile camerei din paletă (fantoma)
+    const box = (await page.getByTestId('plan-box').boundingBox())!;
+    const chip = (await page.getByTestId('room-preset-bedroom').boundingBox())!;
+    await page.mouse.move(chip.x + 5, chip.y + 5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 120, box.y + box.height - 90, { steps: 8 });
+    await expect(page.getByTestId('room-ghost-label')).toContainText('400 cm × 350 cm');
+    await page.keyboard.press('r');
+    await expect(page.getByTestId('room-ghost-label')).toContainText('350 cm × 400 cm');
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
     expect(errors).toEqual([]);
   });
 

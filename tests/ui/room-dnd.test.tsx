@@ -3,7 +3,13 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
-import { exportProject, type ProjectDocument, type SceneDescription } from '@/domain';
+import {
+  exportProject,
+  rectInteriorSize,
+  roomsUsingWall,
+  type ProjectDocument,
+  type SceneDescription,
+} from '@/domain';
 import { EditorClient } from '@/app/editor/EditorClient';
 import type { ProjectSession } from '@/state/session';
 import { renderWithRuntime, uiEnv, type UiEnv } from '../helpers/ui';
@@ -194,7 +200,7 @@ describe('planul 2D: camere noi din paletă și mutarea camerelor', () => {
     expect(newest(session, mid).name).toBe('Dormitor 3');
   });
 
-  it('lipire: o cameră trasă lângă una existentă se alipește de fața ei exterioară (fără goluri și fără suprapunere)', async () => {
+  it('lipire: o cameră trasă lângă una existentă împarte peretele cu ea (nodurile și peretele comun se refolosesc), fără suprapunere', async () => {
     const { session, before } = await open();
     fireEvent.pointerDown(screen.getByTestId('room-preset-kitchen'), CHIP);
     moveOnPlan(FAR.x, FAR.y);
@@ -202,18 +208,23 @@ describe('planul 2D: camere noi din paletă și mutarea camerelor', () => {
     const first = newest(session, before);
     const d1 = docOf(session);
     const t = d1.settings.defaultWallThicknessMm;
-    const outerRight = Math.max(...first.nodeLoop.map((n) => d1.nodes[n]!.x)) + t / 2;
-    // a doua: stânga ei exterioară cade la ~60 mm de dreapta exterioară a primei
+    const axisRight = Math.max(...first.nodeLoop.map((n) => d1.nodes[n]!.x));
+    // a doua (Baie, 2000 mm lățime): axa ei vestică cade la ~60 mm de axa estică a primei
     fireEvent.pointerDown(screen.getByTestId('room-preset-bathroom'), CHIP);
-    const cx = outerRight + 60 + 1000 + t; // centrul camerei de 2000 mm lățime
+    const cx = axisRight + 60 + t / 2 + 1000;
     const cy = d1.nodes[first.nodeLoop[0]!]!.y + 1500;
     moveOnPlan(cx, cy);
+    expect(screen.getByTestId('room-ghost').getAttribute('data-valid')).toBe('true');
     up(cx, cy);
     expect(roomCount(session)).toBe(before.length + 2);
     const second = newest(session, [...before, first.id]);
     const d2 = docOf(session);
-    const minX = Math.min(...second.nodeLoop.map((n) => d2.nodes[n]!.x)) - t / 2;
-    expect(minX).toBe(outerRight); // alipită exact
+    const minX = Math.min(...second.nodeLoop.map((n) => d2.nodes[n]!.x));
+    expect(minX).toBe(axisRight); // aceeași axă = același perete
+    const shared = second.nodeLoop.filter((n) => d2.rooms[first.id]!.nodeLoop.includes(n));
+    expect(shared.length).toBeGreaterThanOrEqual(1); // noduri comune
+    // există un perete folosit de ambele camere
+    expect(Object.values(d2.walls).some((w) => roomsUsingWall(d2, w.id).length === 2)).toBe(true);
   });
 
   it('Enter pe paletă (fără mouse) plasează camera într-un loc liber: centrul e ocupat, deci se alipește în dreapta construcției, validă', async () => {
@@ -261,5 +272,62 @@ describe('planul 2D: camere noi din paletă și mutarea camerelor', () => {
     expect(session.getState().undoLabel).toBe('Mută camera');
     session.undo();
     expect(docOf(session).nodes[room.nodeLoop[0]!]).toEqual(start);
+  });
+
+  it('rotirea unei camere: R și butoanele din panou rotesc cu 90° (un pas de undo); R în timpul plasării inversează fantoma', async () => {
+    const { session, before } = await open();
+    // camera nouă, singură (departe de cea din proiect)
+    fireEvent.pointerDown(screen.getByTestId('room-preset-office'), CHIP);
+    moveOnPlan(FAR.x, FAR.y);
+    up(FAR.x, FAR.y);
+    const room = newest(session, before);
+    const dims = () => {
+      const r = rectInteriorSize(docOf(session), room.id);
+      if (!r.ok) throw new Error(r.error);
+      return r.value;
+    };
+    expect(dims()).toEqual({ widthMm: 3000, depthMm: 2500 });
+    await key('r');
+    expect(dims()).toEqual({ widthMm: 2500, depthMm: 3000 });
+    expect(session.getState().undoLabel).toBe('Rotește camera');
+    await key('R', { shiftKey: true });
+    expect(dims()).toEqual({ widthMm: 3000, depthMm: 2500 });
+    fireEvent.click(screen.getByTestId('room-rotate-cw'));
+    expect(dims()).toEqual({ widthMm: 2500, depthMm: 3000 });
+    fireEvent.click(screen.getByTestId('room-rotate-ccw'));
+    expect(dims()).toEqual({ widthMm: 3000, depthMm: 2500 });
+    session.undo();
+    expect(dims()).toEqual({ widthMm: 2500, depthMm: 3000 });
+
+    // în timpul plasării
+    fireEvent.pointerDown(screen.getByTestId('room-preset-hall'), CHIP);
+    moveOnPlan(FAR.x, FAR.y + 9000);
+    expect(screen.getByTestId('room-ghost-label').textContent).toContain('300 cm × 150 cm');
+    await key('r');
+    expect(screen.getByTestId('room-ghost-label').textContent).toContain('150 cm × 300 cm');
+    up(FAR.x, FAR.y + 9000);
+    const hall = newest(session, [...before, room.id]);
+    const h = rectInteriorSize(docOf(session), hall.id);
+    expect(h.ok && h.value).toEqual({ widthMm: 1500, depthMm: 3000 }); // creată rotită
+  });
+
+  it('o cameră cu perete comun nu se rotește (mesaj), iar documentul rămâne neschimbat', async () => {
+    const { session, before } = await open();
+    fireEvent.pointerDown(screen.getByTestId('room-preset-kitchen'), CHIP);
+    moveOnPlan(FAR.x, FAR.y);
+    up(FAR.x, FAR.y);
+    const first = newest(session, before);
+    const d1 = docOf(session);
+    const axisRight = Math.max(...first.nodeLoop.map((n) => d1.nodes[n]!.x));
+    const cx = axisRight + 60 + 50 + 1000;
+    const cy = d1.nodes[first.nodeLoop[0]!]!.y + 1500;
+    fireEvent.pointerDown(screen.getByTestId('room-preset-bathroom'), CHIP);
+    moveOnPlan(cx, cy);
+    up(cx, cy);
+    fireEvent.click(screen.getByTestId(`room-list-item-${first.id}`));
+    const snapshot = JSON.stringify(docOf(session).nodes);
+    fireEvent.click(screen.getByTestId('room-rotate-cw'));
+    expect(JSON.stringify(docOf(session).nodes)).toBe(snapshot);
+    expect(screen.getByTestId('room-rotate-error').textContent).toMatch(/comune|împarte/);
   });
 });

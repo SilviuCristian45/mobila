@@ -48,37 +48,6 @@ describe('snapRoomAnchor', () => {
     expect(g.anchor).toEqual({ x: 20000, y: 20100 });
   });
 
-  it('aproape de o cameră: se alipește cu fața exterioară și se aliniază pe cealaltă axă; rezultatul e valid', () => {
-    const { doc } = oneRoom();
-    const t = doc.settings.defaultWallThicknessMm;
-    // camera A are fața exterioară dreaptă la x = 4000 + t; camera nouă (stânga ei exterioară = ax − t) se alipește
-    const s = snapRoomAnchor(
-      doc,
-      { widthMm: 2000, depthMm: 3000 },
-      { x: 4000 + 2 * t + 60, y: 40 },
-      10,
-      150,
-    );
-    expect(s.snappedX).toBe(true);
-    expect(s.anchor.x).toBe(4000 + 2 * t); // stânga exterioară nouă = dreapta exterioară veche
-    expect(s.snappedY).toBe(true);
-    expect(s.anchor.y).toBe(0); // aliniată cu A
-    const r = unwrap(addRectRoom(doc, { widthMm: 2000, depthMm: 3000, anchor: s.anchor }, gen));
-    expect(analyzeGeometry(r.doc).issues).toEqual([]);
-  });
-
-  it('nu se lipește de fața INTERIOARĂ a peretelui vecin (ar suprapune peretele): cu fața pe jumătate în perete, alege fața exterioară', () => {
-    const { doc } = oneRoom();
-    const t = doc.settings.defaultWallThicknessMm;
-    // stânga exterioară a camerei noi cade la mijlocul peretelui din dreapta al camerei A (4000 … 4000 + t)
-    const raw = { x: 4000 + t / 2 + t, y: 0 };
-    const s = snapRoomAnchor(doc, { widthMm: 2000, depthMm: 3000 }, raw, 10, 400);
-    expect(s.snappedX).toBe(true);
-    expect(s.anchor.x).toBe(4000 + 2 * t); // fața exterioară a lui A, nu cea interioară (4000 + t)
-    const r = unwrap(addRectRoom(doc, { widthMm: 2000, depthMm: 3000, anchor: s.anchor }, gen));
-    expect(analyzeGeometry(r.doc).issues).toEqual([]);
-  });
-
   it('departe de orice față: nu se lipește', () => {
     const { doc } = oneRoom();
     const s = snapRoomAnchor(doc, { widthMm: 2000, depthMm: 2000 }, { x: 9000, y: 9000 }, 100, 150);

@@ -56,55 +56,81 @@ interface RectInfo {
   xMax: number;
   yMin: number;
   yMax: number;
-  /** Nodurile pe fiecare latură a dreptunghiului. */
-  nodesOn: { n: [string, string]; e: [string, string]; s: [string, string]; w: [string, string] };
+  /** Nodurile de pe fiecare latură a dreptunghiului (colțurile + cele intermediare, dacă peretele e despărțit). */
+  nodesOn: { n: string[]; e: string[]; s: string[]; w: string[] };
   t: RectThickness;
 }
 
-/** Recunoaște o cameră dreptunghiulară aliniată cu axele (4 noduri, 4 pereți ortogonali). */
+/**
+ * Recunoaște o cameră dreptunghiulară aliniată cu axele: exact 4 colțuri; între colțuri pot exista noduri coliniare
+ * (un perete comun despărțit de joncțiuni în T). Grosimea unei laturi = a primului ei perete.
+ */
 function analyzeRect(doc: ProjectDocument, roomId: string): Result<RectInfo> {
   const room = doc.rooms[roomId];
   if (!room) return { ok: false, error: `cameră inexistentă: ${roomId}` };
-  if (room.nodeLoop.length !== 4)
-    return { ok: false, error: 'doar camerele dreptunghiulare cu 4 noduri sunt suportate' };
-  const nodes = room.nodeLoop.map((id) => doc.nodes[id]);
-  if (nodes.some((n) => !n)) return { ok: false, error: 'nod inexistent' };
-  const ns = nodes as NonNullable<(typeof nodes)[number]>[];
-  const xs = [...new Set(ns.map((n) => n.x))].sort((a, b) => a - b);
-  const ys = [...new Set(ns.map((n) => n.y))].sort((a, b) => a - b);
+  const loop = room.nodeLoop.map((id) => doc.nodes[id]);
+  if (loop.some((n) => !n)) return { ok: false, error: 'nod inexistent' };
+  const all = loop as NonNullable<(typeof loop)[number]>[];
+  // colțurile = nodurile unde direcția se schimbă
+  const m = all.length;
+  const isCorner = all.map((n, i) => {
+    const p = all[(i - 1 + m) % m]!;
+    const q = all[(i + 1) % m]!;
+    return (n.x - p.x) * (q.y - n.y) - (n.y - p.y) * (q.x - n.x) !== 0;
+  });
+  const cornerIdx = all.map((_, i) => i).filter((i) => isCorner[i]);
+  if (cornerIdx.length !== 4)
+    return { ok: false, error: 'doar camerele dreptunghiulare cu 4 colțuri sunt suportate' };
+  const corners = cornerIdx.map((i) => all[i]!);
+  const xs = [...new Set(corners.map((n) => n.x))].sort((a, b) => a - b);
+  const ys = [...new Set(corners.map((n) => n.y))].sort((a, b) => a - b);
   if (xs.length !== 2 || ys.length !== 2)
     return { ok: false, error: 'camera nu este un dreptunghi aliniat cu axele' };
   const [xMin, xMax] = xs as [number, number];
   const [yMin, yMax] = ys as [number, number];
-  const at = (x: number, y: number) => ns.find((n) => n.x === x && n.y === y)?.id;
-  const nw = at(xMin, yMin),
-    ne = at(xMax, yMin),
-    se = at(xMax, yMax),
-    sw = at(xMin, yMax);
-  if (!nw || !ne || !se || !sw)
+  // lanțul de noduri dintre doi colți consecutivi (inclusiv ei), în ordinea buclei
+  const chains: string[][] = [];
+  for (let c = 0; c < 4; c++) {
+    const from = cornerIdx[c]!;
+    const to = cornerIdx[(c + 1) % 4]!;
+    const chain: string[] = [];
+    for (let i = from; ; i = (i + 1) % m) {
+      chain.push(all[i]!.id);
+      if (i === to && chain.length > 1) break;
+      if (chain.length > m + 1) return { ok: false, error: 'buclă invalidă' };
+    }
+    chains.push(chain);
+  }
+  const side = (chain: string[]): 'n' | 'e' | 's' | 'w' | null => {
+    const a = doc.nodes[chain[0]!]!;
+    const b = doc.nodes[chain[chain.length - 1]!]!;
+    if (a.y === b.y) return a.y === yMin ? 'n' : a.y === yMax ? 's' : null;
+    if (a.x === b.x) return a.x === xMin ? 'w' : a.x === xMax ? 'e' : null;
+    return null;
+  };
+  const nodesOn: RectInfo['nodesOn'] = { n: [], e: [], s: [], w: [] };
+  for (const chain of chains) {
+    const sd = side(chain);
+    if (!sd) return { ok: false, error: 'camera nu are cele 4 colțuri ale unui dreptunghi' };
+    nodesOn[sd] = chain;
+  }
+  if (!nodesOn.n.length || !nodesOn.e.length || !nodesOn.s.length || !nodesOn.w.length)
     return { ok: false, error: 'camera nu are cele 4 colțuri ale unui dreptunghi' };
   const wallByPair = new Map(
     Object.values(doc.walls).map((w) => [pairKey(w.startNodeId, w.endNodeId), w]),
   );
-  const thick = (a: string, b: string): number | undefined =>
-    wallByPair.get(pairKey(a, b))?.thicknessMm;
-  const tn = thick(nw, ne),
-    te = thick(ne, se),
-    ts = thick(sw, se),
-    tw = thick(nw, sw);
+  const thick = (chain: string[]): number | undefined =>
+    wallByPair.get(pairKey(chain[0]!, chain[1]!))?.thicknessMm;
+  const tn = thick(nodesOn.n),
+    te = thick(nodesOn.e),
+    ts = thick(nodesOn.s),
+    tw = thick(nodesOn.w);
   if (tn === undefined || te === undefined || ts === undefined || tw === undefined) {
     return { ok: false, error: 'lipsesc pereții laturilor dreptunghiului' };
   }
   return {
     ok: true,
-    value: {
-      xMin,
-      xMax,
-      yMin,
-      yMax,
-      nodesOn: { n: [nw, ne], e: [ne, se], s: [sw, se], w: [nw, sw] },
-      t: { n: tn, e: te, s: ts, w: tw },
-    },
+    value: { xMin, xMax, yMin, yMax, nodesOn, t: { n: tn, e: te, s: ts, w: tw } },
   };
 }
 
@@ -141,7 +167,7 @@ export function resizeRectInterior(
   if (!r.ok) return r;
   const { xMin, xMax, yMin, yMax, nodesOn, t } = r.value;
   const out: Record<string, Pt> = {};
-  const set = (ids: [string, string], axis: 'x' | 'y', value: number) => {
+  const set = (ids: string[], axis: 'x' | 'y', value: number) => {
     for (const id of ids) {
       const n = doc.nodes[id]!;
       out[id] = { x: axis === 'x' ? value : n.x, y: axis === 'y' ? value : n.y };

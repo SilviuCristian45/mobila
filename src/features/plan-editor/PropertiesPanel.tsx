@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   rectInteriorSize,
   resizeRectInterior,
+  rotateRoom,
   roomsUsingWall,
   updateOpening,
   updateRoom,
@@ -316,6 +317,9 @@ function OpeningPanel({ doc, id, editable, run, select, onDelete }: Props & { id
 }
 
 function RoomPanel({ doc, geometry, id, editable, run, onDelete }: Props & { id: string }) {
+  const [rotateError, setRotateError] = useState<string | null>(null);
+  const rotate = (turns: number) =>
+    setRotateError(run('Rotește camera', (d) => rotateRoom(d, id, turns)));
   const room = doc.rooms[id];
   const interior = geometry.rooms.get(id);
   const unit = doc.settings.displayUnit;
@@ -385,6 +389,29 @@ function RoomPanel({ doc, geometry, id, editable, run, onDelete }: Props & { id:
           pereților ({formatLength(interior?.edges[0]?.lengthMm ?? 0, unit)} prima latură).
         </p>
       )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          disabled={!editable}
+          onClick={() => rotate(-1)}
+          title="Rotește camera cu 90° în sens trigonometric (Shift + R)"
+          data-testid="room-rotate-ccw"
+        >
+          ↺ Rotește 90°
+        </Button>
+        <Button
+          disabled={!editable}
+          onClick={() => rotate(1)}
+          title="Rotește camera cu 90° în sensul acelor de ceasornic (R)"
+          data-testid="room-rotate-cw"
+        >
+          ↻ Rotește 90°
+        </Button>
+      </div>
+      {rotateError ? (
+        <p role="alert" className="text-xs text-red-700" data-testid="room-rotate-error">
+          {rotateError}
+        </p>
+      ) : null}
       <Button
         variant="danger"
         disabled={!editable}

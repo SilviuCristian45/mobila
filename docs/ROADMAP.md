@@ -248,6 +248,8 @@
 
 > **Etapa 7b — UX (livrată):** lista camerelor cu arii și total, redimensionarea camerelor dreptunghiulare din mânerele laturilor. Vezi ADR-045 și [STAGE7B_REPORT](STAGE7B_REPORT.md).
 
+> **Etapa 8a — Pereți comuni și rotire (livrată):** camerele vecine împart un singur perete (despărțire în T, goluri și finisaje păstrate), fără suprapuneri; camerele se rotesc în pași de 90° (R, butoane, și în timpul plasării). Aplicația rămâne **doar pentru desktop** (decizie de produs: fără dezvoltare mobilă deocamdată). Vezi ADR-046 și [STAGE8A_REPORT](STAGE8A_REPORT.md).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**
