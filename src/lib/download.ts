@@ -30,3 +30,7 @@ export function downloadTextFile(fileName: string, text: string, mime = 'applica
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Export CSV al bugetului. */
+export const budgetFileName = (projectName: string): string =>
+  `${safeFileStem(projectName)}-buget.csv`;

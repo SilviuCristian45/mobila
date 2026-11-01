@@ -430,3 +430,6 @@ export function computeBudget(doc: ProjectDocument, geometry?: GeometryModel): B
   ];
   return { lines, perRoom, perCategory, subtotal, contingency, total, trace };
 }
+
+export * from './labels';
+export * from './ops';

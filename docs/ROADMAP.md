@@ -177,6 +177,8 @@
 
 ## Etapa 4 — Catalog și obiecte
 
+> **Stare:** livrată în cea mai mare parte prin Etapa 3b (41 de obiecte parametrice, plasare, rotire, dimensiuni numerice, duplicare, ștergere, snapshot în proiect), considerată **încheiată pentru MVP**. **Amânate:** selecție multiplă și mutare în grup (singurul criteriu de acceptare neîndeplinit), itemi definiți de utilizator (`userCatalog`), redimensionare prin mânere, snap la pereți/obiecte, detecție de coliziuni.
+
 **Conținut**
 - Catalog încorporat de **40 de obiecte parametrice** (PRODUCT_SPEC Anexa A: 20 mobilier, 8 sanitare, 3 oglinzi, 9 iluminat) — fiecare cu `defaultSize`, `sizeLimits`, `paramSpecs`, montare, elevație implicită, preț **demonstrativ** (`origin: 'demo'`), proveniență/licență `original`.
 - Rețete parametrice versionate (un număr limitat de rețete reutilizate de mai mulți itemi), cu înlocuitor pentru rețete necunoscute.
@@ -218,6 +220,8 @@
 ---
 
 ## Etapa 6 — Buget
+
+> **Etapa 6a (livrată):** tab „Buget” în editor — tabel editabil (preț, cantitate, TVA, excludere, notă, „Modificat”, „Preț demonstrativ”), linii manuale (inclusiv legate de aria podelei/pereților), totaluri pe cameră/categorie și general, rezervă, mod prețuri cu/fără TVA, moneda, urma de calcul „De unde vine cifra?” și export **CSV**. Vezi ADR-041 și [STAGE6A_REPORT](STAGE6A_REPORT.md). **Rămâne (6b):** export XLSX (cere o dependență nouă, necesită aprobare).
 
 **Conținut**
 - Tabel de buget: linii derivate (obiecte, finisaje) + manuale + manoperă (cu legare la arii).

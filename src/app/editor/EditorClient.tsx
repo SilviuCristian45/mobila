@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { BudgetPanel } from '@/features/budget/BudgetPanel';
 import { CatalogPanel } from '@/features/catalog/CatalogPanel';
 import { EditorShell } from '@/features/editor-shell/EditorShell';
 import { MaterialsPanel, type PlanSelectionInfo } from '@/features/materials/MaterialsPanel';
@@ -11,11 +12,12 @@ import { Button } from '@/ui/Button';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Alert } from '@/ui/feedback';
 
-type Mode = '2d' | '3d';
+type Mode = '2d' | '3d' | 'budget';
 type Side = 'catalog' | 'materials' | null;
 const TABS: ReadonlyArray<{ mode: Mode; label: string }> = [
   { mode: '2d', label: 'Plan 2D' },
   { mode: '3d', label: 'Vizualizare 3D' },
+  { mode: 'budget', label: 'Buget' },
 ];
 
 const toggleClass = (on: boolean) =>
@@ -129,29 +131,48 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
             </button>
           ))}
         </div>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <button
-            type="button"
-            aria-pressed={side === 'materials'}
-            onClick={() => setSide((s) => (s === 'materials' ? null : 'materials'))}
-            data-testid="materials-toggle"
-            className={toggleClass(side === 'materials')}
-          >
-            Materiale și finisaje
-          </button>
-          <button
-            type="button"
-            aria-pressed={side === 'catalog'}
-            onClick={() => setSide((s) => (s === 'catalog' ? null : 'catalog'))}
-            data-testid="catalog-toggle"
-            className={toggleClass(side === 'catalog')}
-          >
-            Catalog de obiecte
-          </button>
-        </div>
+        {mode !== 'budget' ? (
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-pressed={side === 'materials'}
+              onClick={() => setSide((s) => (s === 'materials' ? null : 'materials'))}
+              data-testid="materials-toggle"
+              className={toggleClass(side === 'materials')}
+            >
+              Materiale și finisaje
+            </button>
+            <button
+              type="button"
+              aria-pressed={side === 'catalog'}
+              onClick={() => setSide((s) => (s === 'catalog' ? null : 'catalog'))}
+              data-testid="catalog-toggle"
+              className={toggleClass(side === 'catalog')}
+            >
+              Catalog de obiecte
+            </button>
+          </div>
+        ) : null}
       </div>
       <div id="workspace-panel" role="tabpanel" aria-labelledby={`tab-${mode}`}>
-        {mode === '2d' ? (
+        {mode === 'budget' ? (
+          // bugetul eșuează independent de plan / 3D: tab-urile rămân, iar zona se poate reîncerca
+          <ErrorBoundary
+            label="bugetul"
+            fallback={({ reset }) => (
+              <Alert
+                tone="error"
+                title="Bugetul a întâmpinat o eroare"
+                testId="budget-render-error"
+                actions={<Button onClick={reset}>Încearcă din nou</Button>}
+              >
+                Planul și proiectul nu sunt afectate; ce era salvat a rămas salvat.
+              </Alert>
+            )}
+          >
+            <BudgetPanel session={session} state={state} />
+          </ErrorBoundary>
+        ) : mode === '2d' ? (
           <PlanEditor
             session={session}
             state={state}
