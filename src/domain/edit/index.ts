@@ -277,14 +277,67 @@ export function updateRoom(
 }
 
 /**
- * Șterge camera (pereții rămân). Finisajele ei dispar. Pereții și nodurile rămân: o cameră ștearsă nu desface planul.
+ * Pereții buclei unei camere pe care nu-i folosește nicio altă cameră: acești pereți ar rămâne „orfani” după ștergerea
+ * camerei. Pereții comuni cu alte camere nu sunt incluși (ei rămân vecinilor).
  */
-export function removeRoom(doc: ProjectDocument, roomId: string): Result<ProjectDocument> {
-  if (!doc.rooms[roomId]) return { ok: false, error: 'Camera nu mai există.' };
-  const impact = roomDeletionImpact(doc, roomId);
+export function roomOwnWalls(doc: ProjectDocument, roomId: string): string[] {
+  const room = doc.rooms[roomId];
+  if (!room) return [];
+  const used = new Set<string>();
+  for (const other of Object.values(doc.rooms)) {
+    if (other.id === roomId) continue;
+    const l = other.nodeLoop;
+    l.forEach((n, i) => used.add(pairKey(n, l[(i + 1) % l.length]!)));
+  }
+  const l = room.nodeLoop;
+  const own = new Set<string>();
+  l.forEach((n, i) => {
+    const key = pairKey(n, l[(i + 1) % l.length]!);
+    if (used.has(key)) return;
+    const wall = Object.values(doc.walls).find((w) => pairKey(w.startNodeId, w.endNodeId) === key);
+    if (wall) own.add(wall.id);
+  });
+  return [...own];
+}
+
+/**
+ * Șterge camera. Finisajele ei dispar. Implicit pereții și nodurile rămân (o cameră ștearsă nu desface planul); cu
+ * `withWalls` se șterg și pereții pe care nu-i folosește nicio altă cameră (cu golurile și finisajele lor, iar nodurile
+ * rămase fără pereți dispar), iar pereții comuni cu vecinii rămân, fără finisajele feței dinspre camera ștearsă.
+ */
+export function removeRoom(
+  doc: ProjectDocument,
+  roomId: string,
+  options: { withWalls?: boolean } = {},
+): Result<ProjectDocument> {
+  const room = doc.rooms[roomId];
+  if (!room) return { ok: false, error: 'Camera nu mai există.' };
+  if (!options.withWalls) {
+    const impact = roomDeletionImpact(doc, roomId);
+    if (impact.blockers.length > 0) return { ok: false, error: impact.blockers.join(' ') };
+    const next = cloneDocument(doc);
+    dropDependents(next, impact, new Set());
+    return { ok: true, value: next };
+  }
+  const walls = new Set(roomOwnWalls(doc, roomId));
+  const impact = impactOf(doc, walls, new Set([roomId]));
   if (impact.blockers.length > 0) return { ok: false, error: impact.blockers.join(' ') };
+  // fețele pereților comuni dinspre camera ștearsă nu mai dau în nicio cameră: finisajele lor dispar
+  const faces = (analyzeGeometry(doc).rooms.get(roomId)?.edges ?? []).filter(
+    (e) => !walls.has(e.wallId),
+  );
   const next = cloneDocument(doc);
-  dropDependents(next, impact, new Set());
+  for (const a of Object.values(next.finishAssignments)) {
+    if (
+      a.target.kind === 'wallSide' &&
+      faces.some(
+        (f) =>
+          a.target.kind === 'wallSide' && f.wallId === a.target.wallId && f.side === a.target.side,
+      )
+    )
+      delete next.finishAssignments[a.id];
+  }
+  dropDependents(next, impact, walls);
   return { ok: true, value: next };
 }
 

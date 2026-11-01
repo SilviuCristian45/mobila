@@ -252,6 +252,8 @@
 
 > **Etapa 8b (livrată):** camerele cu pereți comuni se pot muta întregi (nodurile comune merg cu ele, vecinii se deformează). Vezi ADR-047 și [STAGE8B_REPORT](STAGE8B_REPORT.md).
 
+> **Etapa 8c (livrată):** ștergerea unei camere poate șterge și pereții ei proprii (cei comuni cu vecinii rămân); opțiunea „Doar camera” păstrează comportamentul vechi. Vezi ADR-048 și [STAGE8C_REPORT](STAGE8C_REPORT.md).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**

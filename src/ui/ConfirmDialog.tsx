@@ -11,6 +11,8 @@ export interface ConfirmDialogProps {
   confirmVariant?: ButtonVariant;
   /** Întoarce un mesaj de eroare (dialogul rămâne deschis) sau `null` la succes. */
   onConfirm: () => Promise<string | null>;
+  /** Variantă mai blândă (ex. „Doar camera”), cu aceeași semnificație a rezultatului ca `onConfirm`. */
+  secondary?: { label: string; onConfirm: () => Promise<string | null> };
   onClose: () => void;
 }
 
@@ -20,15 +22,16 @@ export function ConfirmDialog({
   confirmLabel,
   confirmVariant = 'danger',
   onConfirm,
+  secondary,
   onClose,
 }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function confirm() {
+  async function confirm(action: () => Promise<string | null> = onConfirm) {
     setBusy(true);
     setError(null);
-    const failure = await onConfirm();
+    const failure = await action();
     setBusy(false);
     if (failure) setError(failure);
     else onClose();
@@ -45,6 +48,16 @@ export function ConfirmDialog({
         <Button variant="ghost" onClick={onClose} disabled={busy} data-autofocus>
           Anulează
         </Button>
+        {secondary ? (
+          <Button
+            variant="secondary"
+            onClick={() => void confirm(secondary.onConfirm)}
+            disabled={busy}
+            data-testid="confirm-secondary"
+          >
+            {secondary.label}
+          </Button>
+        ) : null}
         <Button variant={confirmVariant} onClick={() => void confirm()} disabled={busy}>
           {busy ? 'Se procesează…' : confirmLabel}
         </Button>

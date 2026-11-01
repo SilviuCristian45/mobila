@@ -10,7 +10,9 @@ import {
   createEmptyProject,
   moveRoom,
   rectInteriorSize,
+  removeRoom,
   resizeRoomSide,
+  roomOwnWalls,
   rotateRoom,
   roomsUsingWall,
   snapRoomAnchor,
@@ -314,5 +316,75 @@ describe('rotateRoom', () => {
     const { doc, a } = withA();
     expect(rotateRoom(doc, a, 0.5).ok).toBe(false);
     expect(rotateRoom(doc, 'lipsa', 1).ok).toBe(false);
+  });
+});
+
+describe('removeRoom cu pereți', () => {
+  it('camera singură: se șterg camera, cei 4 pereți și toate nodurile; fără pereți orfani', () => {
+    const { doc, a } = withA();
+    expect(roomOwnWalls(doc, a)).toHaveLength(4);
+    const r = ok(removeRoom(doc, a, { withWalls: true }));
+    expect(Object.keys(r.rooms)).toHaveLength(0);
+    expect(Object.keys(r.walls)).toHaveLength(0);
+    expect(Object.keys(r.nodes)).toHaveLength(0);
+  });
+
+  it('vecine cu perete comun: se șterg doar pereții proprii ai camerei; peretele comun și camera vecină rămân valide', () => {
+    const { doc, a } = withA();
+    const r = ok(
+      addRectRoomShared(doc, { widthMm: 3000, depthMm: 3000, anchor: { x: EAST, y: 0 } }, gen),
+    );
+    const own = roomOwnWalls(r.doc, r.roomId);
+    expect(own).toHaveLength(3); // al patrulea (cel vestic) e comun cu A
+    const gone = ok(removeRoom(r.doc, r.roomId, { withWalls: true }));
+    expect(gone.rooms[r.roomId]).toBeUndefined();
+    expect(Object.keys(gone.walls)).toHaveLength(Object.keys(r.doc.walls).length - 3);
+    for (const w of own) expect(gone.walls[w]).toBeUndefined();
+    const geo = analyzeGeometry(gone);
+    expect(geo.issues).toEqual([]);
+    expect(geo.rooms.get(a)!.areaMm2).toBe(4000 * 3000);
+    // fără `withWalls`, pereții rămân (comportamentul de până acum)
+    const keep = ok(removeRoom(r.doc, r.roomId));
+    expect(Object.keys(keep.walls)).toHaveLength(Object.keys(r.doc.walls).length);
+  });
+
+  it('golurile de pe pereții șterși dispar odată cu ei; golul de pe peretele comun rămâne', () => {
+    const { doc, a } = withA();
+    const r = ok(
+      addRectRoomShared(doc, { widthMm: 3000, depthMm: 3000, anchor: { x: EAST, y: 0 } }, gen),
+    );
+    const own = roomOwnWalls(r.doc, r.roomId)[0]!;
+    const shared = Object.values(r.doc.walls).find(
+      (w) => roomsUsingWall(r.doc, w.id).length === 2,
+    )!;
+    const d1 = ok(addOpening(r.doc, own, 'window', gen));
+    const d2 = ok(addOpening(d1.doc, shared.id, 'door', gen));
+    const gone = ok(removeRoom(d2.doc, r.roomId, { withWalls: true }));
+    expect(gone.openings[d1.openingId]).toBeUndefined();
+    expect(gone.openings[d2.openingId]).toBeDefined();
+    void a;
+  });
+
+  it('finisajul feței peretelui comun dinspre camera ștearsă dispare; cel dinspre vecină rămâne', () => {
+    const { doc, a } = withA();
+    const r = ok(
+      addRectRoomShared(doc, { widthMm: 3000, depthMm: 3000, anchor: { x: EAST, y: 0 } }, gen),
+    );
+    const shared = Object.values(r.doc.walls).find(
+      (w) => roomsUsingWall(r.doc, w.id).length === 2,
+    )!;
+    const paint = getBuiltinMaterial('mat.paint.sage')!;
+    const left = ok(
+      applyFinish(r.doc, paint, { kind: 'wallSide', wallId: shared.id, side: 'left' }, gen),
+    );
+    const both = ok(
+      applyFinish(left.doc, paint, { kind: 'wallSide', wallId: shared.id, side: 'right' }, gen),
+    );
+    const gone = ok(removeRoom(both.doc, r.roomId, { withWalls: true }));
+    const remaining = Object.values(gone.finishAssignments).filter(
+      (f) => f.target.kind === 'wallSide',
+    );
+    expect(remaining).toHaveLength(1);
+    void a;
   });
 });

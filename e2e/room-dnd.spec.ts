@@ -196,4 +196,54 @@ test.describe('camere prin drag & drop (build static)', () => {
     await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText('12 m²');
     expect(errors).toEqual([]);
   });
+
+  test('ștergerea unei camere cu perete comun: se șterg camera și pereții ei proprii, vecina rămâne intactă și validă; „Doar camera” lasă pereții; undo', async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    await createProject(page, 'Ștergere');
+    const box = (await page.getByTestId('plan-box').boundingBox())!;
+    const dragTo = async (preset: string, x: number, y: number) => {
+      const chip = (await page.getByTestId(`room-preset-${preset}`).boundingBox())!;
+      await page.mouse.move(chip.x + chip.width / 2, chip.y + chip.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(x, y, { steps: 10 });
+      await page.mouse.up();
+    };
+    await dragTo('living', box.x + box.width * 0.3, box.y + box.height * 0.5);
+    const living = (await page.locator('polygon').first().boundingBox())!;
+    const zoom = Number(await page.getByTestId('plan-svg').getAttribute('data-zoom'));
+    await dragTo(
+      'kitchen',
+      living.x + living.width + (1500 + 50 + 60) * zoom,
+      living.y + (1500 + 40) * zoom,
+    );
+    const items = page.locator('[data-testid^="room-list-item-"]');
+    await expect(items).toHaveCount(2);
+    const livingArea = await page.locator('[data-testid^="room-list-area-"]').first().innerText();
+
+    // bucătăria e selectată: Delete → dialog cu varianta implicită (cameră + pereții ei proprii)
+    await page.getByTestId('plan-svg').focus();
+    await page.keyboard.press('Delete');
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('pereți ai ei');
+    await dialog.getByRole('button', { name: 'Șterge camera și pereții' }).click();
+    await expect(items).toHaveCount(1);
+    await expect(page.getByTestId('plan-invalid')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="room-list-area-"]')).toHaveText(livingArea);
+    const wallsAfter = await page.locator('polygon[data-testid^="wall-"]').count();
+
+    // undo readuce camera și pereții; apoi „Doar camera” lasă pereții
+    await page.getByTestId('undo').click();
+    await expect(items).toHaveCount(2);
+    const wallsFull = await page.locator('polygon[data-testid^="wall-"]').count();
+    expect(wallsFull).toBeGreaterThan(wallsAfter);
+    await items.nth(1).click(); // bucătăria (a doua în listă)
+    await page.getByTestId('plan-svg').focus();
+    await page.keyboard.press('Delete');
+    await page.getByRole('dialog').getByTestId('confirm-secondary').click();
+    await expect(items).toHaveCount(1);
+    expect(await page.locator('polygon[data-testid^="wall-"]').count()).toBe(wallsFull);
+    expect(errors).toEqual([]);
+  });
 });

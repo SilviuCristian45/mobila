@@ -467,16 +467,37 @@ describe('Plan 2D — adăugare și ștergere de pereți și camere', () => {
     expect(session.getState().historySize).toBe(0);
   });
 
-  it('ștergerea camerei lasă pereții', async () => {
+  it('ștergerea camerei: „Doar camera” lasă pereții, iar varianta implicită șterge și pereții ei proprii (cu un singur pas de undo)', async () => {
     const e = uiEnv();
     const { session } = await openStudio(e);
+    const wallsBefore = Object.keys(docOf(session).walls).length;
     click('room-rB');
     await userEvent.click(screen.getByRole('button', { name: 'Șterge camera' }));
+    // doar camera: pereții rămân
     await userEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Șterge camera' }),
+      within(await screen.findByRole('dialog')).getByTestId('confirm-secondary'),
     );
     expect(docOf(session).rooms.rB).toBeUndefined();
-    expect(Object.keys(docOf(session).walls)).toHaveLength(7);
+    expect(Object.keys(docOf(session).walls)).toHaveLength(wallsBefore);
+    act(() => {
+      session.undo();
+    });
+    expect(docOf(session).rooms.rB).toBeDefined();
+
+    // camera și pereții ei proprii
+    await screen.findByTestId('room-rB');
+    click('room-rB');
+    await userEvent.click(screen.getByRole('button', { name: 'Șterge camera' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toMatch(/pereți ai ei|perete al ei/);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Șterge camera și pereții' }));
+    expect(docOf(session).rooms.rB).toBeUndefined();
+    expect(Object.keys(docOf(session).walls).length).toBeLessThan(wallsBefore);
+    expect(session.getState().undoLabel).toBe('Șterge camera și pereții');
+    act(() => {
+      session.undo();
+    });
+    expect(Object.keys(docOf(session).walls)).toHaveLength(wallsBefore);
   });
 });
 

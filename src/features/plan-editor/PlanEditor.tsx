@@ -25,6 +25,7 @@ import {
   duplicateObjects,
   removeOpening,
   removeRoom,
+  roomOwnWalls,
   removeWall,
   rectInteriorSize,
   resizeRoomSide,
@@ -123,7 +124,14 @@ type Gesture =
       active: boolean;
     };
 
-type Confirm = { title: string; description: string; label: string; action: () => string | null };
+type Confirm = {
+  title: string;
+  description: string;
+  label: string;
+  action: () => string | null;
+  /** Variantă mai blândă a ștergerii (ex. doar camera, pereții rămân). */
+  secondary?: { label: string; action: () => string | null };
+};
 
 const defaultGenId = (): string => crypto.randomUUID().slice(0, 8);
 
@@ -628,15 +636,35 @@ export function PlanEditor({
       return;
     }
     const impact = roomDeletionImpact(doc, id);
+    const own = roomOwnWalls(doc, id);
+    const finishes =
+      impact.assignmentIds.length > 0
+        ? ` Se șterg și ${impact.assignmentIds.length} finisaje atribuite camerei.`
+        : '';
+    const finish = (withWalls: boolean) => () => {
+      const err = run(withWalls ? 'Șterge camera și pereții' : 'Șterge cameră', (d) =>
+        removeRoom(d, id, { withWalls }),
+      );
+      if (!err) setSelection(null);
+      return err;
+    };
+    if (own.length === 0) {
+      // toți pereții camerei sunt comuni cu alte camere: rămân vecinilor
+      setConfirm({
+        title: 'Ștergi camera?',
+        description: `Pereții rămân în plan (sunt folosiți de camerele vecine).${finishes} Poți anula cu Ctrl+Z.`,
+        label: 'Șterge camera',
+        action: finish(false),
+      });
+      return;
+    }
+    const shared = (doc.rooms[id]?.nodeLoop.length ?? 0) - own.length;
     setConfirm({
       title: 'Ștergi camera?',
-      description: `Pereții rămân în plan.${impact.assignmentIds.length > 0 ? ` Se șterg și ${impact.assignmentIds.length} finisaje atribuite camerei.` : ''} Poți anula cu Ctrl+Z.`,
-      label: 'Șterge camera',
-      action: () => {
-        const err = run('Șterge cameră', (d) => removeRoom(d, id));
-        if (!err) setSelection(null);
-        return err;
-      },
+      description: `Se șterg camera și ${own.length} ${own.length === 1 ? 'perete al ei' : 'pereți ai ei'} (cu golurile lor)${shared > 0 ? `; ${shared} ${shared === 1 ? 'perete comun cu o cameră vecină rămâne' : 'pereți comuni cu camere vecine rămân'}` : ''}.${finishes} Poți alege să ștergi doar camera. Poți anula cu Ctrl+Z.`,
+      label: 'Șterge camera și pereții',
+      action: finish(true),
+      secondary: { label: 'Doar camera', action: finish(false) },
     });
   }, [
     selection,
@@ -1399,6 +1427,14 @@ export function PlanEditor({
           description={confirm.description}
           confirmLabel={confirm.label}
           onConfirm={async () => confirm.action()}
+          secondary={
+            confirm.secondary
+              ? {
+                  label: confirm.secondary.label,
+                  onConfirm: async () => confirm.secondary!.action(),
+                }
+              : undefined
+          }
           onClose={() => setConfirm(null)}
         />
       ) : null}
