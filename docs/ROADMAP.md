@@ -254,6 +254,8 @@
 
 > **Etapa 8c (livrată):** ștergerea unei camere poate șterge și pereții ei proprii (cei comuni cu vecinii rămân); opțiunea „Doar camera” păstrează comportamentul vechi. Vezi ADR-048 și [STAGE8C_REPORT](STAGE8C_REPORT.md).
 
+> **Etapa 8 — pregătire de lansare (parțial):** pagină „Despre / Licențe / Confidențialitate”, `THIRD_PARTY_NOTICES.md`, `ATTRIBUTIONS.md` și memento de copie de siguranță sunt livrate (ADR-055, ADR-056). Rămân deciziile proprietarului și verificările din [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md).
+
 > **Etapa 9a (livrată):** camere în formă de L din paletă (cu pereți comuni, rotire în 4 orientări) și mânere pe fiecare latură pentru orice cameră cu laturi paralele cu axele. Vezi ADR-049 și [STAGE9A_REPORT](STAGE9A_REPORT.md).
 
 > **Etapa 9b (livrată):** mobilierul rămâne în camera lui când conturul camerei se schimbă (perete comun mutat, latură, redimensionare, nod tras). Vezi ADR-050 și [STAGE9B_REPORT](STAGE9B_REPORT.md).

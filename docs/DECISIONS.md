@@ -414,3 +414,9 @@ Acceptate: interfață în română; RON implicit; TVA configurabil cu 21% impli
 - **Stare:** per proiect, în `localStorage` (`rc:backup:<id>`: `lastExportAt`, `snoozedUntil`, `never`), tolerant la lipsa stocării; nu intră în documentul proiectului, în istoric sau în export. Orice export (butonul din antet, banner-ele, mementoul însuși) notează data (`exportBackupFile`).
 - **Afișare:** bară informativă, nemodală, în editor, sub bannerele de stare; ascunsă în modul doar-citire. Citită cu `useSyncExternalStore` (ora rotunjită la oră, ca să nu se schimbe la fiecare citire).
 - **Limite asumate:** nu apare în lista de proiecte; starea nu se sincronizează între domenii (importul ei nu face parte din fișierul exportat); la un proiect importat, perioada se numără de la crearea lui în fișier.
+
+### ADR-056 — Pagina „Despre / Licențe / Confidențialitate” și notificările terțe (ROADMAP Etapa 8)
+**Stare:** Acceptat (implementat și testat)
+- **Ce:** pagină statică `/despre/` (componentă de server, fără stocare și fără cereri externe), cu trei secțiuni: despre aplicație (inclusiv avertismentul că estimările sunt orientative), confidențialitate (date doar local, `localStorage` pentru preferințe, fără cookie-uri/analitice/terți, copii de siguranță și mutarea între domenii) și licențe. Legată din subsolul listei de proiecte.
+- **Sursa listei de licențe:** `scripts/license-check.mjs --json` generează `src/lib/third-party-licenses.json` (doar pachetele livrate, 68 la data scrierii), iar `THIRD_PARTY_NOTICES.md` împarte arborele de producție în „livrate” și „doar de build” (`BUILD_ONLY`, listă conservatoare). Ambele se regenerează cu `pnpm license:notices` la schimbarea dependențelor.
+- **Limite asumate:** textul de confidențialitate descrie comportamentul aplicației, nu e consultanță juridică; nu acoperă jurnalele gazdei (neales încă). Licența codului propriu, găzduirea și domeniul rămân decizii ale proprietarului (`docs/RELEASE_CHECKLIST.md`).

@@ -1,5 +1,5 @@
 // Verificarea licențelor dependențelor (poartă CI). Utilizare:
-//   node scripts/license-check.mjs [--start <dir>] [--policy <fișier>] [--production] [--notices <fișier>] [--from-json <fișier>]
+//   node scripts/license-check.mjs [--start <dir>] [--policy <fișier>] [--production] [--notices <fișier>] [--json <fișier>] [--from-json <fișier>]
 // Cod de ieșire: 0 = conform politicii, 1 = încălcări, 2 = eroare de rulare.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -92,23 +92,66 @@ function scan(start, production) {
   return flattenPnpmLicenses(JSON.parse(r.stdout));
 }
 
+/**
+ * Pachete din arborele de producție care NU ajung în aplicația livrată în browser: tipuri, binare native de build
+ * (`sharp`, SWC) și unelte de test care apar ca dependențe opționale ale lui Next. Lista e o estimare conservatoare
+ * (excludem doar ce știm sigur că nu e livrat); orice alt pachet se tratează ca livrat.
+ */
+export const BUILD_ONLY = [
+  /^@types\//,
+  /^@img\//,
+  /^@next\/swc-/,
+  /^@playwright\//,
+  /^playwright(-core)?$/,
+  /^sharp$/,
+  // date și unelte de build ale lui Next (browserslist, PostCSS, utilitare Node)
+  /^(caniuse-lite|baseline-browser-mapping|detect-libc|isexe|which|semver|source-map-js|picocolors|postcss)$/,
+];
+const isBuildOnly = (key) => BUILD_ONLY.some((re) => re.test(nameOf(key)));
+const licenseText = (i) => (Array.isArray(i.licenses) ? i.licenses.join(' AND ') : i.licenses);
+
+/** Împarte pachetele în „livrate” și „doar de build”, fiecare sortat după nume. */
+export function splitShipped(packages) {
+  const entries = Object.entries(packages).sort(([a], [b]) => a.localeCompare(b));
+  return {
+    shipped: entries.filter(([key]) => !isBuildOnly(key)),
+    buildOnly: entries.filter(([key]) => isBuildOnly(key)),
+  };
+}
+
 function writeNotices(file, packages) {
-  const rows = Object.entries(packages)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(
-      ([key, i]) =>
-        `- ${key} — ${Array.isArray(i.licenses) ? i.licenses.join(' AND ') : i.licenses}${i.repository ? ` — ${i.repository}` : ''}`,
-    );
+  const { shipped, buildOnly } = splitShipped(packages);
+  const row = ([key, i]) =>
+    `- ${key} — ${licenseText(i)}${i.repository ? ` — ${i.repository}` : ''}`;
   const body = [
-    '# Notificări terțe (generat automat, doar dependențe de producție)',
+    '# Notificări terțe (generat automat)',
     '',
-    'Generat de `pnpm license:notices`. Conține lista pachetelor și a licențelor; textele integrale ale licențelor',
-    'și fișierele NOTICE (Apache-2.0) se adaugă înaintea lansării publice (Etapa 8).',
+    'Generat de `pnpm license:notices`. Lista pachetelor din arborele de PRODUCȚIE și a licențelor lor. Textele integrale ale',
+    'licențelor și fișierele NOTICE (Apache-2.0) se află în pachetele respective (`node_modules`) și se adaugă la livrare.',
     '',
-    ...rows,
+    `## Incluse în aplicația livrată în browser (${shipped.length})`,
+    '',
+    ...shipped.map(row),
+    '',
+    `## Prezente în arborele de producție, dar neincluse în aplicația livrată — unelte de build (${buildOnly.length})`,
+    '',
+    'Tipuri, binare native de build (de exemplu `sharp`, SWC) și unelte de test, trase ca dependențe opționale ale lui Next.',
+    'Nu ajung în fișierele servite utilizatorilor; licențele lor (inclusiv cele cu excepții de politică) se aplică doar mediului de build.',
+    '',
+    ...buildOnly.map(row),
     '',
   ].join('\n');
   writeFileSync(file, body, 'utf8');
+}
+
+/** JSON pentru pagina „Despre / Licențe”: doar pachetele livrate (nume, versiune, licență). */
+function writeShippedJson(file, packages) {
+  const list = splitShipped(packages).shipped.map(([key, i]) => ({
+    name: nameOf(key),
+    version: key.slice(key.lastIndexOf('@') + 1),
+    license: licenseText(i),
+  }));
+  writeFileSync(file, `${JSON.stringify(list, null, 2)}\n`, 'utf8');
 }
 
 function main(argv) {
@@ -126,8 +169,14 @@ function main(argv) {
   const packages = load(production);
   const { violations, usedExceptions, checked } = evaluatePackages(packages, policy);
   const notices = arg('--notices');
+  const json = arg('--json');
+  const prodPackages = json || notices ? load(true) : null;
+  if (json) {
+    writeShippedJson(json, prodPackages);
+    console.log(`Scris ${json}`);
+  }
   if (notices) {
-    writeNotices(notices, load(true));
+    writeNotices(notices, prodPackages);
     console.log(`Scris ${notices}`);
   }
   console.log(`license:check — ${checked} pachete verificate, ${violations.length} încălcări.`);

@@ -17,7 +17,7 @@
     "format:check": "prettier --check .",
     "depcruise": "depcruise src --config .dependency-cruiser.cjs",
     "license:check": "node scripts/license-check.mjs",
-    "license:notices": "node scripts/license-check.mjs --notices THIRD_PARTY_NOTICES.md",
+    "license:notices": "node scripts/license-check.mjs --notices THIRD_PARTY_NOTICES.md --json src/lib/third-party-licenses.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",

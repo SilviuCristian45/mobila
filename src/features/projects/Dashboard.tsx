@@ -13,7 +13,7 @@ import { useProjectList } from '@/lib/project-runtime/hooks';
 import { useRuntimeState } from '@/lib/project-runtime/ProjectProvider';
 import type { ProjectRuntime } from '@/lib/project-runtime/browser-runtime';
 import type { ProjectMeta } from '@/state/types';
-import { editorHref } from '@/lib/asset';
+import { asset, editorHref } from '@/lib/asset';
 import { downloadTextFile, rawBackupFileName } from '@/lib/download';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
@@ -370,6 +370,11 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
       ) : null}
 
       <StorageFooter runtime={runtime} />
+      <p className="mt-4 text-xs text-stone-500">
+        <a className="underline" href={asset('/despre/')} data-testid="about-link">
+          Despre, licențe și confidențialitate
+        </a>
+      </p>
 
       {dialog?.kind === 'create' ? (
         <NameDialog
