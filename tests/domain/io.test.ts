@@ -12,6 +12,7 @@ import {
   utf8Length,
 } from '@/domain/io';
 import { checkIntegrity } from '@/domain/integrity';
+import { MAX_RECORD_ENTRIES } from '@/domain/schema';
 import { buildScene, geometrySignature } from '@/domain/scene';
 import { gridProject } from '../reference/grid';
 import { lShapeProject, studioProject } from '../reference/projects';
@@ -473,5 +474,21 @@ describe('migrări în lanț', () => {
     expect(migrateToLatest({}, 0, 3, mig)).toMatchObject({ a: 1, b: 2, c: 3, schemaVersion: 3 });
     expect(() => migrateToLatest({}, 0, 3, { 0: mig[0] })).toThrow(/v1→v2/);
     expect(migrateToLatest({ z: 1 }, 1, 1, mig)).toEqual({ z: 1 });
+  });
+});
+
+describe('plafoane realiste la import (F-10)', () => {
+  it('limita de mărime e de câțiva MB (nu zeci), iar dicționarele fără chei-ID au plafon', () => {
+    expect(MAX_IMPORT_BYTES).toBeLessThanOrEqual(16 * 1024 * 1024);
+    const doc = studioProject();
+    const overrides: Record<string, { note: string }> = {};
+    for (let i = 0; i <= MAX_RECORD_ENTRIES; i++) overrides[`object:o${i}`] = { note: 'x' };
+    const huge = { ...doc, budget: { ...doc.budget, overrides } };
+    const file = JSON.parse(exportProject(doc, META)) as { project: unknown };
+    file.project = huge;
+    const text = JSON.stringify(file);
+    const r = importProject(text);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.stage).toBe('schema');
   });
 });

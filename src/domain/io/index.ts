@@ -8,7 +8,8 @@ import {
   type ProjectDocument,
 } from '../schema';
 
-export const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
+/** Un proiect real are zeci de KB (studioul de referință ≈ 10 KB); peste câțiva MB e un fișier greșit sau rău intenționat. */
+export const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 export const FORMAT_ID = 'roomcraft';
 
 /** Lungimea UTF-8 în octeți, fără `TextEncoder`. */

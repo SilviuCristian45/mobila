@@ -7,6 +7,8 @@ export const CURRENT_VERSION = 1;
 /** Limite anti-abuz pentru fișierele importate (nu limite de produs). */
 export const MAX_ENTITIES_PER_TABLE = 10_000;
 export const MAX_NAME_LENGTH = 200;
+/** Plafon pentru dicționarele fără chei-ID (catalog, finisaje, suprascrieri de buget, parametri): mult peste orice proiect real. */
+export const MAX_RECORD_ENTRIES = 2_000;
 
 const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -31,6 +33,12 @@ const table = <T extends z.ZodType>(value: T) =>
   z
     .record(IdSchema, value)
     .refine((r) => Object.keys(r).length <= MAX_ENTITIES_PER_TABLE, 'prea multe intrări');
+
+/** Dicționar cu chei text și limită de mărime (cele fără chei-ID nu trec prin `table`). */
+const limitedRecord = <K extends z.ZodType<string>, T extends z.ZodType>(key: K, value: T) =>
+  z
+    .record(key, value)
+    .refine((r) => Object.keys(r).length <= MAX_RECORD_ENTRIES, 'prea multe intrări');
 
 const LocalizedTextSchema = z.strictObject({ ro: NameSchema, en: NameSchema.optional() });
 const ProvenanceSchema = z.strictObject({
@@ -75,7 +83,7 @@ export const CatalogItemSchema = z.strictObject({
   mounting: z.enum(['floor', 'wall', 'ceiling']),
   defaultElevationMm: MmSchema,
   recipe: z.strictObject({ id: z.string().min(1).max(100), version: z.number().int().positive() }),
-  paramSpecs: z.record(z.string().max(100), ParamSpecSchema),
+  paramSpecs: limitedRecord(z.string().max(100), ParamSpecSchema),
   defaultColorHex: HexSchema.optional(),
   reference: z
     .strictObject({
@@ -342,7 +350,7 @@ export const ProjectDocumentSchema = z.strictObject({
       rotationDeg: z.number().min(0).lt(360),
       mirrored: z.boolean().optional(),
       size: z.strictObject({ widthMm: PosMmSchema, depthMm: PosMmSchema, heightMm: PosMmSchema }),
-      params: z.record(
+      params: limitedRecord(
         z.string().max(100),
         z.union([z.number(), z.string().max(200), z.boolean()]),
       ),
@@ -364,11 +372,11 @@ export const ProjectDocumentSchema = z.strictObject({
     }),
   ),
   catalogSnapshot: z.strictObject({
-    items: z.record(z.string().min(1).max(100), CatalogItemSchema),
-    finishes: z.record(z.string().min(1).max(100), FinishSchema),
+    items: limitedRecord(z.string().min(1).max(100), CatalogItemSchema),
+    finishes: limitedRecord(z.string().min(1).max(100), FinishSchema),
   }),
   budget: z.strictObject({
-    overrides: z.record(z.string().min(1).max(120), LineOverrideSchema),
+    overrides: limitedRecord(z.string().min(1).max(120), LineOverrideSchema),
     manualLines: table(ManualLineSchema),
   }),
 });

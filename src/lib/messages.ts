@@ -87,3 +87,82 @@ export function describeCommitFailure(f: { message: string; errors?: string[] })
   }
   return known.size > 0 ? `Modificare respinsă. ${[...known].join(' ')}` : f.message;
 }
+
+/** Câte probleme se enumeră în mesajul unui import respins (restul se rezumă). */
+const MAX_LISTED_ISSUES = 4;
+
+/**
+ * Mesajul pentru un import respins, pe etapa la care a eșuat: ce nu e în regulă, în română, și ce poate face utilizatorul.
+ * Detaliile tehnice (primele probleme) se listează separat; nu se afișează niciodată o excepție brută.
+ */
+export function describeImportFailure(
+  stage: string,
+  errors: readonly string[],
+  maxMb: number,
+): { title: string; detail: string; issues: string[] } {
+  const issues = errors.slice(0, MAX_LISTED_ISSUES);
+  const more = errors.length - issues.length;
+  if (more > 0) issues.push(`… și încă ${more}.`);
+  switch (stage) {
+    case 'size':
+      return {
+        title: 'Fișierul e prea mare',
+        detail: `Un proiect RoomCraft are de obicei zeci de KB; limita pentru import este ${maxMb} MB. Verifică dacă ai ales fișierul potrivit.`,
+        issues: [],
+      };
+    case 'parse':
+      return {
+        title: 'Fișierul nu e JSON valid',
+        detail:
+          'Pare stricat sau incomplet (de exemplu o descărcare întreruptă) ori nu e un fișier RoomCraft. Alege un fișier .roomcraft.json exportat din aplicație.',
+        issues,
+      };
+    case 'envelope':
+      return {
+        title: 'Nu e un fișier RoomCraft',
+        detail:
+          'Importul acceptă fișierele .roomcraft.json exportate din aplicație („Exportă copie”). Un backup brut (…-backup-raw.json) nu se poate importa: e doar o copie de păstrat până actualizezi aplicația.',
+        issues,
+      };
+    case 'version':
+      return {
+        title: 'Fișierul a fost creat cu o versiune mai nouă a aplicației',
+        detail:
+          'Această versiune nu îl poate citi fără riscul de a pierde date. Actualizează aplicația (reîncarcă pagina; dacă problema rămâne, șterge memoria cache a site-ului) și încearcă din nou.',
+        issues,
+      };
+    case 'migrate':
+      return {
+        title: 'Fișierul nu poate fi convertit la formatul curent',
+        detail:
+          'A fost creat cu o versiune mai veche și conversia a eșuat. Proiectele existente nu au fost atinse.',
+        issues,
+      };
+    case 'schema':
+      return {
+        title: 'Fișierul conține date nevalide',
+        detail:
+          'Structura proiectului nu respectă formatul așteptat (fișier modificat manual sau stricat). Proiectele existente nu au fost atinse.',
+        issues,
+      };
+    case 'integrity':
+      return {
+        title: 'Planul din fișier are probleme de coerență',
+        detail:
+          'De exemplu un perete care se intersectează cu altul sau un obiect care trimite la un element inexistent. Proiectele existente nu au fost atinse.',
+        issues,
+      };
+    case 'storage':
+      return {
+        title: 'Nu am putut salva proiectul importat',
+        detail: errors[0] ?? 'Stocarea locală a browserului nu a răspuns.',
+        issues: [],
+      };
+    default:
+      return {
+        title: 'Importul a eșuat',
+        detail: 'Proiectele existente nu au fost atinse.',
+        issues,
+      };
+  }
+}

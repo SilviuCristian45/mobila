@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportProject } from '@/domain';
@@ -442,5 +442,105 @@ describe('Dashboard — proiecte invalide', () => {
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Șterge definitiv' }),
     );
     await waitFor(() => expect(screen.getByTestId('empty-state')).toBeTruthy());
+  });
+});
+
+describe('Dashboard — import de proiecte din fișiere', () => {
+  const file = (text: string, name = 'proiect.roomcraft.json') =>
+    new File([text], name, { type: 'application/json' });
+  const studioText = () => exportProject(studioProject(), META);
+  const upload = async (...files: File[]) => {
+    await userEvent.upload(screen.getByTestId('import-input'), files);
+  };
+  const noticeTitles = () =>
+    Array.from(
+      screen.getByTestId('import-results').querySelectorAll('[data-testid^="import-notice-"]'),
+    ).map((a) => a.textContent ?? '');
+
+  it('un fișier exportat se importă: apare un proiect nou și un mesaj de succes cu numele lui', async () => {
+    const e = uiEnv();
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await screen.findByTestId('empty-state');
+    await upload(file(studioText()));
+    const ok = await screen.findByTestId('import-notice-success');
+    expect(ok.textContent).toContain(`Am importat „${studioProject().name}”`);
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    expect(within(cards()[0]!).getByTestId('project-name').textContent).toBe(studioProject().name);
+  });
+
+  it('același fișier a doua oară: identificator existent → copie nouă, cu explicație; originalul rămâne', async () => {
+    const e = uiEnv();
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await screen.findByTestId('empty-state');
+    await upload(file(studioText()));
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    await upload(file(studioText()));
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    expect(screen.getAllByTestId('import-notice-success')[0]!.textContent).toMatch(/copie nouă/);
+  });
+
+  it('JSON stricat, fișier care nu e RoomCraft și versiune mai nouă: mesaje pe etape, nimic nu se creează', async () => {
+    const e = uiEnv();
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await screen.findByTestId('empty-state');
+    await upload(file('{ nu e json', 'stricat.json'));
+    expect((await screen.findByTestId('import-notice-error')).textContent).toMatch(
+      /nu e JSON valid/,
+    );
+    await upload(file('{"a":1}', 'altceva.json'));
+    await waitFor(() => expect(noticeTitles().join('|')).toMatch(/Nu e un fișier RoomCraft/));
+    expect(noticeTitles().join('|')).toMatch(/backup brut/);
+    const newer = JSON.parse(studioText()) as { formatVersion: number };
+    newer.formatVersion = 99;
+    await upload(file(JSON.stringify(newer), 'nou.json'));
+    await waitFor(() => expect(noticeTitles().join('|')).toMatch(/versiune mai nouă a aplicației/));
+    expect(screen.queryAllByTestId('project-card')).toHaveLength(0);
+    expect(screen.getByTestId('empty-state')).toBeTruthy();
+  });
+
+  it('un fișier peste limită e refuzat înainte de citire (importul nu e apelat)', async () => {
+    const e = uiEnv();
+    const spy = vi.spyOn(e.tab.manager, 'importFile');
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await screen.findByTestId('empty-state');
+    const big = file('x', 'urias.json');
+    Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });
+    await upload(big);
+    expect((await screen.findByTestId('import-notice-error')).textContent).toMatch(
+      /Fișierul e prea mare/,
+    );
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('mai multe fișiere deodată: fiecare are rezultatul lui (unul valid, unul respins)', async () => {
+    const e = uiEnv();
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await screen.findByTestId('empty-state');
+    await upload(file(studioText(), 'bun.roomcraft.json'), file('nu e json', 'rau.json'));
+    await waitFor(() => expect(noticeTitles()).toHaveLength(2));
+    expect(screen.getAllByTestId('import-notice-success')).toHaveLength(1);
+    expect(screen.getAllByTestId('import-notice-error')).toHaveLength(1);
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    // mesajele rămân până sunt închise
+    fireEvent.click(screen.getByTestId('import-dismiss'));
+    expect(screen.queryByTestId('import-results')).toBeNull();
+  });
+
+  it('drag & drop: peste pagină apare indicația, la lăsare fișierul se importă', async () => {
+    const e = uiEnv();
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await screen.findByTestId('empty-state');
+    const zone = screen.getByTestId('projects-dropzone');
+    const dataTransfer = { types: ['Files'], files: [file(studioText())] };
+    fireEvent.dragOver(zone, { dataTransfer });
+    expect(zone.getAttribute('data-dragging')).toBe('true');
+    expect(screen.getByTestId('drop-overlay')).toBeTruthy();
+    fireEvent.drop(zone, { dataTransfer });
+    expect(zone.getAttribute('data-dragging')).toBe('false');
+    expect(await screen.findByTestId('import-notice-success')).toBeTruthy();
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    // o tragere fără fișiere (text, link) nu declanșează nimic
+    fireEvent.dragOver(zone, { dataTransfer: { types: ['text/plain'], files: [] } });
+    expect(zone.getAttribute('data-dragging')).toBe('false');
   });
 });

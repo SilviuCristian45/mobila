@@ -54,7 +54,7 @@ export interface ProjectManager {
     text: string,
   ): Promise<
     Outcome<
-      { id: string; remapped: boolean; warnings: IntegrityIssue[] },
+      { id: string; name: string; remapped: boolean; warnings: IntegrityIssue[] },
       { stage: ImportStage | 'storage'; errors: string[] }
     >
   >;
@@ -257,7 +257,7 @@ export function createProjectManager(deps: ProjectManagerDeps): ProjectManager {
     text: string,
   ): Promise<
     Outcome<
-      { id: string; remapped: boolean; warnings: IntegrityIssue[] },
+      { id: string; name: string; remapped: boolean; warnings: IntegrityIssue[] },
       { stage: ImportStage | 'storage'; errors: string[] }
     >
   > {
@@ -285,7 +285,7 @@ export function createProjectManager(deps: ProjectManagerDeps): ProjectManager {
     }
     return {
       ok: true,
-      value: { id: r.doc.id, remapped: r.remapped, warnings: r.warnings },
+      value: { id: r.doc.id, name: r.doc.name, remapped: r.remapped, warnings: r.warnings },
     };
   }
 
