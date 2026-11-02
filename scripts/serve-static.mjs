@@ -2,6 +2,7 @@
 // NU este un test pe o gazdă reală (GitHub Pages/Cloudflare/Netlify); este un model al comportamentului minim comun.
 // Utilizare: node scripts/serve-static.mjs <dir> <port> [prefix]  (PRETTY=1 pentru „pretty URLs”)
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 
@@ -19,6 +20,14 @@ const types = {
   '.map': 'application/json',
 };
 const log = [];
+// RC_VERCEL_HEADERS=1: aplică anteturile din vercel.json (regula „/(.*)”) ca testele să ruleze sub același CSP ca în producție.
+const securityHeaders = {};
+if (process.env.RC_VERCEL_HEADERS === '1') {
+  const rule = JSON.parse(readFileSync('vercel.json', 'utf8')).headers.find(
+    (h) => h.source === '/(.*)',
+  );
+  for (const { key, value } of rule.headers) securityHeaders[key.toLowerCase()] = value;
+}
 
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -28,6 +37,7 @@ createServer(async (req, res) => {
     res.writeHead(status, {
       'content-type': types[extname(file)] ?? 'application/octet-stream',
       'cache-control': 'no-store',
+      ...securityHeaders,
     });
     res.end(body);
   };

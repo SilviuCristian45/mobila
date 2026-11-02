@@ -14,8 +14,9 @@ Stare la pregătirea lansării. Punctele din „Decizii ale proprietarului” NU
 
 - [x] **Licența codului propriu** — decis de proprietar: deocamdată fără licență (nu se adaugă fișier LICENSE; implicit, toate drepturile rezervate). Se poate relua oricând.
 - [x] **Găzduire** — decis de proprietar: Vercel (site static, `output: 'export'`). Rămâne de făcut de proprietar: recitirea termenilor planului ales (în special dacă proiectul devine comercial; planul gratuit are restricții de utilizare necomercială — de verificat în termenii actuali) și configurarea proiectului/domeniului.
-- [ ] **Domeniu** și verificarea numelui „RoomCraft” (provizoriu) înainte de lansarea publică. Datele locale sunt legate de origine: schimbarea domeniului cere export/import (explicat în pagina Despre).
-- [ ] **Anteturi de securitate / CSP** — se configurează la gazdă (site static, fără server propriu); aplicația nu face cereri externe, deci CSP poate fi strictă (`default-src 'self'`, atenție la `worker`/`blob:` pentru 3D).
+- [x] **Domeniu** — decis de proprietar: `room-craft` pe Vercel (plan gratuit; proiectul e gratuit, deci fără restricția de uz comercial). Rămâne verificarea numelui/disponibilității `room-craft.vercel.app` la crearea proiectului. Verificarea numelui
+ „RoomCraft” (provizoriu) înainte de lansarea publică. Datele locale sunt legate de origine: schimbarea domeniului cere export/import (explicat în pagina Despre).
+- [x] **Anteturi de securitate / CSP** — `vercel.json` (ADR-057), verificat cu `pnpm e2e:csp` în 3 browsere. De verificat după primul deploy: anteturile apar în răspunsul real (`curl -I`).
 
 ## De verificat înainte de lansare
 

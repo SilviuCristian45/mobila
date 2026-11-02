@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
+    "e2e:csp": "cross-env RC_VERCEL_HEADERS=1 playwright test e2e/csp.spec.ts",
     "e2e:base": "cross-env RC_PREFIX=/rc-test RC_DIR=out-base playwright test",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm depcruise && pnpm license:check && pnpm test && pnpm build",
     "verify:e2e": "pnpm build && pnpm e2e && pnpm build:base && pnpm e2e:base && pnpm e2e:storage",
