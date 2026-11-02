@@ -2,6 +2,10 @@
 // Din acest document se reconstruiesc planul 2D, scena 3D și bugetul — fără alt catalog.
 import { z } from 'zod';
 
+// Fără JIT: Zod ar încerca `new Function` ca să afle dacă eval e permis, iar CSP-ul (vercel.json, fără `unsafe-eval`) ar raporta
+// o încălcare chiar dacă excepția e prinsă. Validarea e identică; doar generarea de cod la rulare e dezactivată.
+z.config({ jitless: true });
+
 export const CURRENT_VERSION = 1;
 
 /** Limite anti-abuz pentru fișierele importate (nu limite de produs). */

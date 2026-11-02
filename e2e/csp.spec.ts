@@ -9,10 +9,11 @@ test('fluxurile principale rulează sub CSP-ul din vercel.json, fără încălc�
 }) => {
   const violations: string[] = [];
   const external: string[] = [];
+  // încălcările se raportează imediat către test (nu se pierd la navigarea între pagini)
+  await page.exposeFunction('__reportCsp', (v: string) => violations.push(v));
   await page.addInitScript(() => {
-    (window as unknown as { __csp: string[] }).__csp = [];
     document.addEventListener('securitypolicyviolation', (e) =>
-      (window as unknown as { __csp: string[] }).__csp.push(
+      (window as unknown as { __reportCsp: (v: string) => void }).__reportCsp(
         `${e.violatedDirective} ${e.blockedURI}`,
       ),
     );
@@ -54,7 +55,6 @@ test('fluxurile principale rulează sub CSP-ul din vercel.json, fără încălc�
   await page.goto('./despre/');
   await expect(page.getByTestId('about-page')).toBeVisible();
 
-  const inPage = await page.evaluate(() => (window as unknown as { __csp?: string[] }).__csp ?? []);
-  expect([...violations, ...inPage]).toEqual([]);
+  expect(violations).toEqual([]);
   expect(external).toEqual([]);
 });
