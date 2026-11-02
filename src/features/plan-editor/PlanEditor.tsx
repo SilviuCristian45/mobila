@@ -1,193 +1,44 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   addOpening,
   addRectRoom,
-  addPolyRoomShared,
-  addRectRoomShared,
-  axesFromInteriorPolygon,
   moveRoomEdge,
-  roomEdges,
-  rotateRoom,
   addWall,
-  dot,
-  analyzeGeometry,
   moveNode,
   moveRoom,
-  openingCenterRange,
-  removeObjects,
   moveObjects,
-  duplicateObjects,
-  removeOpening,
-  removeRoom,
-  roomOwnWalls,
-  removeWall,
-  rectInteriorSize,
   resizeRoomSide,
-  roomDeletionImpact,
-  snapRoomAnchor,
-  updateRoom,
   updateObject,
   updateOpening,
-  wallDeletionImpact,
-  wallFrame,
   type OpeningType,
   type ProjectDocument,
   type Pt,
   type Result,
 } from '@/domain';
-import { formatAreaM2, formatLength } from '@/lib/format';
+import { formatLength } from '@/lib/format';
 import { describeCommitFailure } from '@/lib/messages';
 import { selectGeometry } from '@/state/selectors';
 import type { CommitResult, ProjectSession, SessionState } from '@/state/session';
-import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert } from '@/ui/feedback';
-import { PlanCanvas, type CanvasHandlers } from './PlanCanvas';
-import { PropertiesPanel, ROOM_TYPES, type RunEdit } from './PropertiesPanel';
-import { planKeyAllowed } from './keyboard';
+import { PlanCanvas } from './PlanCanvas';
+import { DEFAULT_SIZE, defaultGenId, exists, type Confirm, type Gesture } from './editorSupport';
+import { PropertiesPanel, type RunEdit } from './PropertiesPanel';
+import { ElementList } from './ElementList';
+import { PlanHint } from './PlanHint';
+import { PlanToolbar } from './PlanToolbar';
+import { STATUS_TONE_CLASS, selectionAnnouncement, sessionStatusLine } from './planStatus';
+import { useSelectionActions } from './useSelectionActions';
+import { usePlacement } from './usePlacement';
+import { useCanvasHandlers } from './useCanvasHandlers';
+import { usePlanKeyboard } from './usePlanKeyboard';
 import { RoomList } from './RoomList';
 import { RoomPalette } from './RoomPalette';
-import { orient, roomShape } from './roomPresets';
-import type {
-  Drag,
-  Notice,
-  PlacementGhost,
-  RoomPreset,
-  RoomSide,
-  Selection,
-  SelectionKind,
-  Tool,
-  WallDraft,
-} from './types';
-import {
-  ZOOM_STEP,
-  fitView,
-  nearestNode,
-  snapToGrid,
-  toWorld,
-  zoomAt,
-  type Size,
-  type View,
-} from './view';
-
-const DEFAULT_SIZE: Size = { w: 800, h: 560 };
-/** Pragul (px) de la care o apăsare devine tragere. */
-const DRAG_THRESHOLD_PX = 4;
-/** Raza (px) de captare a nodurilor existente. */
-const SNAP_RADIUS_PX = 12;
-/** Pasul de poziționare al golurilor la tragere (mm). */
-const OPENING_STEP_MM = 10;
-
-const isTyping = (t: EventTarget | null): boolean =>
-  t instanceof HTMLElement &&
-  (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
-
-type Gesture =
-  | { type: 'pan'; startX: number; startY: number; view: View }
-  | { type: 'node'; nodeId: string; startX: number; startY: number; active: boolean }
-  | { type: 'opening'; openingId: string; startX: number; startY: number; active: boolean }
-  | {
-      type: 'edge';
-      roomId: string;
-      index: number;
-      startX: number;
-      startY: number;
-      /** Cursorul în lume la apăsare și normala exterioară a laturii. */
-      grab: Pt;
-      normal: Pt;
-      active: boolean;
-    }
-  | {
-      type: 'side';
-      roomId: string;
-      side: RoomSide;
-      startX: number;
-      startY: number;
-      /** Cursorul în lume la apăsare și dimensiunea interioară de pornire pe direcția laturii. */
-      grab: Pt;
-      startLengthMm: number;
-      active: boolean;
-    }
-  | {
-      type: 'room';
-      roomId: string;
-      startX: number;
-      startY: number;
-      /** Cursorul în lume la apăsare (deplasarea e relativă la el). */
-      grab: Pt;
-      /** Motivul pentru care camera nu se poate muta ca întreg (noduri comune), altfel `null`. */
-      blocked: string | null;
-      active: boolean;
-    }
-  | {
-      type: 'object';
-      objectId: string;
-      /** Obiectele trase împreună (selecție multiplă), altfel `undefined`. */
-      groupIds?: string[];
-      startX: number;
-      startY: number;
-      /** Decalajul cursor → centrul obiectului la apăsare (fără salt la începutul tragerii). */
-      grab: Pt;
-      active: boolean;
-    };
-
-type Confirm = {
-  title: string;
-  description: string;
-  label: string;
-  action: () => string | null;
-  /** Variantă mai blândă a ștergerii (ex. doar camera, pereții rămân). */
-  secondary?: { label: string; action: () => string | null };
-};
-
-const defaultGenId = (): string => crypto.randomUUID().slice(0, 8);
-
-function exists(doc: ProjectDocument, s: Selection): boolean {
-  if (!s) return false;
-  const table = { node: doc.nodes, wall: doc.walls, room: doc.rooms, opening: doc.openings }[
-    s.kind
-  ];
-  return s.id in table;
-}
-
-const ELEMENT_LABEL: Record<SelectionKind, string> = {
-  node: 'Nod',
-  wall: 'Perete',
-  room: 'Cameră',
-  opening: 'Gol',
-};
-
-/** Construiește camera presetului (dreptunghi sau formă) cu colțul casetei în `anchor`, cu pereți comuni. */
-function buildRoom(
-  doc: ProjectDocument,
-  preset: RoomPreset,
-  anchor: Pt,
-  genId: () => string,
-  name?: string,
-): Result<{ doc: ProjectDocument; roomId: string }> {
-  if (preset.notch) {
-    return addPolyRoomShared(
-      doc,
-      { interior: roomShape(preset).map((p) => ({ x: p.x + anchor.x, y: p.y + anchor.y })), name },
-      genId,
-    );
-  }
-  return addRectRoomShared(
-    doc,
-    { widthMm: preset.widthMm, depthMm: preset.depthMm, anchor, name },
-    genId,
-  );
-}
+import { orient } from './roomPresets';
+import type { Drag, Notice, RoomPreset, Selection, SelectionKind, Tool, WallDraft } from './types';
+import { ZOOM_STEP, fitView, zoomAt, type Size, type View } from './view';
 
 /**
  * Editorul 2D (Etapa 2b): plan SVG cu zoom/deplasare, selecție, tragere de noduri și goluri, desenare de pereți,
@@ -329,47 +180,6 @@ export function PlanEditor({
   }, [doc, drag]);
   const geometry = useMemo(() => selectGeometry(draftDoc), [draftDoc]);
   const issues = geometry.issues;
-
-  // ───────────── plasarea unei camere din paletă ─────────────
-  /** Previzualizarea (și validarea) unei camere din paletă cu centrul în punctul `world`. */
-  const ghostAt = useCallback(
-    (preset: RoomPreset, world: Pt): PlacementGhost => {
-      const shape = roomShape(preset);
-      const thicknessMm = doc.settings.defaultWallThicknessMm;
-      const raw = { x: world.x - preset.widthMm / 2, y: world.y - preset.depthMm / 2 };
-      const snap = snapRoomAnchor(
-        doc,
-        {
-          widthMm: preset.widthMm,
-          depthMm: preset.depthMm,
-          shape: preset.notch ? shape : undefined,
-        },
-        raw,
-        doc.settings.gridMm,
-        Math.max(60, 14 / view.zoom),
-      );
-      let n = 0;
-      const built = buildRoom(doc, preset, snap.anchor, () => `ghost${++n}`);
-      const found = built.ok ? analyzeGeometry(built.value.doc).issues : [];
-      const interior = shape.map((p) => ({ x: p.x + snap.anchor.x, y: p.y + snap.anchor.y }));
-      const axes = axesFromInteriorPolygon(interior, thicknessMm);
-      return {
-        preset,
-        anchor: snap.anchor,
-        thicknessMm,
-        valid: built.ok && found.length === 0,
-        error: !built.ok ? built.error : (found[0]?.message ?? null),
-        snapped: snap.snappedX || snap.snappedY,
-        interior,
-        axes: axes.ok ? axes.value : [],
-      };
-    },
-    [doc, view.zoom],
-  );
-  const ghost = useMemo<PlacementGhost | null>(
-    () => (placing && pointerWorld && editable ? ghostAt(oriented(placing), pointerWorld) : null),
-    [placing, pointerWorld, editable, ghostAt, oriented],
-  );
 
   // ───────────── vizualizare ─────────────
   const fit = useCallback(() => {
@@ -516,771 +326,123 @@ export function PlanEditor({
     [geometry.rooms, view, size, onSelectObject],
   );
 
-  /** Creează camera din paletă în `anchor` (colț interior), cu numele și tipul presetului. */
-  const placeRoom = useCallback(
-    (preset: RoomPreset, anchor: Pt): boolean => {
-      const same = Object.values(doc.rooms).filter((r) => r.type === preset.type).length;
-      const name = same === 0 ? preset.label : `${preset.label} ${same + 1}`;
-      const err = addAndSelect('Adaugă cameră', 'room', (d) => {
-        const r = buildRoom(d, preset, anchor, genId, name);
-        if (!r.ok) return r;
-        const u = updateRoom(r.value.doc, r.value.roomId, { type: preset.type });
-        return u.ok ? { ok: true, value: { doc: u.value, id: r.value.roomId } } : u;
-      });
-      if (err) setNotice({ tone: 'error', text: err });
-      else if (autoFit.current) {
-        // vederea nu a fost mișcată de utilizator: dacă noua cameră iese din cadru, planul se re-potrivește
-        const pts = Object.values(session.getState().doc.nodes);
-        const out = pts.some((p) => {
-          const sx = p.x * view.zoom + view.panX;
-          const sy = p.y * view.zoom + view.panY;
-          return sx < 16 || sy < 16 || sx > size.w - 16 || sy > size.h - 16;
-        });
-        if (out) setView(fitView(pts, size));
-      }
-      return err === null;
-    },
-    [doc.rooms, addAndSelect, genId, session, view, size],
-  );
-  /** Plasează camera din paletă cu centrul în `world`; dacă nu încape, spune de ce și nu creează nimic. */
-  const dropAt = useCallback(
-    (preset: RoomPreset, world: Pt): boolean => {
-      const gh = ghostAt(preset, world);
-      if (!gh.valid) {
-        setNotice({
-          tone: 'error',
-          text: `Camera nu încape aici${gh.error ? `: ${gh.error}` : ''}. Alege alt loc.`,
-        });
-        return false;
-      }
-      return placeRoom(preset, gh.anchor);
-    },
-    [ghostAt, placeRoom],
-  );
-  const dropGhost = useCallback(() => {
-    if (placing && pointerWorld && dropAt(oriented(placing), pointerWorld)) {
-      setPlacing(null);
-      setTurns(0);
-    }
-  }, [placing, pointerWorld, dropAt, oriented]);
-  const startPlacing = (preset: RoomPreset, e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (placing?.id === preset.id && !press.current) {
-      setPlacing(null); // apăsat din nou pe cea armată: anulează
-      return;
-    }
-    setToolRaw('select');
-    setDraft(null);
-    setSelection(null);
-    onSelectObject?.(null);
-    setNotice(null);
-    setPointerWorld(null);
-    setTurns(0);
-    setPlacing(preset);
-    press.current = { x: e.clientX, y: e.clientY, moved: false };
-  };
-  /** Plasare de la tastatură: în centrul planului; dacă nu încape, alipită în dreapta construcției existente. */
-  const placeCentered = (preset: RoomPreset) => {
-    if (!editable) return;
-    const t = doc.settings.defaultWallThicknessMm;
-    const c = toWorld(view, size.w / 2, size.h / 2);
-    const centered = snapRoomAnchor(
-      doc,
-      {
-        widthMm: preset.widthMm,
-        depthMm: preset.depthMm,
-        shape: preset.notch ? roomShape(preset) : undefined,
-      },
-      { x: c.x - preset.widthMm / 2, y: c.y - preset.depthMm / 2 },
-      doc.settings.gridMm,
-      Math.max(60, 14 / view.zoom),
-    ).anchor;
-    const outer = [...geometry.footprints.values()].flatMap((fp) => fp.polygon);
-    const candidates = [centered];
-    if (outer.length > 0) {
-      candidates.push({
-        x: Math.round(Math.max(...outer.map((p) => p.x))) + t,
-        y: Math.round(Math.min(...outer.map((p) => p.y))) + t,
-      });
-    }
-    const fits = (anchor: Pt) => {
-      let n = 0;
-      const built = buildRoom(doc, preset, anchor, () => `probe${++n}`);
-      return built.ok && analyzeGeometry(built.value.doc).issues.length === 0;
-    };
-    placeRoom(preset, candidates.find(fits) ?? centered);
-  };
-  // cât timp se plasează o cameră, urmărim pointerul pe tot ecranul (tragerea pornește de pe paletă, în afara planului)
-  useEffect(() => {
-    if (!placing) return;
-    const overPlan = (e: PointerEvent) => {
-      const rect = svgRef.current?.getBoundingClientRect();
-      if (!rect) return null;
-      const inside =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
-      return inside ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null;
-    };
-    const onMove = (e: PointerEvent) => {
-      const p = press.current;
-      if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) >= DRAG_THRESHOLD_PX) p.moved = true;
-      const at = overPlan(e);
-      setPointerWorld(at ? toWorld(view, at.x, at.y) : null);
-    };
-    const onUp = (e: PointerEvent) => {
-      const p = press.current;
-      press.current = null;
-      if (!p) return;
-      if (!p.moved) return; // simplu clic pe paletă: camera rămâne armată până la clicul pe plan
-      const at = overPlan(e);
-      if (at && placing) dropAt(oriented(placing), toWorld(view, at.x, at.y));
-      setPlacing(null);
-      setTurns(0); // tras și lăsat (pe plan sau în afara lui): s-a terminat
-      setPointerWorld(null);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-  }, [placing, view, dropAt, oriented]);
+  // ───────────── plasarea unei camere din paletă ─────────────
+  const { ghost, dropGhost, startPlacing, placeCentered } = usePlacement({
+    doc,
+    view,
+    size,
+    editable,
+    placing,
+    setPlacing,
+    pointerWorld,
+    setPointerWorld,
+    oriented,
+    setTurns,
+    press,
+    svgRef,
+    geometry,
+    session,
+    genId,
+    addAndSelect,
+    setNotice,
+    setToolRaw,
+    setDraft,
+    setSelection,
+    onSelectObject,
+    autoFit,
+    setView,
+  });
 
-  const deleteSelected = useCallback(() => {
-    if (!editable) return;
-    if (selectedObjectId) {
-      const ids = groupIds;
-      const label = ids.length > 1 ? `Șterge ${ids.length} obiecte` : 'Șterge obiect';
-      if (runNotice(label, (d) => removeObjects(d, ids))) {
-        onSelectObject?.(null);
-        setExtraIds([], null);
-      }
-      return;
-    }
-    if (!selection) return;
-    if (selection.kind === 'node') {
-      setNotice({
-        tone: 'info',
-        text: 'Un nod dispare singur când ștergi ultimul perete care îl folosește.',
-      });
-      return;
-    }
-    const { id } = selection;
-    if (selection.kind === 'opening') {
-      if (runNotice('Șterge gol', (d) => removeOpening(d, id))) setSelection(null);
-      return;
-    }
-    if (selection.kind === 'wall') {
-      const impact = wallDeletionImpact(doc, id);
-      if (impact.rooms.length === 0) {
-        if (runNotice('Șterge perete', (d) => removeWall(d, id))) setSelection(null);
-        return;
-      }
-      const parts = [
-        `camerele: ${impact.rooms.map((r) => r.name).join(', ')}`,
-        impact.openings.length > 0 ? `${impact.openings.length} goluri` : null,
-        impact.assignmentIds.length > 0 ? `${impact.assignmentIds.length} finisaje` : null,
-      ].filter(Boolean);
-      setConfirm({
-        title: 'Ștergi peretele și camerele lui?',
-        description: `Peretele face parte din ${impact.rooms.length === 1 ? 'o cameră' : 'mai multe camere'}, care nu mai pot exista fără el. Se șterg: ${parts.join('; ')}. Poți anula cu Ctrl+Z.`,
-        label: 'Șterge',
-        action: () => {
-          const err = run('Șterge perete și camere', (d) =>
-            removeWall(d, id, { removeRooms: true }),
-          );
-          if (!err) setSelection(null);
-          return err;
-        },
-      });
-      return;
-    }
-    const impact = roomDeletionImpact(doc, id);
-    const own = roomOwnWalls(doc, id);
-    const finishes =
-      impact.assignmentIds.length > 0
-        ? ` Se șterg și ${impact.assignmentIds.length} finisaje atribuite camerei.`
-        : '';
-    const finish = (withWalls: boolean) => () => {
-      const err = run(withWalls ? 'Șterge camera și pereții' : 'Șterge cameră', (d) =>
-        removeRoom(d, id, { withWalls }),
-      );
-      if (!err) setSelection(null);
-      return err;
-    };
-    if (own.length === 0) {
-      // toți pereții camerei sunt comuni cu alte camere: rămân vecinilor
-      setConfirm({
-        title: 'Ștergi camera?',
-        description: `Pereții rămân în plan (sunt folosiți de camerele vecine).${finishes} Poți anula cu Ctrl+Z.`,
-        label: 'Șterge camera',
-        action: finish(false),
-      });
-      return;
-    }
-    const shared = (doc.rooms[id]?.nodeLoop.length ?? 0) - own.length;
-    setConfirm({
-      title: 'Ștergi camera?',
-      description: `Se șterg camera și ${own.length} ${own.length === 1 ? 'perete al ei' : 'pereți ai ei'} (cu golurile lor)${shared > 0 ? `; ${shared} ${shared === 1 ? 'perete comun cu o cameră vecină rămâne' : 'pereți comuni cu camere vecine rămân'}` : ''}.${finishes} Poți alege să ștergi doar camera. Poți anula cu Ctrl+Z.`,
-      label: 'Șterge camera și pereții',
-      action: finish(true),
-      secondary: { label: 'Doar camera', action: finish(false) },
-    });
-  }, [
+  const { deleteSelected, duplicateSelected } = useSelectionActions({
+    doc,
+    editable,
     selection,
+    setSelection,
     selectedObjectId,
     groupIds,
     onSelectObject,
     setExtraIds,
-    editable,
-    doc,
+    genId,
     run,
     runNotice,
-  ]);
-
-  const duplicateSelected = useCallback(() => {
-    if (!editable || !selectedObjectId) return;
-    const src = groupIds;
-    let created: string[] = [];
-    const ok = runNotice(
-      src.length > 1 ? `Duplică ${src.length} obiecte` : 'Duplică obiect',
-      (d) => {
-        const r = duplicateObjects(d, src, genId);
-        if (!r.ok) return r;
-        created = r.value.objectIds;
-        return { ok: true, value: r.value.doc };
-      },
-    );
-    if (ok && created.length > 0) {
-      onSelectObject?.(created[0]!);
-      setExtraIds(created.slice(1), created[0]!);
-    }
-  }, [editable, selectedObjectId, groupIds, runNotice, genId, onSelectObject, setExtraIds]);
+    setConfirm,
+    setNotice,
+  });
 
   // ───────────── gesturi cu pointerul ─────────────
-  const worldOf = (e: { clientX: number; clientY: number }) => {
-    const rect = svgRef.current?.getBoundingClientRect();
-    return toWorld(view, e.clientX - (rect?.left ?? 0), e.clientY - (rect?.top ?? 0));
-  };
-  const snapPoint = (e: { clientX: number; clientY: number; altKey: boolean }) => {
-    const w = worldOf(e);
-    return e.altKey ? { x: Math.round(w.x), y: Math.round(w.y) } : snapToGrid(w, grid);
-  };
-  const capture = (e: ReactPointerEvent<Element>) => {
-    try {
-      svgRef.current?.setPointerCapture?.(e.pointerId);
-    } catch {
-      /* indisponibil (ex. test) — gestul funcționează și fără captare */
-    }
-  };
-
-  /** Capătul propus pentru perete: nod existent aproape de cursor, altfel punctul de pe grilă. */
-  const wallEndpoint = (e: { clientX: number; clientY: number; altKey: boolean }) => {
-    const w = worldOf(e);
-    const hit = nearestNode(Object.values(doc.nodes), w, SNAP_RADIUS_PX / view.zoom);
-    if (hit) return { ref: { nodeId: hit.id }, at: { x: hit.x, y: hit.y }, snapNodeId: hit.id };
-    const at = snapPoint(e);
-    return { ref: { x: at.x, y: at.y }, at, snapNodeId: null };
-  };
-
-  const wallToolClick = (e: { clientX: number; clientY: number; altKey: boolean }) => {
-    if (!editable) return;
-    const end = wallEndpoint(e);
-    if (!draft) {
-      setDraft({ start: end.ref, from: end.at, to: end.at, snapNodeId: end.snapNodeId });
-      setNotice(null);
-      return;
-    }
-    if (draft.from.x === end.at.x && draft.from.y === end.at.y) return;
-    let wallId: string | null = null;
-    const ok = runNotice('Adaugă perete', (d) => {
-      const r = addWall(d, draft.start, end.ref, genId);
-      if (!r.ok) return r;
-      wallId = r.value.wallId;
-      return { ok: true, value: r.value.doc };
-    });
-    if (!ok || !wallId) return; // mesajul de eroare e afișat; firul rămâne, utilizatorul alege alt punct
-    const created = session.getState().doc.walls[wallId];
-    setSelection({ kind: 'wall', id: wallId });
-    // lanț: următorul perete pornește din capătul celui creat
-    if (created) {
-      const n = session.getState().doc.nodes[created.endNodeId];
-      if (n)
-        setDraft({
-          start: { nodeId: n.id },
-          from: { x: n.x, y: n.y },
-          to: { x: n.x, y: n.y },
-          snapNodeId: n.id,
-        });
-    } else setDraft(null);
-  };
-
-  const handlers: CanvasHandlers = {
-    onBackgroundDown: (e) => {
-      if (e.button !== 0 && e.button !== 1) return;
-      if (placing) {
-        if (e.button === 0) dropGhost();
-        return;
-      }
-      if (tool === 'wall' && e.button === 0) return wallToolClick(e);
-      setSelection(null);
-      onSelectObject?.(null);
-      setExtraIds([], null);
-      setNotice(null);
-      gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
-      capture(e);
-    },
-    onEdgeDown: (roomId, index, e) => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-      if (placing || !editable) return;
-      const edges = roomEdges(doc, roomId);
-      const edge = edges.ok ? edges.value[index] : undefined;
-      if (!edge) return;
-      gesture.current = {
-        type: 'edge',
-        roomId,
-        index,
-        startX: e.clientX,
-        startY: e.clientY,
-        grab: worldOf(e),
-        normal: edge.normal,
-        active: false,
-      };
-      capture(e);
-    },
-    onSideDown: (roomId, side, e) => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-      if (placing || !editable) return;
-      const size = rectInteriorSize(doc, roomId);
-      if (!size.ok) return;
-      gesture.current = {
-        type: 'side',
-        roomId,
-        side,
-        startX: e.clientX,
-        startY: e.clientY,
-        grab: worldOf(e),
-        startLengthMm: side === 'n' || side === 's' ? size.value.depthMm : size.value.widthMm,
-        active: false,
-      };
-      capture(e);
-    },
-    onElementDown: (kind, id, e) => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-      if (placing) return dropGhost();
-      if (tool === 'wall') return wallToolClick(e);
-      setNotice(null);
-      if (kind === 'object') {
-        setSelection(null);
-        const o = doc.objects[id];
-        if (e.shiftKey || e.ctrlKey || e.metaKey) {
-          // Shift / Ctrl + clic: adaugă sau scoate obiectul din selecție (fără tragere)
-          if (groupSet.has(id)) {
-            const rest = groupIds.filter((g) => g !== id);
-            onSelectObject?.(rest[0] ?? null);
-            setExtraIds(rest.slice(1), rest[0] ?? null);
-          } else {
-            onSelectObject?.(id);
-            setExtraIds(groupIds, id);
-          }
-          return;
-        }
-        // clic pe un membru al unui grup: grupul rămâne selectat și se trage împreună
-        const inGroup = groupSet.has(id) && groupIds.length > 1;
-        onSelectObject?.(id);
-        setExtraIds(inGroup ? groupIds.filter((g) => g !== id) : [], id);
-        if (!editable || !o) return;
-        const w = worldOf(e);
-        gesture.current = {
-          type: 'object',
-          groupIds: inGroup ? groupIds : undefined,
-          objectId: id,
-          startX: e.clientX,
-          startY: e.clientY,
-          grab: { x: w.x - o.position.x, y: w.y - o.position.y },
-          active: false,
-        };
-        capture(e);
-        return;
-      }
-      setSelection({ kind, id });
-      if (!editable) return;
-      if (kind === 'node')
-        gesture.current = {
-          type: 'node',
-          nodeId: id,
-          startX: e.clientX,
-          startY: e.clientY,
-          active: false,
-        };
-      else if (kind === 'opening')
-        gesture.current = {
-          type: 'opening',
-          openingId: id,
-          startX: e.clientX,
-          startY: e.clientY,
-          active: false,
-        };
-      else if (kind === 'room') {
-        if (selection?.kind === 'room' && selection.id === id) {
-          // camera deja selectată: tragerea ei o mută întreagă (cu obiectele din ea)
-          const probe = moveRoom(doc, id, { x: 1, y: 0 });
-          gesture.current = {
-            type: 'room',
-            roomId: id,
-            startX: e.clientX,
-            startY: e.clientY,
-            grab: worldOf(e),
-            blocked: probe.ok ? null : probe.error,
-            active: false,
-          };
-        } else {
-          // prima apăsare doar selectează; tragerea continuă să deplaseze planul (camerele sunt mari)
-          autoFit.current = false;
-          gesture.current = { type: 'pan', startX: e.clientX, startY: e.clientY, view };
-        }
-      } else return;
-      capture(e);
-    },
-    onMove: (e) => {
-      const g = gesture.current;
-      if (!g) {
-        if (tool === 'wall' && draft) {
-          const end = wallEndpoint(e);
-          setDraft({ ...draft, to: end.at, snapNodeId: end.snapNodeId });
-        }
-        return;
-      }
-      if (g.type === 'pan') {
-        autoFit.current = false;
-        setView({
-          ...g.view,
-          panX: g.view.panX + e.clientX - g.startX,
-          panY: g.view.panY + e.clientY - g.startY,
-        });
-        return;
-      }
-      if (!g.active && Math.hypot(e.clientX - g.startX, e.clientY - g.startY) < DRAG_THRESHOLD_PX)
-        return;
-      g.active = true;
-      if (g.type === 'node') {
-        setDrag({ kind: 'node', nodeId: g.nodeId, to: snapPoint(e) });
-      } else if (g.type === 'edge') {
-        const w = worldOf(e);
-        const along = (w.x - g.grab.x) * g.normal.x + (w.y - g.grab.y) * g.normal.y;
-        const deltaMm = e.altKey ? Math.round(along) : Math.round(along / grid) * grid;
-        setDrag({ kind: 'roomEdge', roomId: g.roomId, index: g.index, deltaMm });
-      } else if (g.type === 'side') {
-        const w = worldOf(e);
-        // spre exterior = dimensiune mai mare: est/sud cresc cu deplasarea pozitivă, vest/nord cu cea negativă
-        const along =
-          g.side === 'e'
-            ? w.x - g.grab.x
-            : g.side === 'w'
-              ? g.grab.x - w.x
-              : g.side === 's'
-                ? w.y - g.grab.y
-                : g.grab.y - w.y;
-        const raw = g.startLengthMm + along;
-        const lengthMm = e.altKey ? Math.round(raw) : Math.round(raw / grid) * grid;
-        setDrag({ kind: 'roomSide', roomId: g.roomId, side: g.side, lengthMm });
-      } else if (g.type === 'room') {
-        if (g.blocked) {
-          setNotice({ tone: 'info', text: g.blocked });
-          gesture.current = null;
-          return;
-        }
-        const w = worldOf(e);
-        const snap = (v: number) => (e.altKey ? Math.round(v) : Math.round(v / grid) * grid);
-        setDrag({
-          kind: 'room',
-          roomId: g.roomId,
-          delta: { x: snap(w.x - g.grab.x), y: snap(w.y - g.grab.y) },
-        });
-      } else if (g.type === 'object') {
-        const w = worldOf(e);
-        const at = { x: w.x - g.grab.x, y: w.y - g.grab.y };
-        setDrag({
-          kind: 'object',
-          objectId: g.objectId,
-          groupIds: g.groupIds,
-          to: e.altKey ? { x: Math.round(at.x), y: Math.round(at.y) } : snapToGrid(at, grid),
-        });
-      } else {
-        const o = doc.openings[g.openingId];
-        const wall = o && doc.walls[o.wallId];
-        if (!o || !wall) return;
-        const frame = wallFrame(doc, wall);
-        const w = worldOf(e);
-        const s = dot({ x: w.x - frame.start.x, y: w.y - frame.start.y }, frame.d);
-        let offset = Math.round(s / OPENING_STEP_MM) * OPENING_STEP_MM;
-        const range = openingCenterRange(doc, wall.id, o.widthMm);
-        if (range) offset = Math.min(range.max, Math.max(range.min, offset));
-        setDrag({ kind: 'opening', openingId: g.openingId, offsetMm: offset });
-      }
-    },
-    onUp: () => {
-      const g = gesture.current;
-      gesture.current = null;
-      if (!g || g.type === 'pan') return;
-      const finished = dragRef.current;
-      setDrag(null);
-      if (!finished || !g.active) return; // doar un clic: selecția a avut loc deja
-      // O SINGURĂ scriere în document, la finalul gestului; dacă e respinsă, documentul rămâne neschimbat (revenire).
-      if (finished.kind === 'node') {
-        const { nodeId, to } = finished;
-        const ok = runNotice('Mută nodul', (d) => moveNode(d, nodeId, to));
-        if (!ok)
-          setNotice((n) =>
-            n ? { ...n, text: `${n.text} Nodul a revenit la poziția anterioară.` } : n,
-          );
-      } else if (finished.kind === 'roomEdge') {
-        const { roomId, index, deltaMm } = finished;
-        const ok = runNotice('Mută latura camerei', (d) => moveRoomEdge(d, roomId, index, deltaMm));
-        if (!ok)
-          setNotice((n) =>
-            n ? { ...n, text: `${n.text} Camera a revenit la dimensiunea anterioară.` } : n,
-          );
-      } else if (finished.kind === 'roomSide') {
-        const { roomId, side, lengthMm } = finished;
-        const ok = runNotice('Redimensionează camera', (d) =>
-          resizeRoomSide(d, roomId, side, lengthMm),
-        );
-        if (!ok)
-          setNotice((n) =>
-            n ? { ...n, text: `${n.text} Camera a revenit la dimensiunea anterioară.` } : n,
-          );
-      } else if (finished.kind === 'room') {
-        const { roomId, delta } = finished;
-        const ok = runNotice('Mută camera', (d) => moveRoom(d, roomId, delta));
-        if (!ok)
-          setNotice((n) =>
-            n ? { ...n, text: `${n.text} Camera a revenit la poziția anterioară.` } : n,
-          );
-      } else if (finished.kind === 'object') {
-        const { objectId, to, groupIds: moved } = finished;
-        const ok = moved
-          ? runNotice(`Mută ${moved.length} obiecte`, (d) => {
-              const from = d.objects[objectId]?.position ?? to;
-              return moveObjects(d, moved, { x: to.x - from.x, y: to.y - from.y });
-            })
-          : runNotice('Mută obiectul', (d) => updateObject(d, objectId, { position: to }));
-        if (!ok)
-          setNotice((n) =>
-            n
-              ? {
-                  ...n,
-                  text: `${n.text} ${moved ? 'Obiectele au revenit' : 'Obiectul a revenit'} la poziția anterioară.`,
-                }
-              : n,
-          );
-      } else {
-        const { openingId, offsetMm } = finished;
-        const ok = runNotice('Mută golul', (d) => updateOpening(d, openingId, { offsetMm }));
-        if (!ok)
-          setNotice((n) =>
-            n ? { ...n, text: `${n.text} Golul a revenit la poziția anterioară.` } : n,
-          );
-      }
-    },
-    onCancel: () => {
-      gesture.current = null;
-      setDrag(null);
-    },
-  };
-
-  // ───────────── tastatură ─────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (confirm || e.defaultPrevented || isTyping(e.target) || e.altKey) return;
-      if (e.ctrlKey || e.metaKey) {
-        if ((e.key === 'a' || e.key === 'A') && tool === 'select') {
-          const all = Object.keys(doc.objects);
-          if (all.length > 0) {
-            e.preventDefault();
-            setSelection(null);
-            onSelectObject?.(all[0]!);
-            setExtraIds(all.slice(1), all[0]!);
-          }
-          return;
-        }
-        if ((e.key === 'd' || e.key === 'D') && selectedObjectId) {
-          e.preventDefault();
-          duplicateSelected();
-        }
-        return;
-      }
-      const k = e.key;
-      // săgețile și scurtăturile cu o tastă nu acționează în spatele unui control focalizat sau cu scurtăturile oprite
-      if (!planKeyAllowed(k, e.target, shortcuts, { placing: placing !== null })) return;
-      const nudge = (dx: number, dy: number) => {
-        const step = (e.shiftKey ? 10 : 1) * grid;
-        if (!editable && (selection || selectedObjectId)) return;
-        if (selectedObjectId) {
-          const o = doc.objects[selectedObjectId];
-          if (o && groupIds.length > 1)
-            runNotice(`Mută ${groupIds.length} obiecte`, (d) =>
-              moveObjects(d, groupIds, { x: dx * step, y: dy * step }),
-            );
-          else if (o)
-            runNotice('Mută obiectul', (d) =>
-              updateObject(d, o.id, {
-                position: { x: o.position.x + dx * step, y: o.position.y + dy * step },
-              }),
-            );
-        } else if (selection?.kind === 'node') {
-          const n = doc.nodes[selection.id];
-          if (n)
-            runNotice('Mută nodul', (d) =>
-              moveNode(d, n.id, { x: n.x + dx * step, y: n.y + dy * step }),
-            );
-        } else if (selection?.kind === 'opening') {
-          const o = doc.openings[selection.id];
-          if (o && dx !== 0) {
-            runNotice('Mută golul', (d) =>
-              updateOpening(d, o.id, { offsetMm: o.offsetMm + dx * step }),
-            );
-          }
-        } else {
-          autoFit.current = false;
-          setView((v) => ({ ...v, panX: v.panX - dx * 60, panY: v.panY - dy * 60 }));
-        }
-      };
-      let handled = true;
-      if (k === 'Delete' || k === 'Backspace') deleteSelected();
-      else if (k === 'Escape') {
-        if (placing) {
-          setPlacing(null);
-          setTurns(0);
-          setPointerWorld(null);
-          press.current = null;
-        } else if (gesture.current || drag) {
-          gesture.current = null;
-          setDrag(null);
-        } else if (draft) setDraft(null);
-        else if (tool === 'wall') setTool('select');
-        else if (selection) setSelection(null);
-        else if (selectedObjectId) {
-          onSelectObject?.(null);
-          setExtraIds([], null);
-        } else handled = false;
-      } else if ((k === 'r' || k === 'R') && placing) {
-        setTurns((t) => (t + 1) % 4);
-      } else if (
-        (k === 'r' || k === 'R') &&
-        !selectedObjectId &&
-        selection?.kind === 'room' &&
-        editable
-      ) {
-        const roomId = selection.id;
-        runNotice('Rotește camera', (d) => rotateRoom(d, roomId, e.shiftKey ? -1 : 1));
-      } else if (
-        (k === 'r' || k === 'R') &&
-        selectedObjectId &&
-        editable &&
-        groupIds.length === 1
-      ) {
-        const o = doc.objects[selectedObjectId];
-        if (o)
-          runNotice('Rotește obiectul', (d) =>
-            updateObject(d, o.id, { rotationDeg: o.rotationDeg + (e.shiftKey ? -90 : 90) }),
-          );
-      } else if (k === 'ArrowLeft') nudge(-1, 0);
-      else if (k === 'ArrowRight') nudge(1, 0);
-      else if (k === 'ArrowUp') nudge(0, -1);
-      else if (k === 'ArrowDown') nudge(0, 1);
-      else if (k === '+' || k === '=') zoomBy(ZOOM_STEP);
-      else if (k === '-' || k === '_') zoomBy(1 / ZOOM_STEP);
-      else if (k === '0') fit();
-      else if (k === 'v' || k === 'V') setTool('select');
-      else if ((k === 'w' || k === 'W') && editable) setTool('wall');
-      else handled = false;
-      if (handled) e.preventDefault();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [
-    setTool,
-    setDrag,
-    confirm,
-    doc,
-    drag,
-    draft,
-    editable,
-    fit,
+  const handlers = useCanvasHandlers({
+    svgRef,
+    view,
+    setView,
+    autoFit,
     grid,
-    deleteSelected,
-    duplicateSelected,
-    groupIds,
-    onSelectObject,
-    placing,
-    setExtraIds,
+    doc,
+    session,
+    genId,
+    editable,
+    tool,
+    draft,
+    setDraft,
+    setNotice,
     runNotice,
     selection,
-    selectedObjectId,
+    setSelection,
+    groupIds,
+    groupSet,
+    onSelectObject,
+    setExtraIds,
+    placing,
+    dropGhost,
+    gesture,
+    dragRef,
+    setDrag,
+  });
+
+  // ───────────── tastatură ─────────────
+  usePlanKeyboard({
+    confirm,
     tool,
-    zoomBy,
+    setTool,
+    doc,
+    grid,
+    selection,
+    setSelection,
+    selectedObjectId,
+    groupIds,
+    onSelectObject,
+    setExtraIds,
+    duplicateSelected,
+    deleteSelected,
+    runNotice,
+    editable,
     shortcuts,
-  ]);
+    placing,
+    setPlacing,
+    setTurns,
+    setPointerWorld,
+    press,
+    gesture,
+    drag,
+    setDrag,
+    draft,
+    setDraft,
+    autoFit,
+    setView,
+    zoomBy,
+    fit,
+  });
 
   // ───────────── afișare ─────────────
   const unit = doc.settings.displayUnit;
-  const wallList = Object.values(doc.walls);
-  const roomList = Object.values(doc.rooms);
-  const openingList = Object.values(doc.openings);
   const invalidLive = drag && issues.length > 0;
-  /** Ce e selectat, pentru cititoarele de ecran (regiune `aria-live`): selecția din plan nu are altfel nicio expresie textuală. */
-  const announcement = (() => {
-    if (selectedObjectId) {
-      if (groupIds.length > 1) return `${groupIds.length} obiecte selectate.`;
-      const o = doc.objects[selectedObjectId];
-      const name =
-        o?.name ?? (o && doc.catalogSnapshot.items[o.catalogItemId]?.name.ro) ?? 'Obiect';
-      return `Obiect selectat: ${name}.`;
-    }
-    if (selection?.kind === 'room') {
-      const r = doc.rooms[selection.id];
-      const area = geometry.rooms.get(selection.id)?.areaMm2;
-      return `Cameră selectată: ${r?.name ?? ''}${area === undefined ? '' : `, ${formatAreaM2(area)}`}.`;
-    }
-    if (selection?.kind === 'opening') {
-      const o = doc.openings[selection.id];
-      return `${o?.type === 'door' ? 'Ușă' : 'Fereastră'} selectată.`;
-    }
-    if (selection?.kind === 'wall') return 'Perete selectat.';
-    if (selection?.kind === 'node') return 'Nod selectat.';
-    return 'Nimic selectat.';
-  })();
-  const statusLine = state.readOnly
-    ? {
-        tone: 'warning' as const,
-        text: 'Doar citire: proiectul nu poate fi modificat în acest tab.',
-      }
-    : state.conflict
-      ? {
-          tone: 'error' as const,
-          text: 'Conflict de versiuni: editarea e oprită până rezolvi conflictul (vezi mesajul de mai sus).',
-        }
-      : state.status === 'closed'
-        ? { tone: 'warning' as const, text: 'Sesiunea s-a încheiat.' }
-        : state.error
-          ? {
-              tone: 'error' as const,
-              text: 'Salvarea a eșuat; modificările rămân în memorie. Poți continua sau exporta o copie.',
-            }
-          : state.status === 'saving'
-            ? { tone: 'info' as const, text: 'Se salvează…' }
-            : null;
-  const toneClass = {
-    info: 'border-sky-300 bg-sky-50 text-sky-900',
-    warning: 'border-amber-300 bg-amber-50 text-amber-900',
-    error: 'border-red-300 bg-red-50 text-red-900',
-    success: 'border-emerald-300 bg-emerald-50 text-emerald-900',
-  };
+  const announcement = selectionAnnouncement({
+    doc,
+    geometry,
+    selection,
+    selectedObjectId,
+    groupIds,
+  });
+  const statusLine = sessionStatusLine(state);
 
   return (
     <section
@@ -1302,7 +464,7 @@ export function PlanEditor({
         <p
           role="status"
           data-testid="plan-status"
-          className={`rounded-lg border px-3 py-2 text-sm ${toneClass[statusLine.tone]}`}
+          className={`rounded-lg border px-3 py-2 text-sm ${STATUS_TONE_CLASS[statusLine.tone]}`}
         >
           {statusLine.text}
         </p>
@@ -1321,77 +483,18 @@ export function PlanEditor({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-2 lg:sticky lg:top-2 lg:h-[calc(100dvh-12rem)] lg:min-h-[28rem]">
-          <div
-            role="toolbar"
-            aria-label="Unelte plan"
-            className="flex flex-wrap items-center gap-2"
-            data-testid="plan-toolbar"
-          >
-            <Button
-              variant={tool === 'select' ? 'primary' : 'secondary'}
-              aria-pressed={tool === 'select'}
-              onClick={() => setTool('select')}
-              title="Selectează și mută (V)"
-              data-testid="tool-select"
-            >
-              Selectează
-            </Button>
-            <Button
-              variant={tool === 'wall' ? 'primary' : 'secondary'}
-              aria-pressed={tool === 'wall'}
-              disabled={!editable}
-              onClick={() => setTool(tool === 'wall' ? 'select' : 'wall')}
-              title="Desenează pereți (W)"
-              data-testid="tool-wall"
-            >
-              Perete nou
-            </Button>
-            <span className="mx-1 hidden h-6 w-px bg-stone-300 sm:block" aria-hidden="true" />
-            <Button
-              onClick={() => zoomBy(1 / ZOOM_STEP)}
-              aria-label="Micșorează"
-              title="Micșorează (−)"
-              data-testid="zoom-out"
-            >
-              −
-            </Button>
-            <Button
-              onClick={() => zoomBy(ZOOM_STEP)}
-              aria-label="Mărește"
-              title="Mărește (+)"
-              data-testid="zoom-in"
-            >
-              +
-            </Button>
-            <Button onClick={fit} title="Potrivește planul în fereastră (0)" data-testid="zoom-fit">
-              Potrivește
-            </Button>
-            <span className="text-xs text-stone-600" data-testid="zoom-level">
-              Scară: 100 px ≈ {formatLength(100 / view.zoom, unit)}
-            </span>
-            <label
-              className="flex items-center gap-1.5 text-xs text-stone-700"
-              title="Scurtături cu o singură tastă: W perete, V selectare, R rotire, + − zoom, 0 potrivire. Oprește-le dacă te încurcă (de exemplu cu tehnologii asistive)."
-            >
-              <input
-                type="checkbox"
-                checked={shortcuts}
-                onChange={(e) => setShortcuts(e.target.checked)}
-                data-testid="shortcuts-toggle"
-              />
-              Scurtături de tastă
-            </label>
-            <span className="ml-auto" />
-            <Button
-              variant="danger"
-              disabled={!editable || !selection || selection.kind === 'node'}
-              onClick={deleteSelected}
-              title="Șterge elementul selectat (Delete)"
-              data-testid="toolbar-delete"
-            >
-              Șterge
-            </Button>
-          </div>
+          <PlanToolbar
+            tool={tool}
+            setTool={setTool}
+            editable={editable}
+            zoomBy={zoomBy}
+            fit={fit}
+            scaleLabel={formatLength(100 / view.zoom, unit)}
+            shortcuts={shortcuts}
+            setShortcuts={setShortcuts}
+            canDelete={editable && !!selection && selection.kind !== 'node'}
+            onDelete={deleteSelected}
+          />
 
           <RoomPalette
             unit={unit}
@@ -1401,26 +504,12 @@ export function PlanEditor({
             onPlaceCentered={placeCentered}
           />
 
-          <p id="plan-hint" className="min-h-8 text-xs text-stone-600" data-testid="plan-hint">
-            {placing
-              ? 'Mută cursorul pe plan: camera se lipește de grilă și împarte peretele cu o cameră vecină (roșu = nu încape). R o rotește, apasă ca s-o plasezi, Esc anulează.'
-              : tool === 'wall'
-                ? draft
-                  ? 'Alege sfârșitul peretelui. Esc oprește desenarea.'
-                  : 'Alege începutul peretelui (un nod existent sau un punct din grilă).'
-                : 'Trage o cameră din paletă pe plan. Trage nodurile ca să muți pereții, golurile ca să le repoziționezi, o cameră deja selectată ca s-o muți întreagă; trage fundalul ca să deplasezi planul. Săgețile mută elementul selectat.'}
-          </p>
-          {placing ? (
-            <div>
-              <Button
-                onClick={() => setTurns((t) => (t + 1) % 4)}
-                title="Rotește camera din paletă cu 90° (R)"
-                data-testid="placing-rotate"
-              >
-                Rotește camera (R)
-              </Button>
-            </div>
-          ) : null}
+          <PlanHint
+            placing={placing !== null}
+            tool={tool}
+            drawing={draft !== null}
+            onRotatePlacing={() => setTurns((t) => (t + 1) % 4)}
+          />
 
           <div
             ref={boxRef}
@@ -1526,51 +615,7 @@ export function PlanEditor({
               onAddWall={onAddWall}
             />
           </div>
-          <details
-            className="rounded-xl border border-stone-200 bg-white p-4"
-            data-testid="element-list"
-          >
-            <summary className="cursor-pointer text-sm font-semibold text-stone-900">
-              Elemente din plan ({roomList.length} camere · {wallList.length} pereți ·{' '}
-              {openingList.length} goluri)
-            </summary>
-            <ul className="mt-2 space-y-1 text-sm">
-              {roomList.map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => setSelection({ kind: 'room', id: r.id })}
-                  >
-                    {ELEMENT_LABEL.room} „{r.name}” (
-                    {ROOM_TYPES.find((t) => t.value === r.type)?.label})
-                  </button>
-                </li>
-              ))}
-              {wallList.map((w, i) => (
-                <li key={w.id}>
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => setSelection({ kind: 'wall', id: w.id })}
-                  >
-                    {ELEMENT_LABEL.wall} {i + 1}
-                  </button>
-                </li>
-              ))}
-              {openingList.map((o) => (
-                <li key={o.id}>
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => setSelection({ kind: 'opening', id: o.id })}
-                  >
-                    {o.type === 'door' ? 'Ușă' : 'Fereastră'} ({formatLength(o.widthMm, unit)})
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
+          <ElementList doc={doc} unit={unit} onSelect={(kind, id) => setSelection({ kind, id })} />
         </aside>
       </div>
 

@@ -249,6 +249,7 @@ Rezultat: **compatibil**, fără constatări P0–P2 prin citire statică.
 - **Efort.** Mediu.
 
 #### F-16 — Componente-monolit în `features/plan-editor` și `materials` (**P2**) [S/R]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT PENTRU `PlanEditor`.** `PlanEditor.tsx` a scăzut de la 1596 la ~640 de linii, fără schimbări de comportament: starea și compoziția rămân în el; gesturile (`useCanvasHandlers`), tastatura (`usePlanKeyboard`), plasarea camerelor (`usePlacement`), ștergerea și duplicarea (`useSelectionActions`), textele de stare (`planStatus`), constantele și tipurile (`editorSupport`) și afișarea (`PlanToolbar`, `PlanHint`, `ElementList`) sunt module separate, cu context explicit. Verificat cu toată suita unitară (753/753), lint, straturi și E2E-urile de editor în 3 browsere. Alte componente mari (`PlanCanvas` ~750 de linii, `PropertiesPanel` ~560) neatinse
 - **Descriere.** `PlanEditor.tsx` (929 linii, mașina de gesturi + tastatură + stare de unelte + notificări), `MaterialsPanel.tsx` (684), `PlanCanvas.tsx` (634), `PropertiesPanel.tsx` (534). Logica de decizie e bine delegată domeniului (`domain/edit`), dar gesturile și tastatura sunt amestecate cu React și greu de testat izolat. Etapa 3 adaugă poligon liber, snap la axe/unghiuri, măsurare, tactil — presiune mare pe acest fișier.
 - **Soluție.** Extrage mașina de stări a gesturilor (select/perete/tragere/pan/pinch) și maparea tastelor în module pure în `plan-editor/`, testate fără DOM; memoizează straturile din `PlanCanvas`.
 - **Efort.** Mediu.
