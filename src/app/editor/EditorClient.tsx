@@ -110,7 +110,30 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label="Mod de vizualizare" className="flex gap-2">
+        <div
+          role="tablist"
+          aria-label="Mod de vizualizare"
+          className="flex gap-2"
+          onKeyDown={(e) => {
+            // model ARIA pentru tab-uri: săgeți stânga/dreapta, Home, End; activarea urmează focusul
+            const i = TABS.findIndex((t) => t.mode === mode);
+            const next =
+              e.key === 'ArrowRight'
+                ? (i + 1) % TABS.length
+                : e.key === 'ArrowLeft'
+                  ? (i - 1 + TABS.length) % TABS.length
+                  : e.key === 'Home'
+                    ? 0
+                    : e.key === 'End'
+                      ? TABS.length - 1
+                      : -1;
+            if (next < 0) return;
+            e.preventDefault();
+            const target = TABS[next]!.mode;
+            setMode(target);
+            document.getElementById(`tab-${target}`)?.focus();
+          }}
+        >
           {TABS.map((t) => (
             <button
               key={t.mode}
@@ -119,6 +142,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
               id={`tab-${t.mode}`}
               aria-selected={mode === t.mode}
               aria-controls="workspace-panel"
+              tabIndex={mode === t.mode ? 0 : -1}
               data-testid={`mode-${t.mode}`}
               onClick={() => setMode(t.mode)}
               className={`rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${

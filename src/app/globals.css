@@ -1,1 +1,28 @@
 @import 'tailwindcss';
+
+/* Preferințe de accesibilitate ale sistemului (F-12) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Contrast forțat (Windows): stările alese nu trebuie să depindă doar de culoarea de umplere */
+@media (forced-colors: active) {
+  [aria-pressed='true'],
+  [aria-selected='true'],
+  [aria-current='true'],
+  [data-selected='true'] {
+    outline: 3px solid Highlight;
+    outline-offset: 1px;
+  }
+  svg [data-selected='true'] {
+    stroke: Highlight;
+    stroke-width: 3px;
+  }
+}

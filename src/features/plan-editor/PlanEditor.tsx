@@ -45,7 +45,7 @@ import {
   type Pt,
   type Result,
 } from '@/domain';
-import { formatLength } from '@/lib/format';
+import { formatAreaM2, formatLength } from '@/lib/format';
 import { describeCommitFailure } from '@/lib/messages';
 import { selectGeometry } from '@/state/selectors';
 import type { CommitResult, ProjectSession, SessionState } from '@/state/session';
@@ -54,6 +54,7 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert } from '@/ui/feedback';
 import { PlanCanvas, type CanvasHandlers } from './PlanCanvas';
 import { PropertiesPanel, ROOM_TYPES, type RunEdit } from './PropertiesPanel';
+import { planKeyAllowed } from './keyboard';
 import { RoomList } from './RoomList';
 import { RoomPalette } from './RoomPalette';
 import { orient, roomShape } from './roomPresets';
@@ -259,6 +260,22 @@ export function PlanEditor({
   const setTool = useCallback((t: Tool) => {
     setToolRaw(t);
     setDraft(null);
+  }, []);
+  /** Scurtături cu o singură tastă (W, V, R, +, −, 0): comutator (WCAG 2.1.4), memorat în browser. */
+  const [shortcuts, setShortcutsState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('rc:shortcuts') !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const setShortcuts = useCallback((on: boolean) => {
+    setShortcutsState(on);
+    try {
+      localStorage.setItem('rc:shortcuts', on ? 'on' : 'off');
+    } catch {
+      /* fără stocare: comutatorul rămâne valabil doar în această sesiune */
+    }
   }, []);
   const selection = exists(doc, selectionRaw) ? selectionRaw : null;
   const selectedObjectId =
@@ -1098,6 +1115,8 @@ export function PlanEditor({
         return;
       }
       const k = e.key;
+      // săgețile și scurtăturile cu o tastă nu acționează în spatele unui control focalizat sau cu scurtăturile oprite
+      if (!planKeyAllowed(k, e.target, shortcuts, { placing: placing !== null })) return;
       const nudge = (dx: number, dy: number) => {
         const step = (e.shiftKey ? 10 : 1) * grid;
         if (!editable && (selection || selectedObjectId)) return;
@@ -1205,6 +1224,7 @@ export function PlanEditor({
     selectedObjectId,
     tool,
     zoomBy,
+    shortcuts,
   ]);
 
   // ───────────── afișare ─────────────
@@ -1213,6 +1233,28 @@ export function PlanEditor({
   const roomList = Object.values(doc.rooms);
   const openingList = Object.values(doc.openings);
   const invalidLive = drag && issues.length > 0;
+  /** Ce e selectat, pentru cititoarele de ecran (regiune `aria-live`): selecția din plan nu are altfel nicio expresie textuală. */
+  const announcement = (() => {
+    if (selectedObjectId) {
+      if (groupIds.length > 1) return `${groupIds.length} obiecte selectate.`;
+      const o = doc.objects[selectedObjectId];
+      const name =
+        o?.name ?? (o && doc.catalogSnapshot.items[o.catalogItemId]?.name.ro) ?? 'Obiect';
+      return `Obiect selectat: ${name}.`;
+    }
+    if (selection?.kind === 'room') {
+      const r = doc.rooms[selection.id];
+      const area = geometry.rooms.get(selection.id)?.areaMm2;
+      return `Cameră selectată: ${r?.name ?? ''}${area === undefined ? '' : `, ${formatAreaM2(area)}`}.`;
+    }
+    if (selection?.kind === 'opening') {
+      const o = doc.openings[selection.id];
+      return `${o?.type === 'door' ? 'Ușă' : 'Fereastră'} selectată.`;
+    }
+    if (selection?.kind === 'wall') return 'Perete selectat.';
+    if (selection?.kind === 'node') return 'Nod selectat.';
+    return 'Nimic selectat.';
+  })();
   const statusLine = state.readOnly
     ? {
         tone: 'warning' as const,
@@ -1247,6 +1289,15 @@ export function PlanEditor({
       data-testid="plan-editor"
       data-editable={editable}
     >
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="selection-announcer"
+      >
+        {announcement}
+      </div>
       {statusLine ? (
         <p
           role="status"
@@ -1318,6 +1369,18 @@ export function PlanEditor({
             <span className="text-xs text-stone-600" data-testid="zoom-level">
               Scară: 100 px ≈ {formatLength(100 / view.zoom, unit)}
             </span>
+            <label
+              className="flex items-center gap-1.5 text-xs text-stone-700"
+              title="Scurtături cu o singură tastă: W perete, V selectare, R rotire, + − zoom, 0 potrivire. Oprește-le dacă te încurcă (de exemplu cu tehnologii asistive)."
+            >
+              <input
+                type="checkbox"
+                checked={shortcuts}
+                onChange={(e) => setShortcuts(e.target.checked)}
+                data-testid="shortcuts-toggle"
+              />
+              Scurtături de tastă
+            </label>
             <span className="ml-auto" />
             <Button
               variant="danger"
@@ -1338,7 +1401,7 @@ export function PlanEditor({
             onPlaceCentered={placeCentered}
           />
 
-          <p className="min-h-8 text-xs text-stone-600" data-testid="plan-hint">
+          <p id="plan-hint" className="min-h-8 text-xs text-stone-600" data-testid="plan-hint">
             {placing
               ? 'Mută cursorul pe plan: camera se lipește de grilă și împarte peretele cu o cameră vecină (roșu = nu încape). R o rotește, apasă ca s-o plasezi, Esc anulează.'
               : tool === 'wall'
@@ -1347,10 +1410,25 @@ export function PlanEditor({
                   : 'Alege începutul peretelui (un nod existent sau un punct din grilă).'
                 : 'Trage o cameră din paletă pe plan. Trage nodurile ca să muți pereții, golurile ca să le repoziționezi, o cameră deja selectată ca s-o muți întreagă; trage fundalul ca să deplasezi planul. Săgețile mută elementul selectat.'}
           </p>
+          {placing ? (
+            <div>
+              <Button
+                onClick={() => setTurns((t) => (t + 1) % 4)}
+                title="Rotește camera din paletă cu 90° (R)"
+                data-testid="placing-rotate"
+              >
+                Rotește camera (R)
+              </Button>
+            </div>
+          ) : null}
 
           <div
             ref={boxRef}
-            className="relative h-[60vh] min-h-80 flex-1 overflow-hidden rounded-xl border border-stone-300 bg-stone-50 lg:h-auto"
+            tabIndex={0}
+            role="group"
+            aria-label="Zona planului"
+            aria-describedby="plan-hint"
+            className="relative h-[60vh] min-h-80 flex-1 overflow-hidden rounded-xl border border-stone-300 bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 lg:h-auto"
             data-testid="plan-box"
           >
             <PlanCanvas

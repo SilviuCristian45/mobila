@@ -120,7 +120,7 @@ test.describe('camere prin drag & drop (build static)', () => {
     await page.getByTestId('undo').click();
 
     // rotire: R și buton; dimensiunile se inversează, aria rămâne
-    await page.getByTestId('plan-svg').focus();
+    await page.getByTestId('plan-box').focus();
     await page.keyboard.press('r');
     await expect(page.getByTestId('room-width')).toHaveValue('3000');
     await expect(page.getByTestId('room-depth')).toHaveValue('4000');
@@ -223,7 +223,7 @@ test.describe('camere prin drag & drop (build static)', () => {
     const livingArea = await page.locator('[data-testid^="room-list-area-"]').first().innerText();
 
     // bucătăria e selectată: Delete → dialog cu varianta implicită (cameră + pereții ei proprii)
-    await page.getByTestId('plan-svg').focus();
+    await page.getByTestId('plan-box').focus();
     await page.keyboard.press('Delete');
     const dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('pereți ai ei');
@@ -239,7 +239,7 @@ test.describe('camere prin drag & drop (build static)', () => {
     const wallsFull = await page.locator('polygon[data-testid^="wall-"]').count();
     expect(wallsFull).toBeGreaterThan(wallsAfter);
     await items.nth(1).click(); // bucătăria (a doua în listă)
-    await page.getByTestId('plan-svg').focus();
+    await page.getByTestId('plan-box').focus();
     await page.keyboard.press('Delete');
     await page.getByRole('dialog').getByTestId('confirm-secondary').click();
     await expect(items).toHaveCount(1);

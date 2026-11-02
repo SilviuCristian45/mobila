@@ -470,7 +470,7 @@ describe('tab-ul Buget: export XLSX', () => {
     await openBudget(e);
     expect(blobs).toHaveLength(0);
     await userEvent.click(screen.getByTestId('budget-export-xlsx'));
-    await waitFor(() => expect(blobs).toHaveLength(1));
+    await waitFor(() => expect(blobs).toHaveLength(1), { timeout: 8000 }); // biblioteca XLSX se încarcă la cerere
     expect(blobs[0]!.name).toBe('studio-buget.xlsx');
     expect(blobs[0]!.blob.size).toBeGreaterThan(500);
     const bytes = await new Promise<Uint8Array>((resolve, reject) => {
