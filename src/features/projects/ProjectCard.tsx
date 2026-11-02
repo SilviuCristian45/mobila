@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { editorHref } from '@/lib/asset';
 import { formatDateTime, pluralRo } from '@/lib/format';
 import { describeOpenFailure } from '@/lib/messages';
+import { inspectQueued } from './inspectQueue';
 import type { ProjectMeta } from '@/state/types';
 import type { OpenFailure, ProjectManager } from '@/state/manager';
 import { Button, buttonClass } from '@/ui/Button';
@@ -12,17 +13,17 @@ import { Badge } from '@/ui/feedback';
 type Health = { phase: 'checking' } | { phase: 'ok' } | { phase: 'invalid'; failure: OpenFailure };
 
 /** Verifică (fără blocare) dacă documentul salvat se poate încărca; eșecurile apar pe card, nu doar la deschidere. */
-function useProjectHealth(manager: ProjectManager, id: string): Health {
+function useProjectHealth(manager: ProjectManager, id: string, revision: number): Health {
   const [health, setHealth] = useState<Health>({ phase: 'checking' });
   useEffect(() => {
     let cancelled = false;
-    void manager.inspect(id).then((r) => {
+    void inspectQueued(manager, id, revision).then((r) => {
       if (!cancelled) setHealth(r.ok ? { phase: 'ok' } : { phase: 'invalid', failure: r.error });
     });
     return () => {
       cancelled = true;
     };
-  }, [manager, id]);
+  }, [manager, id, revision]);
   return health;
 }
 
@@ -44,7 +45,7 @@ export function ProjectCard({
   onRecover,
   onExportRaw,
 }: ProjectCardProps) {
-  const health = useProjectHealth(manager, project.id);
+  const health = useProjectHealth(manager, project.id, project.revision);
   const invalid = health.phase === 'invalid';
   const failure = health.phase === 'invalid' ? describeOpenFailure(health.failure) : null;
   // proiect mai nou / neconvertibil: restaurarea e refuzată (ar pierde date), deci nu o oferim

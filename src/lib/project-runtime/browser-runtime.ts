@@ -12,6 +12,11 @@ export interface ProjectRuntime {
   /** Cere stocare persistentă (apelat după un gest al utilizatorului; nu aruncă, nu blochează). */
   requestPersistence(): Promise<boolean>;
   storageInfo(): Promise<StorageInfo>;
+  /**
+   * Browserul poate bloca un proiect între taburi (Web Locks)? `false` = nu: protecția rămâne doar detectarea conflictelor
+   * la salvare, iar editorul avertizează. Lipsa câmpului înseamnă „da” (teste, medii controlate).
+   */
+  tabLocking?: boolean;
   /** Închide sesiunile și conexiunea la baza de date. */
   dispose(): Promise<void>;
 }
@@ -64,6 +69,7 @@ export async function createBrowserRuntime(
     navigate: (href) => window.location.assign(href),
     requestPersistence: () => storageInfo.requestPersistentStorage(navigator.storage),
     storageInfo: () => storageInfo.getStorageInfo(navigator.storage),
+    tabLocking: Boolean((navigator as { locks?: unknown }).locks),
     dispose: async () => {
       await manager.closeAll();
       db.close();

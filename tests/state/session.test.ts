@@ -760,6 +760,19 @@ describe('ciclul de viață al paginii', () => {
     t.fireWin('beforeunload', dirty);
     expect(dirty.preventDefault).toHaveBeenCalled();
   });
+  it('F-11: o plecare în fereastra de debounce sau în timpul unei salvări normale NU cere confirmare, dar pornește salvarea', async () => {
+    const e = env();
+    const s = await openStudio(e);
+    const t = fakeTargets();
+    attachLifecycle(s, t.win, t.doc);
+    moveSofa(s, 1700); // modificare încă nesalvată, fără nicio eroare
+    expect(s.getState().hasUnsavedChanges).toBe(true);
+    const leaving = { preventDefault: vi.fn() };
+    t.fireWin('beforeunload', leaving);
+    expect(leaving.preventDefault).not.toHaveBeenCalled();
+    await s.flush();
+    expect((await stored(e.tab)).doc.objects.oSofa!.position.x).toBe(1700);
+  });
 });
 
 describe('rezultate derivate: memoizate, în afara documentului, istoricului și stocării', () => {
@@ -852,5 +865,25 @@ describe('închidere idempotentă', () => {
     expect(s.undo()).toBe(false);
     await closing;
     expect((await stored(e.tab)).doc.objects.oSofa!.position.x).toBe(1500);
+  });
+});
+
+describe('F-03: autosave-ul nu invalidează rezultatele derivate', () => {
+  it('după salvare (alinierea `updatedAt`) documentul e alt obiect, dar geometria, scena și bugetul rămân aceleași (nu se recalculează)', async () => {
+    const e = env();
+    const s = await openStudio(e);
+    moveSofa(s, 1500);
+    const before = s.getState().doc;
+    const g = selectGeometry(before);
+    const sc = selectScene(before);
+    const b = selectBudget(before);
+    await e.clock.advance(1000);
+    await s.flush();
+    const after = s.getState().doc;
+    expect(after).not.toBe(before); // `updatedAt` aliniat → obiect nou
+    expect(after.updatedAt).not.toBe(before.updatedAt);
+    expect(selectGeometry(after)).toBe(g);
+    expect(selectScene(after)).toBe(sc);
+    expect(selectBudget(after)).toBe(b);
   });
 });

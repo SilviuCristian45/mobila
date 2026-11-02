@@ -67,6 +67,30 @@ module.exports = {
       to: { path: '(?:^|/)src/domain/' },
     },
     {
+      name: 'catalog-materials-fara-ui',
+      comment:
+        'catalog/ și materials/ sunt date și funcții pure: fără React, Three, DOM-ul aplicației sau straturile de sus (ARCHITECTURE §4.8b/c).',
+      severity: 'error',
+      from: { path: '(?:^|/)src/(catalog|materials)/' },
+      to: { path: [UI_LIBS, '(?:^|/)src/(features|app|state|persistence|ui)/'] },
+    },
+    {
+      name: 'three-doar-in-viewer-3d',
+      comment:
+        'Three / React Three Fiber se importă numai din features/viewer-3d/ (încărcat leneș, ca să nu intre în pachetul inițial).',
+      severity: 'error',
+      from: { path: '(?:^|/)src/', pathNot: '(?:^|/)src/features/viewer-3d/' },
+      to: { path: '(^|/)node_modules/(three|@react-three)(/|$)' },
+    },
+    {
+      name: 'ui-fara-state-features',
+      comment:
+        'ui/ conține componente generice: nu depinde de state/, features/, persistence/ sau app/.',
+      severity: 'error',
+      from: { path: '(?:^|/)src/ui/' },
+      to: { path: '(?:^|/)src/(features|state|persistence|app)/' },
+    },
+    {
       name: 'fara-dependente-circulare',
       severity: 'error',
       from: {},

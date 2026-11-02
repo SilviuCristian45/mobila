@@ -114,6 +114,24 @@ describe('Editor — rută și stări de deschidere', () => {
   });
 });
 
+describe('Editor — avertisment fără Web Locks (F-14)', () => {
+  it('fără blocare între taburi: apare un avertisment; cu blocare (implicit), nu', async () => {
+    const e = uiEnv();
+    const id = await seedStudio(e);
+    query = `p=${id}`;
+    const { unmount } = renderWithRuntime(<EditorShell />, {
+      ...e.runtimeFor(e.tab),
+      tabLocking: false,
+    });
+    await screen.findByTestId('editor');
+    expect(screen.getByTestId('no-tab-lock').textContent).toMatch(/două taburi/);
+    unmount();
+    renderWithRuntime(<EditorShell />, e.runtimeFor(e.tab));
+    await screen.findByTestId('editor');
+    expect(screen.queryByTestId('no-tab-lock')).toBeNull();
+  });
+});
+
 describe('Editor — sesiunea React peste ProjectSession', () => {
   it('deschide proiectul din URL: nume, mod, conținut, stare „Salvat”', async () => {
     const e = uiEnv();

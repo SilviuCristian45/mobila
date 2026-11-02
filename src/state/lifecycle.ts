@@ -14,8 +14,9 @@ export interface DocumentLike {
 
 /**
  * - `visibilitychange → hidden` și `pagehide`: salvare imediată (ocolește debounce-ul).
- * - `beforeunload`: dacă mai există modificări nesalvate (eroare de stocare, conflict), cere confirmarea utilizatorului
- *   (prin `preventDefault`); nu se pierd silențios.
+ * - `beforeunload`: pornește o salvare imediată și cere confirmarea utilizatorului (prin `preventDefault`) DOAR când
+ *   modificările nu se pot salva: eroare de stocare sau conflict. O salvare normală în curs sau fereastra de debounce nu
+ *   cer confirmare (ar apărea dialoguri false la orice plecare rapidă, iar utilizatorii ar învăța să le ignore).
  * Întoarce funcția de dezinstalare.
  */
 export function attachLifecycle(
@@ -31,7 +32,9 @@ export function attachLifecycle(
   };
   const onBeforeUnload = (e: unknown) => {
     flushNow();
-    if (session.getState().hasUnsavedChanges && !session.getState().readOnly) {
+    const st = session.getState();
+    const cannotSave = st.error !== null || st.conflict !== null;
+    if (cannotSave && st.hasUnsavedChanges && !st.readOnly) {
       (e as { preventDefault?: () => void } | undefined)?.preventDefault?.();
     }
   };

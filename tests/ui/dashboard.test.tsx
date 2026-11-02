@@ -544,3 +544,35 @@ describe('Dashboard — import de proiecte din fișiere', () => {
     expect(zone.getAttribute('data-dragging')).toBe('false');
   });
 });
+
+describe('Dashboard — verificarea sănătății proiectelor (F-09)', () => {
+  it('verificările rulează una câte una (nu toate deodată) și nu se repetă pentru proiecte nemodificate', async () => {
+    const e = uiEnv();
+    await seed(e, ['A', 'B', 'C', 'D']);
+    let running = 0;
+    let maxRunning = 0;
+    let calls = 0;
+    const real = e.tab.manager.inspect.bind(e.tab.manager);
+    vi.spyOn(e.tab.manager, 'inspect').mockImplementation(async (id) => {
+      calls++;
+      running++;
+      maxRunning = Math.max(maxRunning, running);
+      await new Promise((r) => setTimeout(r, 15));
+      const out = await real(id);
+      running--;
+      return out;
+    });
+    renderWithRuntime(<Dashboard />, e.runtimeFor(e.tab));
+    await waitFor(() => expect(cards()).toHaveLength(4));
+    await waitFor(() => expect(calls).toBe(4));
+    await waitFor(() => expect(running).toBe(0));
+    expect(maxRunning).toBe(1);
+    // reîncărcarea listei (un import adaugă un proiect nou) nu reia verificările celor vechi
+    await userEvent.upload(
+      screen.getByTestId('import-input'),
+      new File([exportProject(studioProject(), META)], 'nou.roomcraft.json'),
+    );
+    await waitFor(() => expect(cards()).toHaveLength(5));
+    await waitFor(() => expect(calls).toBe(5));
+  });
+});

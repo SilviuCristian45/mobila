@@ -47,3 +47,17 @@ export const selectBudget = (doc: ProjectDocument): BudgetSummary =>
   memo(budgetCache, doc, () => computeBudget(doc, selectGeometry(doc)));
 export const selectScene = (doc: ProjectDocument): SceneDescription =>
   memo(sceneCache, doc, () => buildScene(doc, selectGeometry(doc)));
+
+/**
+ * Preia rezultatele derivate ale lui `from` pentru `to`, când cele două documente au ACELAȘI conținut și diferă doar prin
+ * `updatedAt` (alinierea de după o salvare): geometria, bugetul și scena nu depind de `updatedAt`, deci nu se recalculează.
+ */
+export function adoptDerived(from: ProjectDocument, to: ProjectDocument): void {
+  if (from === to) return;
+  const g = geometryCache.get(from);
+  if (g) geometryCache.set(to, g);
+  const b = budgetCache.get(from);
+  if (b) budgetCache.set(to, b);
+  const sc = sceneCache.get(from);
+  if (sc) sceneCache.set(to, sc);
+}

@@ -94,7 +94,22 @@ function OpenProject({
       </Centered>
     );
   }
-  return <SessionView session={state.session} takeOver={takeOver} workspace={workspace} />;
+  return (
+    <>
+      {runtime.tabLocking === false ? (
+        <p
+          role="note"
+          data-testid="no-tab-lock"
+          className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900"
+        >
+          Acest browser nu poate bloca un proiect deschis în două taburi. Ține proiectul deschis
+          într-un singur tab; dacă îl editezi în două, la salvare ți se va cere să alegi ce versiune
+          păstrezi.
+        </p>
+      ) : null}
+      <SessionView session={state.session} takeOver={takeOver} workspace={workspace} />
+    </>
+  );
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

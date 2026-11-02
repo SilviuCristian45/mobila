@@ -1,6 +1,7 @@
 // Sesiunea proiectului activ: document în memorie + istoric undo/redo + autosave + stare de salvare.
 // Independentă de React. Reguli: ADR-029 (istoric doar în memorie, doar patch-uri ale documentului, `updatedAt` în afara
 // istoricului, ștergerile includ curățarea derivatelor în același patch, salvare single-flight cu verificare de revizie).
+import { adoptDerived } from './selectors';
 import { applyPatches, enablePatches, produceWithPatches, type Draft, type Patch } from 'immer';
 import { createStore } from 'zustand/vanilla';
 import { exportProject, parseProjectDocument, type ProjectDocument } from '@/domain';
@@ -316,7 +317,12 @@ export function createProjectSession(init: SessionInit): ProjectSession {
         attempts = 0;
         lastSavedAt = now;
         firstDirtyAt = null;
-        if (doc === toSave) doc = { ...doc, updatedAt: now }; // fără modificări concurente: aliniem `updatedAt`, fără istoric
+        if (doc === toSave) {
+          // fără modificări concurente: aliniem `updatedAt`, fără istoric; conținutul e același, deci derivatele se păstrează
+          const aligned = { ...doc, updatedAt: now };
+          adoptDerived(doc, aligned);
+          doc = aligned;
+        }
         void maybeSnapshot(toSave);
       } catch (e) {
         if (e instanceof RevisionConflictError && e.kind !== 'exists') {

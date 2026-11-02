@@ -74,6 +74,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 - **Stare (2026-10-31, branch `fix/f01-f07-safe-recovery`, necomis): REMEDIAT în cod, în așteptarea aprobării.** `restoreSnapshot` refuză cu eroarea tipată `incompatible` (zero scrieri) când documentul curent e `corrupt/version` sau `corrupt/migrate`, sau când copia nu poate fi citită; pentru orice alt document invalid, rândul brut se arhivează ca `pre-overwrite` în **aceeași tranzacție** cu suprascrierea (`repo.overwriteUnreadable`). `ProjectCard` nu mai oferă „Restaurează” pentru „mai nou”. **Export brut implementat:** butonul „Exportă datele brute” pe orice card invalid descarcă `<nume>-backup-raw.json` (rândul din IndexedDB serializat exact, fără validare/migrare/modificări; `repo.loadRaw` + `manager.exportRaw`), cu mesaje care explică că e un backup brut, nu un `.roomcraft.json`, și că versiunea curentă nu îl poate deschide neapărat. **Fără restaurare din datele brute** (în afara scopului). Detalii: `docs/REMEDIATION_BATCH_1.md`.
 
 #### F-02 — Nu există import în interfață; backup-ul exportat nu poate fi restaurat (**P1**) [D]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT.** Dashboard-ul are „Importă proiect” (mai multe fișiere), drag & drop pe pagină cu indicație vizuală și rezultate persistente pe fișier: succes (cu copie nouă la conflict de ID și avertismente), sau cauza respingerii pe etape (`size/parse/envelope/version/migrate/schema/integrity/storage`) în română, cu ce poate face utilizatorul; un backup brut e recunoscut ca atare. Mărimea se verifică ÎNAINTE de citire (`readTextFile`). Teste unitare, UI și E2E în 3 browsere (circuitul export din editor → import în tablou). Detalii: `docs/REMEDIATION_BATCH_3.md**
 - **Descriere.** `ProjectManager.importFile` există și e testat, dar nu e apelat nicăieri în `src/features` sau `src/app` (grep: niciun `importFile`, `<input type="file">`, `FileReader`, `.text()`). Editorul oferă „Exportă copie”, iar starea de eroare de salvare îndeamnă la exportul unei copii (în `PlanEditor`: „Poți continua sau exporta o copie”), dar fluxul de revenire nu există. Mutarea între domenii/dispozitive (ARCH §13, I8: „calea de migrare este export/import”) nu e utilizabilă.
 - **Fișiere.** `src/features/projects/Dashboard.tsx`, `src/state/manager.ts` (`importFile`), `src/features/editor-shell/SessionBanners.tsx`.
 - **Impact.** Utilizatorul crede că are o copie de siguranță, dar nu o poate folosi; blochează criteriile de acceptare ale Etapei 2 (export → import, fișiere respinse cu mesaj clar).
@@ -82,6 +83,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 - **Efort.** Mediu.
 
 #### F-04 — Politica de compatibilitate între versiuni e incoerentă cu schema strictă și cu hostingul static (**P1**) [D + R]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT (politică aplicată automat).** ADR-052: orice schimbare a formei persistate (inclusiv o valoare nouă de enum) crește `CURRENT_VERSION` cu migrare pură. `tests/domain/schema-shape.test.ts` îngheață amprenta schemei (SHA-256 a schemei JSON, `tests/fixtures/schema-shape.json`) și pică, cu instrucțiuni, dacă forma se schimbă fără decizie explicită; verificat prin modificare temporară a schemei**
 - **Descriere.** `ProjectDocumentSchema` este `strictObject` și ARCH §7.7 permite „adăugări opționale în aceeași versiune”. Împreună, o versiune nouă a aplicației care scrie un câmp/enum nou fără `schemaVersion++` produce documente pe care **versiunea veche** (rămasă în cache sau după rollback) le declară `corrupt` („Proiectul este invalid”), nu „mai nou”. Combinat cu F-01, mesajul și acțiunile sunt cele greșite. Hostingul static (fără control asupra cache-ului clientului) face scenariul realist.
 - **Fișiere.** `src/domain/schema/index.ts` (`strictObject`, enum-uri `TEXTURE_PATTERNS`, `kind`…), `src/domain/io/index.ts` (`parseProjectDocument`), `docs/ARCHITECTURE.md` §7.7, `docs/STAGE3C_REPORT.md` §8.
 - **Impact.** Proiecte valide apar „Invalide” după un deploy/rollback; risc de pierdere (cu F-01).
@@ -99,6 +101,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 - **Stare (2026-10-31, branch `fix/f01-f07-safe-recovery`, necomis): REMEDIAT în cod, în așteptarea aprobării.** Copiile `pre-*` au plafon separat (`SAFETY_SNAPSHOTS_KEPT = 3` per motiv), în afara `SNAPSHOTS_KEPT = 5`; `createdAt` = momentul copierii; reîncărcarea aceleiași revizii nu rescrie copia. Fără migrări reale și fără modificarea `CURRENT_VERSION`. Detalii: `docs/REMEDIATION_BATCH_1.md`.
 
 #### F-14 — Fără Web Locks nu există nicio excludere între taburi (**P2**) [R]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT PARȚIAL.** Fără `navigator.locks`, editorul afișează un avertisment explicit („acest browser nu poate bloca un proiect deschis în două taburi”); rezerva `BroadcastChannel` nu s-a implementat (concurența optimistă pe revizie rămâne a doua linie de apărare)**
 - **Descriere.** `createLockProvider` cade pe `NoLockProvider` dacă `navigator.locks` lipsește (context nesigur HTTP, browsere vechi). ARCH §7.4 promite rezervă `BroadcastChannel`; nu e implementată (confirmat de STAGE1c). Rămâne doar concurența optimistă pe `revision`, care detectează abia la salvare.
 - **Fișiere.** `src/persistence/locks.ts`.
 - **Impact.** Doi editori în paralel descoperă conflictul abia la salvare, cu dialog de rezolvare (nu pierdere silențioasă — mitigat). Testat în `e2e-storage` (caz „fără excludere între taburi”).
@@ -114,6 +117,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 ### Performanță
 
 #### F-03 — Fiecare autosave schimbă identitatea documentului; derivatele se recalculează degeaba; geometria se analizează de 2–3 ori per editare (**P1**) [D; magnitudine nemăsurată]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT PARȚIAL (a).** După salvare, documentul cu `updatedAt` aliniat preia rezultatele derivate ale celui salvat (`adoptDerived`): geometria, scena și bugetul nu se mai recalculează la fiecare autosave. **Rămâne** (b): `commit` aruncă geometria calculată de validare și UI-ul o recalculează (o analiză în plus per editare); nu s-a făcut, fiindcă fără măsurători (excluse de utilizator) câștigul nu se poate dovedi**
 - **Descriere.**
   1. `runSaveLoop`: după salvare, `if (doc === toSave) doc = { ...doc, updatedAt: now }` creează un obiect nou; apoi `publish()`.
   2. `selectGeometry`/`selectScene`/`selectBudget` memoizează într-un `WeakMap` **pe identitatea** documentului → toate cele trei se recalculează după salvare, deși conținutul geometric e identic.
@@ -141,6 +145,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 - **Efort.** Mediu.
 
 #### F-09 — Dashboard: verificarea sănătății parsează complet fiecare proiect (**P2**) [D cod; R impact]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT.** Verificările de sănătate ale cardurilor rulează UNA CÂTE UNA (cu cedarea firului între ele) și se memorează pe (manager, proiect, revizie) (`inspectQueue.ts`): remontarea cardurilor sau reîncărcarea listei nu reia verificarea proiectelor nemodificate. Test: concurență maximă 1, fără repetări. Scrierile la citire (snapshot `pre-migration`) rămân, dar nu există încă nicio migrare**
 - **Descriere.** Fiecare `ProjectCard` apelează `manager.inspect(id)` → `repo.load` → `parseProjectDocument` (zod strict + integritate + geometrie) pentru **toate** proiectele, în paralel, pe firul principal, la fiecare încărcare a paginii; `key={id:revision}` remontează cardul și repetă verificarea. `load` poate scrie și snapshot `pre-migration` într-o cale de citire.
 - **Fișiere.** `src/features/projects/ProjectCard.tsx`, `Dashboard.tsx` (≈148), `src/state/manager.ts` (`inspect`), `src/persistence/repository.ts` (`load`/`parseRow`).
 - **Impact.** Îngheț perceptibil al listei cu multe proiecte mari; scrieri neașteptate la citire când va exista migrare.
@@ -149,6 +154,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 - **Efort.** Mic–mediu.
 
 #### F-17 — WebGL: nicio gestionare explicită a pierderii contextului; `preserveDrawingBuffer: true` (**P2**) [R]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT.** Pierderea contextului WebGL e tratată (mesaj, refacere, „Reîncarcă 3D”), verificată cu pierdere reală în 3 browsere (ADR-051). `preserveDrawingBuffer` rămâne (necesar capturilor din teste), fără măsurători**
 - **Descriere.** Nu există `webglcontextlost/restored` în cod (grep). Se bazează pe comportamentul implicit al Three/R3F; cu `frameloop="demand"`, după restaurare s-ar putea să nu existe repictare până la o interacțiune (**neverificat**). `Canvas` are `preserveDrawingBuffer: true` (cost de memorie/performanță; aparent pentru teste de captură). `webglAvailable()` creează un context de test care nu e eliberat explicit (`WEBGL_lose_context`). ROADMAP Etapa 7 cere un test de pierdere simulată de context.
 - **Fișiere.** `src/features/viewer-3d/ViewerCanvas.tsx` (≈244–256), `webgl.ts`, `Viewer3D.tsx` (`RenderBoundary`).
 - **Impact.** 3D negru după pierderea contextului (mobil, GPU reset, multe tab-uri) până la „Încearcă din nou”/reîncărcare; datele nu sunt afectate.
@@ -168,6 +174,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 - **Stare (2026-10-31, branch `fix/f05-error-recovery`, necomis): REMEDIAT în cod, în așteptarea aprobării.** Strategie pe straturi, toate în română, fără mesaje sau stack trace-uri în interfață (detaliile merg doar în consolă): `src/app/error.tsx` și `src/app/global-error.tsx` (rută / layout); `ErrorBoundary` comun (`src/ui/ErrorBoundary.tsx`) folosit pentru **zona de lucru** (în `SessionView`: antetul cu Anulează, Exportă copie și „← Proiecte” rămâne, sesiunea rămâne activă), **panourile laterale**, **cardurile din dashboard** și **vizualizarea 3D** (`RenderBoundary` refăcut peste el; nu mai afișează `error.message`). Verificat în Chromium, Firefox și WebKit cu erori de randare reale, fără cod de test în aplicație. **Nu s-a introdus `not-found.tsx`** (în afara cerinței lotului). Limitări și detalii: `docs/REMEDIATION_BATCH_2.md`.
 
 #### F-10 — Import: limite și blocarea firului principal (**P2**) [R] (de tratat împreună cu F-02)
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT.** `MAX_IMPORT_BYTES` = 10 MB (era 50); dicționarele fără chei-ID (`catalogSnapshot.items/finishes`, `budget.overrides`, `params`, `paramSpecs`) au plafon (`MAX_RECORD_ENTRIES` = 2000), testat. Fără Worker: parsarea nu a fost măsurată (măsurătorile sunt excluse de utilizator) și un fișier peste 10 MB nu se mai citește deloc**
 - **Descriere.** `MAX_IMPORT_BYTES = 50 MB`; `MAX_ENTITIES_PER_TABLE = 10.000`, dar `catalogSnapshot.items/finishes`, `budget.overrides` și `params` sunt `z.record` **fără plafon**; geometria refuză peste `MAX_WALLS_FOR_VALIDATION = 3000` pereți (mesaj „prea mulți pereți”) — plafoane incoerente (10.000 vs 3000). Parsarea (JSON + `findUnsafeStructure` + zod strict + integritate + geometrie O(n²)) rulează pe firul principal; ARCH §9 amână Worker-ul „dacă se măsoară nevoia”. Fixture-ul real `studio.roomcraft.json` are ≈10 KB — un fișier de 50 MB e de ordine de mărime nerealist pentru produs.
 - **Fișiere.** `src/domain/io/index.ts`, `src/domain/schema/index.ts`, `src/domain/geometry/model.ts`.
 - **Impact.** Un fișier mare/rău intenționat poate îngheța fila (nu pierde date; nu depășește validarea).
@@ -191,6 +198,7 @@ Format: **descriere · fișiere · impact · probabilitate · soluție · efort*
 ### UX și accesibilitate
 
 #### F-11 — `beforeunload` cere confirmare la orice modificare nesalvată (**P2**) [D]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT.** `beforeunload` cere confirmare doar când modificările NU se pot salva (eroare de stocare sau conflict); o plecare în fereastra de debounce sau în timpul unei salvări normale doar pornește salvarea imediată. Compromis asumat: la o plecare foarte rapidă salvarea poate să nu apuce să se termine (fereastra e de ≤ 0,8 s; `pagehide` și `visibilitychange` o pornesc oricum)**
 - **Descriere.** `onBeforeUnload` pornește `flush()` (asincron) și apoi verifică imediat `hasUnsavedChanges` — care e încă `true` — deci apelează `preventDefault()` și browserul afișează „Părăsești pagina?” oricând utilizatorul pleacă în fereastra de debounce (≈0,8–5 s) sau în timpul unei salvări normale. Comentariul din cod și ARCH spun că ar trebui doar la eroare/conflict.
 - **Fișiere.** `src/state/lifecycle.ts` (≈32–37).
 - **Impact.** Dialoguri false după editări rapide; utilizatorii învață să le ignore, deci le ignoră și pe cele reale. (Argument contrar: dialogul protejează efectiv când salvarea nu apucă să se termine — decizie de produs.)
@@ -251,12 +259,14 @@ Rezultat: **compatibil**, fără constatări P0–P2 prin citire statică.
 ### Arhitectură — probleme care pot deveni scumpe
 
 #### F-18 — Igienă de dependențe (**P3**) [D]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT.** Eliminate `konva` și `react-konva` (nefolosite; editorul 2D e SVG, ADR-037) și `package-lock.json` (rămâne `pnpm-lock.yaml`, `packageManager` = pnpm). Versiunile celorlalte dependențe nu s-au atins; `license:check` verde (532 pachete). `spikes/stage0/package-lock.json` (prototipuri) neatins**
 - Sunt urmărite în git **două lockfile-uri** (`package-lock.json` și `pnpm-lock.yaml`) deși `packageManager` este `pnpm@10.34.9` și `.npmrc` cere versiuni exacte → risc de derivă (nu am comparat conținutul).
 - `konva` și `react-konva` sunt în `dependencies` dar **nu sunt importate** în `src/` (apar doar în `tests/domain-purity-gate.test.ts`); ADR-037 le descrie ca „instalate, nefolosite”. Suprafață de lanț de aprovizionare inutilă; nu intră în bundle.
 - **Soluție.** Un singur lockfile; elimină Konva/react-konva când se confirmă că SVG-ul rămâne (decizie de produs — **nu modifică versiuni**, doar eliminare ulterioară, după aprobare).
 - **Efort.** Mic.
 
 #### F-21 — Reguli de straturi incomplete și deriva documentației (**P3**) [D]
+- **Stare (2026-11-02, branch `feat/etapa-6a-buget`): REMEDIAT PARȚIAL.** Trei reguli noi de straturi în `.dependency-cruiser.cjs`: `catalog-materials-fara-ui`, `three-doar-in-viewer-3d`, `ui-fara-state-features` (fără încălcări existente). Documentul de arhitectură nu s-a rescris**
 - `.dependency-cruiser.cjs` impune `domain`, `persistence`, `state`, `features`, `app` și ciclurile, dar **nu** și: `catalog/` și `materials/` fără React/Three/DOM (promisiune din ARCH §4.8b/c, momentan respectată doar prin convenție), `ui/` și `lib/` fără import din `features`/`state`/`domain`, `viewer-3d` ca singurul modul care poate importa `three`/`@react-three`.
 - `ARCHITECTURE.md` descrie module cu alte nume (vezi §2.3).
 - **Soluție.** Reguli suplimentare (mici) + o rundă de actualizare a documentului de arhitectură (fără a rescrie documentele de etapă).
