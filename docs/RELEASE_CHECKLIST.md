@@ -12,8 +12,8 @@ Stare la pregătirea lansării. Punctele din „Decizii ale proprietarului” NU
 
 ## Decizii ale proprietarului (neluate)
 
-- [ ] **Licența codului propriu** (proprietar / open-source și care). Până atunci, depozitul nu are fișier LICENSE.
-- [ ] **Găzduire** — opțiunile H1/H2 din `docs/ARCHITECTURE.md` §12, după recitirea termenilor și clarificarea caracterului comercial/necomercial al proiectului.
+- [x] **Licența codului propriu** — decis de proprietar: deocamdată fără licență (nu se adaugă fișier LICENSE; implicit, toate drepturile rezervate). Se poate relua oricând.
+- [x] **Găzduire** — decis de proprietar: Vercel (site static, `output: 'export'`). Rămâne de făcut de proprietar: recitirea termenilor planului ales (în special dacă proiectul devine comercial; planul gratuit are restricții de utilizare necomercială — de verificat în termenii actuali) și configurarea proiectului/domeniului.
 - [ ] **Domeniu** și verificarea numelui „RoomCraft” (provizoriu) înainte de lansarea publică. Datele locale sunt legate de origine: schimbarea domeniului cere export/import (explicat în pagina Despre).
 - [ ] **Anteturi de securitate / CSP** — se configurează la gazdă (site static, fără server propriu); aplicația nu face cereri externe, deci CSP poate fi strictă (`default-src 'self'`, atenție la `worker`/`blob:` pentru 3D).
 
