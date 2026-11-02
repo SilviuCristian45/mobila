@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Alert } from '@/ui/feedback';
 import { NameDialog } from '@/ui/NameDialog';
 import { SaveIndicator } from './SaveIndicator';
+import { BackupReminder } from './BackupReminder';
 import { exportBackupFile, SessionBanners } from './SessionBanners';
 
 /** Suprafața de lucru, compusă în `app/` (features/ nu se importă între ele — ARCHITECTURE §3). */
@@ -110,6 +111,7 @@ export function SessionView({
 
       <div className="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6">
         <SessionBanners session={session} state={state} takeOver={takeOver} />
+        <BackupReminder session={session} state={state} />
 
         {workspace ? (
           // Zona de lucru poate eșua fără să dărâme antetul: sesiunea (documentul, autosave-ul, undo) trăiește mai sus și

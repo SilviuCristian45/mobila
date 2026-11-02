@@ -406,3 +406,11 @@ Acceptate: interfață în română; RON implicit; TVA configurabil cu 21% impli
 - **Convenție:** fiecare modul primește un obiect de context cu TIPURI EXPLICITE (nu `any`, nu acces la starea componentei); numele refurilor care se modifică în interior se termină în `Ref` (cerința regulii de lint `react-hooks/immutability`).
 - **Regulă pentru viitor:** o funcție nouă de editare intră în modulul potrivit (sau într-unul nou), nu în `PlanEditor`; `PlanEditor` nu trebuie să depășească ~700 de linii.
 - **Limite asumate:** contextele sunt late (20–30 de câmpuri) fiindcă gesturile, tastatura și plasarea împart mult din aceeași stare; o a doua etapă ar putea grupa starea în `useReducer` sau în câteva hook-uri de stare, dar nu s-a făcut (risc mai mare, câștig mic acum). `PlanCanvas` și `PropertiesPanel` rămân mari.
+
+### ADR-055 — Memento periodic pentru copia de siguranță (ROADMAP Etapa 8, audit F-22)
+**Stare:** Acceptat (implementat și testat)
+- **De ce:** proiectele trăiesc doar în browser (IndexedDB); dacă datele site-ului se șterg, se pierd. Importul din interfață (ADR-052) închide bucla; mementoul o face folosită.
+- **Regula** (`shouldRemind`, pură, `src/lib/backup-reminder.ts`): se afișează dacă proiectul are conținut (camere, pereți sau obiecte), a fost modificat de la ultima copie (sau de la creare) și au trecut cel puțin **7 zile** de la ea, iar utilizatorul nu a amânat („Mai târziu” = 3 zile) sau refuzat („Nu mai întreba pentru acest proiect”). Un proiect gol sau nemodificat nu declanșează nimic; date invalide nu produc excepții.
+- **Stare:** per proiect, în `localStorage` (`rc:backup:<id>`: `lastExportAt`, `snoozedUntil`, `never`), tolerant la lipsa stocării; nu intră în documentul proiectului, în istoric sau în export. Orice export (butonul din antet, banner-ele, mementoul însuși) notează data (`exportBackupFile`).
+- **Afișare:** bară informativă, nemodală, în editor, sub bannerele de stare; ascunsă în modul doar-citire. Citită cu `useSyncExternalStore` (ora rotunjită la oră, ca să nu se schimbe la fiecare citire).
+- **Limite asumate:** nu apare în lista de proiecte; starea nu se sincronizează între domenii (importul ei nu face parte din fișierul exportat); la un proiect importat, perioada se numără de la crearea lui în fișier.

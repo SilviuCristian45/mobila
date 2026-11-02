@@ -9,6 +9,7 @@ import type { ConflictResolution, ProjectSession, SessionState } from '@/state/s
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert } from '@/ui/feedback';
+import { recordExport } from '@/lib/backup-reminder';
 import { NameDialog } from '@/ui/NameDialog';
 
 export function exportBackupFile(session: ProjectSession): void {
@@ -16,7 +17,9 @@ export function exportBackupFile(session: ProjectSession): void {
     exportedAt: new Date().toISOString(),
     appVersion: APP_VERSION,
   });
-  downloadTextFile(backupFileName(session.getState().doc.name), text);
+  const { doc } = session.getState();
+  downloadTextFile(backupFileName(doc.name), text);
+  recordExport(doc.id); // oprește mementoul periodic până la următoarea perioadă
 }
 
 type Dialog = 'reload' | 'overwrite' | 'copy' | null;
