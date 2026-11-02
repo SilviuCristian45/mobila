@@ -1,9 +1,14 @@
 // Mediu NODE: transformarea SceneDescription → obiecte Three.js nu cere WebGL sau DOM.
 import { describe, expect, it } from 'vitest';
-import { Box3 } from 'three';
+import { Box3, PerspectiveCamera, Vector3 } from 'three';
 import { polygonArea } from '@/domain/geometry';
 import { buildScene } from '@/domain/scene';
-import { buildSceneObjects, frameCamera, sceneBounds } from '@/features/viewer-3d/sceneObjects';
+import {
+  buildSceneObjects,
+  frameCamera,
+  sceneBounds,
+  topCamera,
+} from '@/features/viewer-3d/sceneObjects';
 import { mk } from '../reference/builders';
 import { studioProject } from '../reference/projects';
 
@@ -147,5 +152,45 @@ describe('încadrarea camerei', () => {
             expect(v.z).toBeLessThan(1);
           }
     }
+  });
+});
+
+describe('topCamera (vederea de sus)', () => {
+  const bounds = {
+    min: [0, 0, 0] as [number, number, number],
+    max: [8, 2.6, 5] as [number, number, number],
+  };
+
+  it('stă deasupra centrului planului și privește în jos (direcția nu e paralelă cu „sus”)', () => {
+    const p = topCamera(bounds, 45, 1.5);
+    expect(p.target).toEqual([4, 0, 2.5]);
+    expect(p.position[0]).toBeCloseTo(4, 6);
+    expect(p.position[1]).toBeGreaterThan(5);
+    expect(p.position[2]).toBeGreaterThan(2.5); // decalaj mic: orientare determinată
+    expect(p.position[2] - 2.5).toBeLessThan(0.02 * p.position[1]);
+    expect(p.maxDistance).toBeGreaterThan(p.position[1]);
+  });
+
+  it('toate colțurile planului încap în imagine, la mai multe rapoarte de aspect (pe lat și pe înalt)', () => {
+    for (const aspect of [0.5, 1, 1.5, 2.4]) {
+      const p = topCamera(bounds, 45, aspect);
+      const cam = new PerspectiveCamera(45, aspect, p.near, p.far);
+      cam.position.set(...p.position);
+      cam.lookAt(...p.target);
+      cam.updateMatrixWorld();
+      cam.updateProjectionMatrix();
+      for (const x of [bounds.min[0], bounds.max[0]])
+        for (const z of [bounds.min[2], bounds.max[2]]) {
+          const ndc = new Vector3(x, 0, z).project(cam);
+          expect(Math.abs(ndc.x)).toBeLessThanOrEqual(1);
+          expect(Math.abs(ndc.y)).toBeLessThanOrEqual(1);
+        }
+    }
+  });
+
+  it('fără limite (proiect gol): o poziție finită, deasupra', () => {
+    const p = topCamera(null);
+    expect(p.position.every(Number.isFinite)).toBe(true);
+    expect(p.position[1]).toBeGreaterThan(p.target[1]);
   });
 });

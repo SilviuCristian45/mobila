@@ -258,6 +258,8 @@
 
 > **Etapa 9b (livrată):** mobilierul rămâne în camera lui când conturul camerei se schimbă (perete comun mutat, latură, redimensionare, nod tras). Vezi ADR-050 și [STAGE9B_REPORT](STAGE9B_REPORT.md).
 
+> **Etapa 10a — 3D (livrată):** vederea „De sus”, „Pereți tăiați”, „Centrează pe selecție” și tratarea contextului WebGL pierdut (mesaj, refacere, „Reîncarcă 3D”). Vezi ADR-051 și [STAGE10A_REPORT](STAGE10A_REPORT.md). Rămân din Etapa 7: 2D + 3D alăturate, tavane, verificări de performanță și memorie (excluse deocamdată).
+
 ## Etapa 7 — Vizualizare 3D completă
 
 **Conținut**

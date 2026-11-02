@@ -411,3 +411,32 @@ export function frameCamera(bounds: SceneBounds | null, fovDeg = 45, aspect = 1.
     maxDistance: distance * 4,
   };
 }
+
+/** Înălțimea la care se „taie” pereții în vederea de ansamblu (fracțiune din înălțimea lor), ca interiorul să se vadă. */
+export const CUTAWAY_SCALE = 0.3;
+
+/**
+ * Camera privind drept în jos, deasupra centrului scenei, la o distanță la care tot planul (extinderea pe X și Z) încape în
+ * imagine cu o mică marjă. Ușor decalată pe Z ca direcția de privire să nu fie paralelă cu „sus” (altfel orientarea e
+ * nedeterminată). Nu depinde de înălțimea pereților: din față se vede planul, nu peretele.
+ */
+export function topCamera(bounds: SceneBounds | null, fovDeg = 45, aspect = 1.5): CameraPose {
+  const b = bounds ?? EMPTY_BOUNDS;
+  const target: [number, number, number] = [
+    (b.min[0] + b.max[0]) / 2,
+    b.min[1],
+    (b.min[2] + b.max[2]) / 2,
+  ];
+  const halfX = Math.max(0.5, (b.max[0] - b.min[0]) / 2);
+  const halfZ = Math.max(0.5, (b.max[2] - b.min[2]) / 2);
+  const tanV = Math.tan((fovDeg * Math.PI) / 360);
+  const tanH = tanV * Math.max(aspect, 0.1);
+  const distance = Math.max(halfZ / tanV, halfX / tanH) * 1.12 + (b.max[1] - b.min[1]);
+  return {
+    position: [target[0], target[1] + distance, target[2] + distance * 0.001],
+    target,
+    near: Math.max(0.05, distance / 200),
+    far: distance * 20,
+    maxDistance: distance * 4,
+  };
+}

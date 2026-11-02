@@ -11,8 +11,10 @@ import {
   GeometryCache,
   WALL_COLOR,
   buildSceneObjects,
+  CUTAWAY_SCALE,
   frameCamera,
   surfaceOutline,
+  topCamera,
 } from './sceneObjects';
 import { MaterialCache } from './materialCache';
 
@@ -29,6 +31,15 @@ export interface SceneStats {
 interface Props {
   scene: SceneDescription;
   resetNonce: number;
+  /** Vederea la care revine camera la fiecare `resetNonce` nou: perspectivă din colț sau de sus. */
+  preset?: 'perspective' | 'top';
+  /** Pereții se desenează tăiați la o fracțiune din înălțime, ca interiorul să se vadă din față sau de sus. */
+  cutaway?: boolean;
+  /** La fiecare valoare nouă, camera se mută pe obiectul selectat (distanța și direcția rămân). */
+  focusNonce?: number;
+  /** Contextul WebGL a fost pierdut / refăcut de browser. */
+  onContextLost?: () => void;
+  onContextRestored?: () => void;
   onStats?: (s: SceneStats) => void;
   selectedObjectId?: string | null;
   onSelectObject?: (id: string | null) => void;
@@ -50,6 +61,9 @@ function applyPose(cam: THREE.PerspectiveCamera, p: CameraPose) {
 function Scene({
   scene,
   resetNonce,
+  preset = 'perspective',
+  cutaway = false,
+  focusNonce = 0,
   onStats,
   selectedObjectId = null,
   onSelectObject,
@@ -125,7 +139,11 @@ function Scene({
     const has = objects.bounds !== null;
     const prev = framed.current;
     if (!prev || prev.nonce !== resetNonce || (has && !prev.hadBounds)) {
-      const p = frameCamera(objects.bounds, FOV, size.width / size.height);
+      const aspect = size.width / size.height;
+      const p =
+        preset === 'top'
+          ? topCamera(objects.bounds, FOV, aspect)
+          : frameCamera(objects.bounds, FOV, aspect);
       applyPose(camera as THREE.PerspectiveCamera, p);
       const c = controls.current;
       if (c) {
@@ -139,6 +157,27 @@ function Scene({
     // size: citit doar la momentul încadrării; redimensionarea nu trebuie să mute camera
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objects, resetNonce, measured]);
+
+  // „Centrează pe selecție”: ținta camerei trece pe obiect, camera se mută cu aceeași deplasare (distanța rămâne)
+  const focused = useRef(focusNonce);
+  useEffect(() => {
+    if (focused.current === focusNonce) return;
+    focused.current = focusNonce;
+    const c = controls.current;
+    if (!selected || !c) return;
+    const to = new THREE.Vector3(
+      selected.position[0],
+      selected.position[1] + selected.size[1] / 2,
+      selected.position[2],
+    );
+    const delta = to.clone().sub(c.target);
+    (camera as THREE.PerspectiveCamera).position.add(delta);
+    c.target.copy(to);
+    c.update();
+    invalidate();
+    // `selected` e citit doar la apăsare; schimbarea selecției nu mută camera
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce]);
 
   useEffect(() => {
     onStats?.({
@@ -168,7 +207,12 @@ function Scene({
         />
       ))}
       {objects.walls.map((w) => (
-        <group key={w.id} position={[0, w.y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <group
+          key={w.id}
+          position={[0, w.y, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[1, 1, cutaway ? CUTAWAY_SCALE : 1]}
+        >
           <mesh
             geometry={w.geometry}
             material={mats.walls.get(w.id)}
@@ -240,12 +284,25 @@ function Scene({
 }
 
 export default function ViewerCanvas(props: Props) {
+  const { onContextLost, onContextRestored } = props;
   return (
     <Canvas
       frameloop="demand"
       dpr={[1, 1.5]}
       camera={{ position: [6, 6, 8], fov: FOV }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
+      onCreated={({ gl, invalidate }) => {
+        // pierderea contextului (memorie video eliberată, driver resetat): `preventDefault` permite refacerea de către browser
+        const el = gl.domElement;
+        el.addEventListener('webglcontextlost', (e) => {
+          e.preventDefault();
+          onContextLost?.();
+        });
+        el.addEventListener('webglcontextrestored', () => {
+          onContextRestored?.();
+          invalidate();
+        });
+      }}
       onPointerMissed={() => {
         props.onSelectObject?.(null);
         props.onSelectSurface?.(null);

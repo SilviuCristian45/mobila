@@ -16,17 +16,17 @@ vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(q
 const canvas = vi.hoisted(() => ({
   scenes: [] as Array<{ hash: string; nonce: number }>,
   boom: false,
+  /** Ultimele proprietăți primite de canvas (vedere, tăiere, centrare, apeluri de context). */
+  last: null as null | Record<string, unknown>,
 }));
 vi.mock('@/features/viewer-3d/ViewerCanvas', () => ({
-  default: function CanvasStub({
-    scene,
-    resetNonce,
-    onStats,
-  }: {
+  default: function CanvasStub(props: {
     scene: SceneDescription;
     resetNonce: number;
     onStats?: (s: { walls: number; floors: number }) => void;
   }) {
+    const { scene, resetNonce, onStats } = props;
+    canvas.last = props as unknown as Record<string, unknown>;
     useEffect(() => {
       canvas.scenes.push({ hash: scene.hash, nonce: resetNonce });
       onStats?.({ walls: scene.prisms.length, floors: scene.floors.length });
@@ -41,6 +41,7 @@ vi.mock('@/features/viewer-3d/webgl', () => ({ webglAvailable: () => webgl.ok })
 beforeEach(() => {
   canvas.scenes.length = 0;
   canvas.boom = false;
+  canvas.last = null;
   webgl.ok = true;
   query = '';
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -173,5 +174,76 @@ describe('navigare 2D ↔ 3D în editor (același proiect activ)', () => {
     fireEvent.click(screen.getByTestId('mode-2d'));
     expect(await screen.findByTestId('plan-editor')).toBeTruthy();
     expect(screen.queryByTestId('canvas-stub')).toBeNull();
+  });
+
+  describe('Viewer3D: vederi, tăiere, centrare, context pierdut', () => {
+    const last = () =>
+      canvas.last as unknown as {
+        preset: string;
+        resetNonce: number;
+        cutaway: boolean;
+        focusNonce: number;
+        onContextLost: () => void;
+        onContextRestored: () => void;
+      };
+
+    it('„De sus” și „Resetează vederea” schimbă vederea și trimit câte un semnal nou de încadrare', async () => {
+      render(<Viewer3D doc={studioProject()} />);
+      await screen.findByTestId('canvas-stub');
+      expect(last().preset).toBe('perspective');
+      const n0 = last().resetNonce;
+      fireEvent.click(screen.getByTestId('viewer3d-top'));
+      await waitFor(() => expect(last().preset).toBe('top'));
+      expect(last().resetNonce).toBe(n0 + 1);
+      fireEvent.click(screen.getByTestId('viewer3d-reset'));
+      await waitFor(() => expect(last().preset).toBe('perspective'));
+      expect(last().resetNonce).toBe(n0 + 2);
+    });
+
+    it('„Pereți tăiați” e un comutator (aria-pressed) transmis scenei', async () => {
+      render(<Viewer3D doc={studioProject()} />);
+      await screen.findByTestId('canvas-stub');
+      const btn = screen.getByTestId('viewer3d-cutaway');
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+      expect(last().cutaway).toBe(false);
+      fireEvent.click(btn);
+      await waitFor(() => expect(last().cutaway).toBe(true));
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(btn);
+      await waitFor(() => expect(last().cutaway).toBe(false));
+    });
+
+    it('„Centrează pe selecție” e activ doar cu un obiect selectat și trimite un semnal nou la fiecare apăsare', async () => {
+      const { rerender } = render(<Viewer3D doc={studioProject()} />);
+      await screen.findByTestId('canvas-stub');
+      const btn = screen.getByTestId('viewer3d-focus') as HTMLButtonElement;
+      expect(btn.disabled).toBe(true);
+      rerender(<Viewer3D doc={studioProject()} selectedObjectId="oSofa" />);
+      await waitFor(() =>
+        expect((screen.getByTestId('viewer3d-focus') as HTMLButtonElement).disabled).toBe(false),
+      );
+      const f0 = last().focusNonce;
+      fireEvent.click(screen.getByTestId('viewer3d-focus'));
+      await waitFor(() => expect(last().focusNonce).toBe(f0 + 1));
+      fireEvent.click(screen.getByTestId('viewer3d-focus'));
+      await waitFor(() => expect(last().focusNonce).toBe(f0 + 2));
+    });
+
+    it('contextul WebGL pierdut: apare un mesaj cu „Reîncarcă 3D”; refacerea îl ascunde; reîncărcarea montează din nou canvas-ul', async () => {
+      render(<Viewer3D doc={studioProject()} />);
+      await screen.findByTestId('canvas-stub');
+      expect(screen.queryByTestId('viewer3d-context-lost')).toBeNull();
+      act(() => last().onContextLost());
+      expect(screen.getByTestId('viewer3d-context-lost').textContent).toMatch(/memoria video/);
+      // refăcut de browser: mesajul dispare
+      act(() => last().onContextRestored());
+      expect(screen.queryByTestId('viewer3d-context-lost')).toBeNull();
+      // pierdut din nou: „Reîncarcă 3D” scoate mesajul și remontează canvas-ul (scenă nouă)
+      act(() => last().onContextLost());
+      const before = canvas.scenes.length;
+      fireEvent.click(screen.getByTestId('viewer3d-context-reload'));
+      await waitFor(() => expect(screen.queryByTestId('viewer3d-context-lost')).toBeNull());
+      await waitFor(() => expect(canvas.scenes.length).toBeGreaterThan(before));
+    });
   });
 });

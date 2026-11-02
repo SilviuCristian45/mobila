@@ -86,6 +86,10 @@ export function Viewer3D({
   // pe server (prerandare) „checking”; pe client, verificarea reală — fără setState în efect
   const webgl = useSyncExternalStore(subscribeNever, webglStatus, () => 'checking' as const);
   const [resetNonce, setResetNonce] = useState(0);
+  const [preset, setPreset] = useState<'perspective' | 'top'>('perspective');
+  const [cutaway, setCutaway] = useState(false);
+  const [focusNonce, setFocusNonce] = useState(0);
+  const [contextLost, setContextLost] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [stats, setStats] = useState<SceneStats | null>(null);
 
@@ -109,12 +113,44 @@ export function Viewer3D({
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            onClick={() => setResetNonce((n) => n + 1)}
+            onClick={() => {
+              setPreset('perspective');
+              setResetNonce((n) => n + 1);
+            }}
             disabled={!result.ok || empty || webgl !== 'ok'}
-            title="Încadrează întregul proiect"
+            title="Încadrează întregul proiect, din colț"
             data-testid="viewer3d-reset"
           >
             Resetează vederea
+          </Button>
+          <Button
+            onClick={() => {
+              setPreset('top');
+              setResetNonce((n) => n + 1);
+            }}
+            disabled={!result.ok || empty || webgl !== 'ok'}
+            title="Privește planul de sus"
+            data-testid="viewer3d-top"
+          >
+            De sus
+          </Button>
+          <Button
+            variant={cutaway ? 'primary' : 'secondary'}
+            aria-pressed={cutaway}
+            onClick={() => setCutaway((v) => !v)}
+            disabled={!result.ok || empty || webgl !== 'ok'}
+            title="Desenează pereții tăiați la o treime din înălțime, ca să vezi interiorul"
+            data-testid="viewer3d-cutaway"
+          >
+            Pereți tăiați
+          </Button>
+          <Button
+            onClick={() => setFocusNonce((n) => n + 1)}
+            disabled={!result.ok || empty || webgl !== 'ok' || !selectedObjectId}
+            title="Mută camera pe obiectul selectat"
+            data-testid="viewer3d-focus"
+          >
+            Centrează pe selecție
           </Button>
           <span className="text-xs text-stone-600" data-testid="viewer3d-hint">
             Click stânga + tragere: rotește · roata mouse-ului: zoom · click dreapta + tragere:
@@ -174,6 +210,11 @@ export function Viewer3D({
                   <ViewerCanvas
                     scene={result.scene}
                     resetNonce={resetNonce}
+                    preset={preset}
+                    cutaway={cutaway}
+                    focusNonce={focusNonce}
+                    onContextLost={() => setContextLost(true)}
+                    onContextRestored={() => setContextLost(false)}
                     onStats={setStats}
                     selectedObjectId={selectedObjectId}
                     onSelectObject={onSelectObject}
@@ -182,6 +223,28 @@ export function Viewer3D({
                   />
                 </Suspense>
               </RenderBoundary>
+              {contextLost ? (
+                <div className="absolute inset-x-4 top-4" data-testid="viewer3d-context-lost">
+                  <Alert
+                    tone="warning"
+                    title="Contextul grafic 3D s-a pierdut"
+                    actions={
+                      <Button
+                        onClick={() => {
+                          setContextLost(false);
+                          setRetryNonce((n) => n + 1);
+                        }}
+                        data-testid="viewer3d-context-reload"
+                      >
+                        Reîncarcă 3D
+                      </Button>
+                    }
+                  >
+                    Browserul a eliberat memoria video. Încerc să refac imaginea automat; dacă nu
+                    apare, reîncarcă vizualizarea. Proiectul nu a fost afectat.
+                  </Alert>
+                </div>
+              ) : null}
               {empty ? (
                 <p
                   className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-white/90 p-3 text-center text-sm text-stone-700"
