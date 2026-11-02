@@ -20,7 +20,7 @@ Stare la pregătirea lansării. Punctele din „Decizii ale proprietarului” NU
 
 ## De verificat înainte de lansare
 
-- [ ] `pnpm audit --prod` — NU a putut fi rulat în sesiunea de pregătire (`pnpm` indisponibil în shell-ul asistentului). De rulat manual; riscul rezidual nu e evaluat.
+- [x] `pnpm audit --prod` — rulat de proprietar (2026-11-02, lockfile-ul de pe `main`, `99205f2`): „No known vulnerabilities found”. Se repetă înaintea fiecărei lansări noi; fără `pnpm` instalat: `npx --yes pnpm@10.34.9 audit --prod`.
 - [ ] Suita e2e completă în cele 3 browsere, `e2e:base` și `e2e:storage` în Firefox/WebKit (rulate parțial, pe grupuri, din cauza resurselor laptopului).
 - [ ] Lista manuală din `docs/ARCHITECTURE.md` §11.2.
 - [ ] Test cu cititor de ecran real (NVDA/VoiceOver); verificările automate nu îl înlocuiesc.
