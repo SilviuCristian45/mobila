@@ -10,8 +10,8 @@ import { ItemPreview } from './ItemPreview';
 const chip = (active: boolean) =>
   `rounded-full border px-3 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
     active
-      ? 'border-teal-700 bg-teal-700 text-white'
-      : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'
+      ? 'border-primary bg-primary text-white'
+      : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
   }`;
 
 /** Catalogul încorporat: căutare, categorii, miniaturi și „Adaugă în cameră”. Nu modifică documentul: `onAdd` o face. */
@@ -52,7 +52,7 @@ export function CatalogBrowser({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="ex. canapea, dulap, WC"
-          className="min-h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+          className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
           data-testid="catalog-search"
         />
       </div>
@@ -113,7 +113,7 @@ export function CatalogBrowser({
                 disabled={!editable}
                 onClick={() => onAdd(item)}
                 title={`Adaugă „${item.name.ro}” în cameră`}
-                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-white p-2 text-center hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-surface p-2 text-center hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                 data-testid={`catalog-item-${item.id}`}
               >
                 <ItemPreview item={item} />

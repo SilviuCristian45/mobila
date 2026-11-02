@@ -16,6 +16,7 @@ import {
   surfaceOutline,
   topCamera,
 } from './sceneObjects';
+import { useResolvedTheme, type ResolvedTheme } from '@/lib/theme';
 import { MaterialCache } from './materialCache';
 
 const SELECT_COLOR = '#0f766e';
@@ -70,8 +71,10 @@ function Scene({
   selectedSurface = null,
   onSelectSurface,
   onCache,
-}: Props) {
+  theme,
+}: Props & { theme: ResolvedTheme }) {
   const { camera, size, invalidate } = useThree();
+  useEffect(() => invalidate(), [theme, invalidate]); // randare la cerere: fundalul se schimbă odată cu tema
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
   const [cache] = useState(() => new GeometryCache());
   const objects = useMemo(() => buildSceneObjects(scene, cache), [scene, cache]);
@@ -189,8 +192,8 @@ function Scene({
 
   return (
     <>
-      <color attach="background" args={['#f5f5f4']} />
-      <hemisphereLight args={['#ffffff', '#a8a29e', 1.1]} />
+      <color attach="background" args={[theme === 'dark' ? '#1c1917' : '#f5f5f4']} />
+      <hemisphereLight args={['#ffffff', '#a8a29e', theme === 'dark' ? 0.9 : 1.1]} />
       <directionalLight position={[6, 10, 4]} intensity={1.6} />
       <directionalLight position={[-5, 6, -6]} intensity={0.6} />
       {objects.floors.map((f) => (
@@ -285,6 +288,7 @@ function Scene({
 
 export default function ViewerCanvas(props: Props) {
   const { onContextLost, onContextRestored } = props;
+  const theme = useResolvedTheme();
   return (
     <Canvas
       frameloop="demand"
@@ -308,7 +312,7 @@ export default function ViewerCanvas(props: Props) {
         props.onSelectSurface?.(null);
       }}
     >
-      <Scene {...props} />
+      <Scene {...props} theme={theme} />
     </Canvas>
   );
 }

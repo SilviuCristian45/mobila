@@ -112,7 +112,7 @@ export function CatalogPanel({
         </Alert>
       ) : null}
       {catalogOpen ? (
-        <div className="rounded-xl border border-stone-200 bg-white p-4">
+        <div className="rounded-xl border border-stone-200 bg-surface p-4">
           <CatalogBrowser
             items={items}
             unit={doc.settings.displayUnit}
@@ -123,7 +123,7 @@ export function CatalogPanel({
         </div>
       ) : null}
       {object ? (
-        <div className="rounded-xl border border-stone-200 bg-white p-4">
+        <div className="rounded-xl border border-stone-200 bg-surface p-4">
           <ObjectPanel
             doc={doc}
             object={object}

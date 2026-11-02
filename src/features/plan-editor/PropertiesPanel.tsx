@@ -458,7 +458,7 @@ function AddPanel({
         disabled={!editable}
         onChange={(e) => set(e.target.value)}
         data-testid={`${form}-form-${key}`}
-        className="mt-1 min-h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 disabled:bg-stone-100"
+        className="mt-1 min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 disabled:bg-stone-100"
       />
     </label>
   );

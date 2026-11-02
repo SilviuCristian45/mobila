@@ -74,7 +74,7 @@ export function ColorField({
           id={id}
           type="color"
           disabled={disabled}
-          className="h-8 w-10 cursor-pointer rounded border border-stone-300 bg-white p-0.5 disabled:cursor-not-allowed"
+          className="h-8 w-10 cursor-pointer rounded border border-stone-300 bg-surface p-0.5 disabled:cursor-not-allowed"
           data-testid={`${testPrefix}-color`}
         />
       </div>

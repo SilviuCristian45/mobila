@@ -23,6 +23,7 @@ import { NameDialog } from '@/ui/NameDialog';
 import { ProjectCard } from './ProjectCard';
 import { RecoveryDialog } from './RecoveryDialog';
 import { StorageFooter } from './StorageFooter';
+import { ThemeToggle } from '@/ui/ThemeToggle';
 
 const DEFAULT_NEW_NAME = 'Proiect nou';
 const MAX_NAME = 200;
@@ -39,6 +40,7 @@ export function Dashboard() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6" data-testid="dashboard">
       <header className="mb-8">
+        <ThemeToggle className="float-right" />
         <h1 className="text-3xl font-bold tracking-tight text-stone-900">
           {APP_NAME} <span className="text-base font-normal text-stone-500">({APP_NAME_NOTE})</span>
         </h1>
@@ -315,7 +317,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
       {state.phase === 'ready' && state.projects.length === 0 ? (
         <div
           data-testid="empty-state"
-          className="rounded-2xl border-2 border-dashed border-stone-300 bg-white p-10 text-center"
+          className="rounded-2xl border-2 border-dashed border-stone-300 bg-surface p-10 text-center"
         >
           <p className="text-lg font-semibold text-stone-900">Încă nu ai niciun proiect</p>
           <p className="mx-auto mt-2 max-w-md text-stone-600">

@@ -163,7 +163,7 @@ export function BudgetPanel({
           <label className="text-xs font-medium text-stone-700">
             Separator CSV
             <select
-              className="ml-1 rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-sm"
+              className="ml-1 rounded-lg border border-stone-300 bg-surface px-2 py-1.5 text-sm"
               value={separator}
               data-testid="budget-csv-separator"
               onChange={(e) => setSeparator(e.target.value as CsvSeparator)}
@@ -191,7 +191,7 @@ export function BudgetPanel({
       {error ? <Alert tone="error" title={error} testId="budget-error" /> : null}
 
       <details
-        className="rounded-xl border border-stone-200 bg-white p-3"
+        className="rounded-xl border border-stone-200 bg-surface p-3"
         data-testid="budget-settings"
       >
         <summary className="cursor-pointer text-sm font-medium text-stone-900">
@@ -214,7 +214,7 @@ export function BudgetPanel({
           <label className="block text-xs font-medium text-stone-700">
             Prețurile introduse
             <select
-              className="mt-1 w-full rounded-md border border-stone-300 bg-white px-2 py-1 text-sm min-h-9"
+              className="mt-1 w-full rounded-md border border-stone-300 bg-surface px-2 py-1 text-sm min-h-9"
               value={doc.settings.pricesIncludeVat ? 'gross' : 'net'}
               disabled={!editable}
               data-testid="budget-setting-vat-mode"
@@ -267,7 +267,7 @@ export function BudgetPanel({
         </Alert>
       ) : result.lines.length === 0 ? (
         <p
-          className="rounded-xl border border-stone-200 bg-white p-4 text-sm text-stone-700"
+          className="rounded-xl border border-stone-200 bg-surface p-4 text-sm text-stone-700"
           data-testid="budget-empty"
         >
           Bugetul e gol. Adaugă obiecte din catalog, aplică materiale pe suprafețe sau adaugă o
@@ -275,7 +275,7 @@ export function BudgetPanel({
         </p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+          <div className="overflow-x-auto rounded-xl border border-stone-200 bg-surface">
             <table className="w-full min-w-[56rem] text-left text-sm" data-testid="budget-table">
               <caption className="sr-only">Liniile bugetului</caption>
               <thead className="bg-stone-100 text-xs text-stone-700">
@@ -502,7 +502,7 @@ export function BudgetPanel({
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3" data-testid="budget-totals">
-            <div className="rounded-xl border border-stone-200 bg-white p-3">
+            <div className="rounded-xl border border-stone-200 bg-surface p-3">
               <h3 className="mb-1 text-sm font-semibold text-stone-900">Pe categorii</h3>
               <ul className="space-y-0.5 text-sm" data-testid="budget-by-category">
                 {Object.entries(result.summary.perCategory).map(([c, t]) => (
@@ -513,7 +513,7 @@ export function BudgetPanel({
                 ))}
               </ul>
             </div>
-            <div className="rounded-xl border border-stone-200 bg-white p-3">
+            <div className="rounded-xl border border-stone-200 bg-surface p-3">
               <h3 className="mb-1 text-sm font-semibold text-stone-900">Pe camere</h3>
               <ul className="space-y-0.5 text-sm" data-testid="budget-by-room">
                 {Object.entries(result.summary.perRoom).map(([r, t]) => (
@@ -525,7 +525,7 @@ export function BudgetPanel({
               </ul>
             </div>
             <dl
-              className="rounded-xl border border-stone-200 bg-white p-3 text-sm"
+              className="rounded-xl border border-stone-200 bg-surface p-3 text-sm"
               data-testid="budget-summary"
             >
               <h3 className="mb-1 text-sm font-semibold text-stone-900">Total</h3>

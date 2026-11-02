@@ -12,6 +12,7 @@ import { NameDialog } from '@/ui/NameDialog';
 import { SaveIndicator } from './SaveIndicator';
 import { BackupReminder } from './BackupReminder';
 import { exportBackupFile, SessionBanners } from './SessionBanners';
+import { ThemeToggle } from '@/ui/ThemeToggle';
 
 /** Suprafața de lucru, compusă în `app/` (features/ nu se importă între ele — ARCHITECTURE §3). */
 export type WorkspaceRenderer = (session: ProjectSession, state: SessionState) => ReactNode;
@@ -63,7 +64,7 @@ export function SessionView({
 
   return (
     <div className="flex min-h-screen flex-col" data-testid="editor">
-      <header className="border-b border-stone-200 bg-white">
+      <header className="border-b border-stone-200 bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
           <a
             href={dashboardHref()}
@@ -80,6 +81,7 @@ export function SessionView({
             {doc.name}
           </h1>
           <SaveIndicator state={state} />
+          <ThemeToggle />
           <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => session.undo()}
@@ -149,7 +151,7 @@ export function SessionView({
         <section
           aria-label="Rezumatul proiectului"
           data-testid="workspace-summary"
-          className="rounded-2xl border border-stone-200 bg-white p-4"
+          className="rounded-2xl border border-stone-200 bg-surface p-4"
         >
           <dl
             className="grid grid-cols-2 gap-x-8 gap-y-1 text-left text-sm text-stone-700 sm:grid-cols-4"

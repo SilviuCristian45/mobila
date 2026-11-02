@@ -51,7 +51,7 @@ export function RoomPalette({
           className={`cursor-grab select-none rounded-lg border px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-50 ${
             activeId === p.id
               ? 'border-teal-700 bg-teal-50 text-teal-900'
-              : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'
+              : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
           }`}
         >
           {p.label}{' '}

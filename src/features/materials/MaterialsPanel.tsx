@@ -79,8 +79,8 @@ export interface PlanSelectionInfo {
 const chip = (active: boolean) =>
   `rounded-full border px-3 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
     active
-      ? 'border-teal-700 bg-teal-700 text-white'
-      : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'
+      ? 'border-primary bg-primary text-white'
+      : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
   }`;
 
 function Swatch({ finish, px = 56 }: { finish: Finish; px?: number }) {
@@ -348,7 +348,7 @@ export function MaterialsPanel({
               else if (t?.kind === 'face')
                 onSurfaceTarget({ kind: 'wallSide', wallId: t.wallId, side: t.side });
             }}
-            className="min-h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+            className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
             data-testid="materials-target"
           >
             {slots.length > 0 && object ? (
@@ -417,7 +417,7 @@ export function MaterialsPanel({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="ex. parchet, gresie, alb"
-          className="min-h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+          className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
           data-testid="materials-search"
         />
       </div>
@@ -469,7 +469,7 @@ export function MaterialsPanel({
                 title={`Aplică „${m.name.ro}” (compatibil: ${finishSurfaces(m)
                   .map((s) => SURFACE_NAMES[s])
                   .join(', ')})`}
-                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-white p-2 text-center hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-teal-700 aria-pressed:bg-teal-50"
+                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-surface p-2 text-center hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-teal-700 aria-pressed:bg-teal-50"
                 aria-pressed={applied.some((a) => a.finishId === m.id)}
                 data-testid={`material-${m.id}`}
               >
@@ -489,7 +489,7 @@ export function MaterialsPanel({
 
       {/* estimare */}
       <div
-        className="rounded-lg border border-stone-200 bg-white p-3 text-xs text-stone-700"
+        className="rounded-lg border border-stone-200 bg-surface p-3 text-xs text-stone-700"
         data-testid="materials-budget"
       >
         <h3 className="mb-1 text-xs font-semibold text-stone-900">

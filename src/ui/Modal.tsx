@@ -58,7 +58,7 @@ export function Modal({ title, onClose, children, description }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -71,7 +71,7 @@ export function Modal({ title, onClose, children, description }: ModalProps) {
         aria-describedby={description ? descId : undefined}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl outline-none"
+        className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl outline-none"
       >
         <h2 id={titleId} className="text-lg font-semibold text-stone-900">
           {title}

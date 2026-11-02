@@ -18,7 +18,10 @@ export function ElementList({
   const roomList = Object.values(doc.rooms);
   const openingList = Object.values(doc.openings);
   return (
-    <details className="rounded-xl border border-stone-200 bg-white p-4" data-testid="element-list">
+    <details
+      className="rounded-xl border border-stone-200 bg-surface p-4"
+      data-testid="element-list"
+    >
       <summary className="cursor-pointer text-sm font-semibold text-stone-900">
         Elemente din plan ({roomList.length} camere · {wallList.length} pereți ·{' '}
         {openingList.length} goluri)

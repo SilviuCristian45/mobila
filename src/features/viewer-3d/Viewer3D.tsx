@@ -247,7 +247,7 @@ export function Viewer3D({
               ) : null}
               {empty ? (
                 <p
-                  className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-white/90 p-3 text-center text-sm text-stone-700"
+                  className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-surface/90 p-3 text-center text-sm text-stone-700"
                   data-testid="viewer3d-empty"
                 >
                   Proiectul nu are încă pereți sau camere. Adaugă-le în planul 2D și revino aici.

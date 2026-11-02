@@ -8,9 +8,9 @@ const base =
   'disabled:cursor-not-allowed disabled:opacity-50 min-h-10';
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-teal-700 text-white hover:bg-teal-800',
-  secondary: 'border border-stone-300 bg-white text-stone-800 hover:bg-stone-100',
-  danger: 'bg-red-700 text-white hover:bg-red-800',
+  primary: 'bg-primary text-white hover:bg-primary-hover',
+  secondary: 'border border-stone-300 bg-surface text-stone-800 hover:bg-stone-100',
+  danger: 'bg-danger text-white hover:bg-danger-hover',
   ghost: 'text-stone-700 hover:bg-stone-200',
 };
 

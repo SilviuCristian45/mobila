@@ -24,7 +24,7 @@ const toggleClass = (on: boolean) =>
   `rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
     on
       ? 'border-teal-700 bg-teal-50 text-teal-900'
-      : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'
+      : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
   }`;
 
 /**
@@ -66,7 +66,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
   const sidePanelContent = (
     <>
       {side === 'materials' ? (
-        <div className="rounded-xl border border-stone-200 bg-white p-4">
+        <div className="rounded-xl border border-stone-200 bg-surface p-4">
           <MaterialsPanel
             session={session}
             state={state}
@@ -147,8 +147,8 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
               onClick={() => setMode(t.mode)}
               className={`rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
                 mode === t.mode
-                  ? 'border-teal-700 bg-teal-700 text-white'
-                  : 'border-stone-300 bg-white text-stone-800 hover:bg-stone-50'
+                  ? 'border-primary bg-primary text-white'
+                  : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
               }`}
             >
               {t.label}

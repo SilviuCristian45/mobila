@@ -547,7 +547,7 @@ export function PlanEditor({
             ) : null}
             {Object.keys(doc.nodes).length === 0 ? (
               <p
-                className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-white/90 p-3 text-center text-sm text-stone-700"
+                className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-surface/90 p-3 text-center text-sm text-stone-700"
                 data-testid="plan-empty"
               >
                 Planul este gol. Adaugă o cameră dreptunghiulară din panoul din dreapta sau
@@ -587,7 +587,7 @@ export function PlanEditor({
             selectedId={selection?.kind === 'room' ? selection.id : null}
             onSelect={focusRoom}
           />
-          <div className="rounded-xl border border-stone-200 bg-white p-4">
+          <div className="rounded-xl border border-stone-200 bg-surface p-4">
             <PropertiesPanel
               doc={doc}
               geometry={geometry}

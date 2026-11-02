@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import licenses from '@/lib/third-party-licenses.json';
 import { APP_NAME, APP_NAME_NOTE, APP_VERSION } from '@/lib/app-info';
 import { dashboardHref } from '@/lib/asset';
+import { ThemeToggle } from '@/ui/ThemeToggle';
 
 export const metadata: Metadata = {
   title: `Despre, licențe și confidențialitate — ${APP_NAME}`,
@@ -27,11 +28,12 @@ const P = 'mt-3 max-w-3xl text-stone-700';
 export default function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6" data-testid="about-page">
-      <p>
+      <div className="flex items-center justify-between gap-4">
         <a className="text-teal-800 underline" href={dashboardHref()} data-testid="about-back">
           ← Înapoi la proiecte
         </a>
-      </p>
+        <ThemeToggle />
+      </div>
       <h1 className="mt-4 text-3xl font-bold tracking-tight text-stone-900">
         Despre, licențe și confidențialitate
       </h1>
@@ -128,7 +130,7 @@ export default function AboutPage() {
           .
         </p>
         <details
-          className="mt-3 max-w-3xl rounded-xl border border-stone-200 bg-white p-4"
+          className="mt-3 max-w-3xl rounded-xl border border-stone-200 bg-surface p-4"
           data-testid="about-packages"
         >
           <summary className="cursor-pointer text-sm font-semibold text-stone-900">

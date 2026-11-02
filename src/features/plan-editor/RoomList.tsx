@@ -23,7 +23,7 @@ export function RoomList({
   return (
     <section
       aria-label="Camere"
-      className="rounded-xl border border-stone-200 bg-white p-4"
+      className="rounded-xl border border-stone-200 bg-surface p-4"
       data-testid="room-list"
     >
       <div className="flex items-baseline justify-between">

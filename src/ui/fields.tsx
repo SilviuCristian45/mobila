@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 
 const inputClass =
-  'w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 min-h-10 ' +
+  'w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 min-h-10 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ' +
   'disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500';
 

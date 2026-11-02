@@ -58,7 +58,7 @@ export function ProjectCard({
     <article
       data-testid="project-card"
       data-project-id={project.id}
-      className={`flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm ${invalid ? 'border-red-300' : 'border-stone-200'}`}
+      className={`flex h-full flex-col rounded-2xl border bg-surface p-5 shadow-sm ${invalid ? 'border-red-300' : 'border-stone-200'}`}
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="break-words text-lg font-semibold text-stone-900" data-testid="project-name">

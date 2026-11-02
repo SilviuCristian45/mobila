@@ -95,7 +95,7 @@ function Label({
       dominantBaseline="middle"
       transform={`rotate(${angle} ${at.x} ${at.y})`}
       className={tone === 'strong' ? 'fill-stone-900' : 'fill-stone-600'}
-      stroke="white"
+      stroke="var(--color-surface)"
       strokeWidth={3 / zoom}
       strokeLinejoin="round"
       style={{ paintOrder: 'stroke', pointerEvents: 'none', userSelect: 'none' }}
@@ -185,7 +185,7 @@ function OpeningShape({
     >
       <polygon
         points={pts(gap)}
-        className={`fill-white ${stroke}`}
+        className={`fill-surface ${stroke}`}
         strokeWidth={selected ? 3 : 1.5}
         vectorEffect="non-scaling-stroke"
       />
@@ -261,7 +261,7 @@ function ObjectShape({
           dominantBaseline="middle"
           fontSize={11 / zoom}
           className="fill-stone-800"
-          style={{ paintOrder: 'stroke', stroke: 'white', strokeWidth: 3 / zoom }}
+          style={{ paintOrder: 'stroke', stroke: 'var(--color-surface)', strokeWidth: 3 / zoom }}
           pointerEvents="none"
           transform={`rotate(${-o.rotationDeg})`}
         >
@@ -629,7 +629,7 @@ export function PlanCanvas({
             <polygon
               points={pts(ghost.interior)}
               className={
-                ghost.valid ? 'fill-white/70 stroke-teal-700' : 'fill-white/60 stroke-red-600'
+                ghost.valid ? 'fill-surface/70 stroke-teal-700' : 'fill-surface/60 stroke-red-600'
               }
               strokeWidth={1}
               strokeDasharray={`${8 / zoom} ${5 / zoom}`}
@@ -691,7 +691,7 @@ export function PlanCanvas({
                 height={14 / zoom}
                 rx={3 / zoom}
                 data-testid={`room-handle-${selection.id}-${h.side}`}
-                className="fill-white stroke-teal-700"
+                className="fill-surface stroke-teal-700"
                 strokeWidth={2}
                 vectorEffect="non-scaling-stroke"
                 style={{ cursor: h.side === 'n' || h.side === 's' ? 'ns-resize' : 'ew-resize' }}
@@ -710,7 +710,7 @@ export function PlanCanvas({
                 height={14 / zoom}
                 rx={3 / zoom}
                 data-testid={`room-edge-handle-${selection.id}-${h.index}`}
-                className="fill-white stroke-teal-700"
+                className="fill-surface stroke-teal-700"
                 strokeWidth={2}
                 vectorEffect="non-scaling-stroke"
                 style={{ cursor: h.vertical ? 'ew-resize' : 'ns-resize' }}
@@ -735,10 +735,10 @@ export function PlanCanvas({
               data-editable={editable}
               className={
                 sel || snap
-                  ? 'fill-teal-700 stroke-white'
+                  ? 'fill-teal-700 stroke-surface'
                   : valid
-                    ? 'fill-white stroke-teal-800'
-                    : 'fill-white stroke-red-600'
+                    ? 'fill-surface stroke-teal-800'
+                    : 'fill-surface stroke-red-600'
               }
               strokeWidth={2}
               vectorEffect="non-scaling-stroke"

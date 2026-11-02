@@ -16,7 +16,7 @@ import { Button } from '@/ui/Button';
 import { Modal } from '@/ui/Modal';
 
 const inputClass =
-  'w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 min-h-10 ' +
+  'w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 min-h-10 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700';
 
 type BindingKind = 'none' | 'roomFloorArea' | 'roomWallArea';
