@@ -4,17 +4,17 @@ import { useId, useMemo, useState } from 'react';
 import type { CatalogItem } from '@/domain';
 import { BUILTIN_ITEMS, CATEGORIES, isExteriorCategory, searchCatalog } from '@/catalog';
 import { formatLength } from '@/lib/format';
-import { Button } from '@/ui/Button';
+import { IconSearch, IconX } from '@/ui/icons';
 import { ItemPreview } from './ItemPreview';
 
 const chip = (active: boolean) =>
-  `rounded-full border px-3 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
+  `shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
     active
-      ? 'border-primary bg-primary text-white'
-      : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
+      ? 'border-primary bg-primary text-white shadow-2xs'
+      : 'border-stone-200 bg-surface-subtle text-stone-700 hover:border-stone-300 hover:bg-surface'
   }`;
 
-/** Catalogul încorporat: căutare, categorii, miniaturi și „Adaugă în cameră / exterior”. Nu modifică documentul: `onAdd` o face. */
+/** Catalogul încorporat: căutare sticky, categorii compacte, miniaturi 2-coloane și inserare cu un clic. */
 export function CatalogBrowser({
   items = BUILTIN_ITEMS,
   unit,
@@ -53,69 +53,86 @@ export function CatalogBrowser({
   return (
     <section
       aria-label={exteriorOnly ? 'Catalog exterior' : 'Catalog de obiecte'}
-      className="space-y-3"
+      className="flex flex-col space-y-2.5"
       data-testid="catalog-panel"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-stone-900">
-          {exteriorOnly ? 'Catalog Build Exterior' : 'Catalog de obiecte'}
-        </h2>
-        <div className="flex items-center gap-1.5">
-          {scope === 'exterior' ? (
+      {/* Header + căutare sticky */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">
+            {exteriorOnly ? 'Catalog Exterior' : 'Catalog obiecte'}
+          </h2>
+          <div className="flex items-center gap-1">
+            {scope === 'exterior' ? (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="rounded-md border border-stone-200 bg-surface-subtle px-2 py-0.5 text-[11px] font-medium text-stone-700 hover:bg-stone-100"
+                data-testid="catalog-scope-toggle"
+              >
+                {showAll ? 'Doar exterior' : 'Tot catalogul'}
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="rounded-lg border border-stone-300 bg-surface px-2.5 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50"
-              data-testid="catalog-scope-toggle"
+              onClick={onClose}
+              aria-label="Închide catalogul"
+              title="Închide catalogul"
+              data-testid="catalog-close"
+              className="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-teal-700"
             >
-              {showAll ? 'Doar exterior' : 'Tot catalogul'}
+              <IconX size={14} />
             </button>
-          ) : null}
-          <Button onClick={onClose} aria-label="Închide catalogul" data-testid="catalog-close">
-            Închide
-          </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-1">
-        <label htmlFor={searchId} className="block text-xs font-medium text-stone-700">
-          Caută după denumire
-        </label>
-        <input
-          id={searchId}
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            exteriorOnly ? 'ex. fundație, gard, hală, copac, mașină' : 'ex. canapea, dulap, WC'
-          }
-          className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
-          data-testid="catalog-search"
-        />
-      </div>
+        <div className="relative">
+          <label htmlFor={searchId} className="sr-only">
+            Caută după denumire
+          </label>
+          <IconSearch
+            size={14}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-stone-400"
+          />
+          <input
+            id={searchId}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={exteriorOnly ? 'Caută gard, hală, copac…' : 'Caută canapea, dulap, WC…'}
+            className="min-h-8 w-full rounded-lg border border-stone-200 bg-surface-subtle py-1 pr-2.5 pl-8 text-xs text-stone-900 placeholder:text-stone-400 focus-visible:border-teal-600 focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+            data-testid="catalog-search"
+          />
+        </div>
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Categorii">
-        <button
-          type="button"
-          className={chip(activeCategory === null)}
-          aria-pressed={activeCategory === null}
-          onClick={() => setCategory(null)}
-          data-testid="catalog-category-all"
+        {/* Categorii compacte scrollabile orizontal */}
+        <div
+          className="studio-scroll flex gap-1 overflow-x-auto pb-1"
+          role="group"
+          aria-label="Categorii"
         >
-          {exteriorOnly ? 'Toate (exterior)' : 'Toate'}
-        </button>
-        {visibleCategories.map((c) => (
           <button
-            key={c.id}
             type="button"
-            className={chip(activeCategory === c.id)}
-            aria-pressed={activeCategory === c.id}
-            onClick={() => setCategory(c.id)}
-            data-testid={`catalog-category-${c.id}`}
+            className={chip(activeCategory === null)}
+            aria-pressed={activeCategory === null}
+            onClick={() => setCategory(null)}
+            data-testid="catalog-category-all"
           >
-            {c.label}
+            {exteriorOnly ? 'Toate (exterior)' : 'Toate'}
           </button>
-        ))}
+          {visibleCategories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={chip(activeCategory === c.id)}
+              aria-pressed={activeCategory === c.id}
+              onClick={() => setCategory(c.id)}
+              data-testid={`catalog-category-${c.id}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {!editable ? (
@@ -127,22 +144,23 @@ export function CatalogBrowser({
         </p>
       ) : null}
 
-      <p className="text-xs text-stone-600" role="status" data-testid="catalog-count">
+      <p
+        className="text-[11px] tabular-nums text-stone-500"
+        role="status"
+        data-testid="catalog-count"
+      >
         {found.length} {found.length === 1 ? 'obiect' : 'obiecte'}
       </p>
 
       {found.length === 0 ? (
         <p
-          className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"
+          className="rounded-xl border border-stone-200 bg-surface-subtle p-3 text-xs text-stone-600"
           data-testid="catalog-empty"
         >
           Nu s-a găsit niciun obiect pentru „{query}”. Încearcă alt termen sau alege altă categorie.
         </p>
       ) : (
-        <ul
-          className="grid max-h-[28rem] grid-cols-2 gap-2 overflow-y-auto pr-1"
-          data-testid="catalog-list"
-        >
+        <ul className="grid grid-cols-2 gap-1.5" data-testid="catalog-list">
           {found.map((item) => (
             <li key={item.id}>
               <button
@@ -150,12 +168,14 @@ export function CatalogBrowser({
                 disabled={!editable}
                 onClick={() => onAdd(item)}
                 title={`Adaugă „${item.name.ro}” în cameră`}
-                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-surface p-2 text-center hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="group flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-surface-subtle p-2 text-center transition-all hover:border-teal-600 hover:bg-surface hover:shadow-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                 data-testid={`catalog-item-${item.id}`}
               >
-                <ItemPreview item={item} />
-                <span className="text-xs font-medium text-stone-900">{item.name.ro}</span>
-                <span className="text-[11px] text-stone-600">
+                <ItemPreview item={item} px={72} />
+                <span className="line-clamp-2 text-[11px] leading-tight font-medium text-stone-900">
+                  {item.name.ro}
+                </span>
+                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] tabular-nums text-stone-500">
                   {formatLength(item.defaultSize.widthMm, unit).replace(/ (mm|cm|m)$/, '')} ×{' '}
                   {formatLength(item.defaultSize.depthMm, unit).replace(/ (mm|cm|m)$/, '')} ×{' '}
                   {formatLength(item.defaultSize.heightMm, unit)}

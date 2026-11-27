@@ -22,7 +22,7 @@ import {
   type ProjectDocument,
   type Result,
 } from '@/domain';
-import { slotsOfParts, buildParts } from '@/catalog';
+import { buildParts, slotsOfParts } from '@/catalog';
 import {
   BUILTIN_MATERIALS,
   MATERIAL_CATEGORIES,
@@ -38,12 +38,12 @@ import type { CommitResult, ProjectSession, SessionState } from '@/state/session
 import { Button } from '@/ui/Button';
 import { ColorField } from '@/ui/ColorField';
 import { Alert } from '@/ui/feedback';
-import { NumberField } from '@/ui/fields';
+import { InspectorSection, NumberField } from '@/ui/fields';
+import { IconSearch, IconTrash, IconX } from '@/ui/icons';
 
 const failure = (r: Extract<CommitResult, { ok: false }>): string =>
   r.reason === 'invalid' ? describeCommitFailure(r) : r.message;
 
-/** Ținta aleasă în panou (înainte de a deveni `FinishTarget`). */
 type PanelTarget =
   | { kind: 'floor'; roomId: string }
   | { kind: 'roomWalls'; roomId: string }
@@ -77,13 +77,13 @@ export interface PlanSelectionInfo {
 }
 
 const chip = (active: boolean) =>
-  `rounded-full border px-3 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
+  `shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
     active
-      ? 'border-primary bg-primary text-white'
-      : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
+      ? 'border-primary bg-primary text-white shadow-2xs'
+      : 'border-stone-200 bg-surface-subtle text-stone-700 hover:border-stone-300 hover:bg-surface'
   }`;
 
-function Swatch({ finish, px = 56 }: { finish: Finish; px?: number }) {
+function Swatch({ finish, px = 52 }: { finish: Finish; px?: number }) {
   const look = useMemo(() => resolveLook(finish), [finish]);
   return (
     // eslint-disable-next-line @next/next/no-img-element -- miniatură generată local (BMP în data-URL)
@@ -92,15 +92,14 @@ function Swatch({ finish, px = 56 }: { finish: Finish; px?: number }) {
       width={px}
       height={px}
       alt={`Previzualizare: ${finish.name.ro}`}
-      className="rounded-lg border border-stone-300"
+      className="rounded-lg border border-stone-200 shadow-2xs"
       data-testid="material-swatch"
     />
   );
 }
 
 /**
- * Panoul „Materiale și finisaje”: alegi o țintă (podea, pereți, față de perete, zonă de mobilier), alegi un material compatibil
- * și îl aplici; apoi ajustezi proprietățile aplicării. Toate modificările trec prin `session.apply` (un pas de undo, autosave).
+ * Panoul „Materiale și finisaje” pentru Left Drawer-ul studioului: alegi o țintă, previzualizezi și aplici materiale.
  */
 export function MaterialsPanel({
   session,
@@ -117,9 +116,7 @@ export function MaterialsPanel({
   session: ProjectSession;
   state: SessionState;
   selectedObjectId: string | null;
-  /** Selecția din planul 2D (cameră/perete), ca țintă sugerată. */
   planSelection: PlanSelectionInfo | null;
-  /** Suprafața aleasă din 3D (podea / față de perete). */
   surfaceTarget: FinishTarget | null;
   onSurfaceTarget: (t: FinishTarget | null) => void;
   onClose: () => void;
@@ -135,7 +132,6 @@ export function MaterialsPanel({
   const [category, setCategory] = useState<string | null>(defaultCategory);
   const targetId = useId();
 
-  // ───────────── ținte disponibile ─────────────
   const rooms = useMemo(
     () =>
       Object.values(doc.rooms).sort(
@@ -180,7 +176,6 @@ export function MaterialsPanel({
     return slotsOfParts(parts);
   }, [object, objectItem]);
 
-  /** Ținta sugerată de selecție: față/podea din 3D, cameră/perete din plan, altfel zona unui obiect selectat. */
   const suggested: PanelTarget | null = (() => {
     if (surfaceTarget?.kind === 'roomFloor') return { kind: 'floor', roomId: surfaceTarget.roomId };
     if (surfaceTarget?.kind === 'wallSide')
@@ -196,7 +191,6 @@ export function MaterialsPanel({
     return rooms[0] ? { kind: 'floor', roomId: rooms[0].id } : null;
   })();
 
-  // alegerea explicită valabilă cât timp selecția sugerată nu se schimbă (derivat, fără efecte)
   const sig = JSON.stringify([suggested, selectedObjectId]);
   const [explicit, setExplicit] = useState<{ sig: string; value: PanelTarget } | null>(null);
   const target: PanelTarget | null = explicit && explicit.sig === sig ? explicit.value : suggested;
@@ -220,8 +214,6 @@ export function MaterialsPanel({
   const current = single ? (assignmentsOn(doc, single)[0] ?? null) : null;
   const surface = target ? surfaceOf(target) : null;
 
-  // ───────────── acțiuni ─────────────
-  /** Pentru câmpurile de proprietăți: eroarea apare la câmp (valoarea revine), nu și în banda de sus. */
   const edit = useCallback(
     (label: string, op: (d: ProjectDocument) => Result<ProjectDocument>): string | null => {
       const r = session.apply(label, op);
@@ -230,7 +222,6 @@ export function MaterialsPanel({
     },
     [session],
   );
-  /** Pentru acțiunile fără câmp (aplicare, eliminare): eroarea apare într-o alertă. */
   const run = useCallback(
     (label: string, op: (d: ProjectDocument) => Result<ProjectDocument>): string | null => {
       const err = edit(label, op);
@@ -277,13 +268,11 @@ export function MaterialsPanel({
   const patchLook = (label: string, patch: LookPatch, waste?: number): string | null =>
     current ? edit(label, (d) => updateAssignmentLook(d, current.id, patch, waste)) : null;
 
-  // ───────────── materiale afișate ─────────────
   const list = useMemo(
     () => searchMaterials(query, { surface, category }, materials),
     [query, surface, category, materials],
   );
 
-  // ───────────── estimare buget (din domeniu) ─────────────
   const budget = useMemo(() => {
     try {
       const b = selectBudget(doc);
@@ -301,16 +290,25 @@ export function MaterialsPanel({
   const currency = doc.settings.currency;
 
   return (
-    <section aria-label="Materiale și finisaje" className="space-y-3" data-testid="materials-panel">
+    <section
+      aria-label="Materiale și finisaje"
+      className="space-y-2.5"
+      data-testid="materials-panel"
+    >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-stone-900">Materiale și finisaje</h2>
-        <Button
+        <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">
+          Materiale & Finisaje
+        </h2>
+        <button
+          type="button"
           onClick={onClose}
           aria-label="Închide panoul de materiale"
+          title="Închide panoul de materiale"
           data-testid="materials-close"
+          className="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-teal-700"
         >
-          Închide
-        </Button>
+          <IconX size={14} />
+        </button>
       </div>
 
       {error ? (
@@ -327,17 +325,17 @@ export function MaterialsPanel({
         </p>
       ) : null}
 
-      {/* țintă */}
+      {/* Țintă */}
       {rooms.length === 0 && !object ? (
         <p
-          className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"
+          className="rounded-xl border border-stone-200 bg-surface-subtle p-3 text-xs text-stone-700"
           data-testid="materials-no-target"
         >
           Adaugă o cameră în planul 2D (sau selectează un obiect) ca să poți aplica materiale.
         </p>
       ) : (
         <div className="space-y-1">
-          <label htmlFor={targetId} className="block text-xs font-medium text-stone-700">
+          <label htmlFor={targetId} className="block text-[11px] font-medium text-stone-600">
             Aplică pe
           </label>
           <select
@@ -350,7 +348,7 @@ export function MaterialsPanel({
               else if (t?.kind === 'face')
                 onSurfaceTarget({ kind: 'wallSide', wallId: t.wallId, side: t.side });
             }}
-            className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+            className="min-h-8 w-full rounded-lg border border-stone-200 bg-surface-subtle px-2.5 py-1 text-xs text-stone-900 focus-visible:border-teal-600 focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
             data-testid="materials-target"
           >
             {slots.length > 0 && object ? (
@@ -379,21 +377,24 @@ export function MaterialsPanel({
               </optgroup>
             ))}
           </select>
-          <p className="text-xs text-stone-600" data-testid="materials-surface-hint">
-            Tip de suprafață: {surface ? SURFACE_NAMES[surface] : '—'}. Se afișează doar materialele
-            compatibile.
+          <p className="text-[11px] text-stone-500" data-testid="materials-surface-hint">
+            Suprafață:{' '}
+            <span className="font-medium text-stone-700">
+              {surface ? SURFACE_NAMES[surface] : '—'}
+            </span>{' '}
+            (doar materiale compatibile)
           </p>
         </div>
       )}
 
-      {/* materialul aplicat acum */}
+      {/* Material aplicat */}
       {target ? (
         <div
-          className="rounded-lg border border-stone-200 bg-stone-50 p-3"
+          className="rounded-xl border border-stone-200/80 bg-surface-subtle p-2.5"
           data-testid="materials-current"
         >
           {applied.length === 0 ? (
-            <p className="text-sm text-stone-700">Nu este aplicat niciun material aici.</p>
+            <p className="text-xs text-stone-600">Nu este aplicat niciun material aici.</p>
           ) : (
             <AppliedSummary
               doc={doc}
@@ -408,60 +409,73 @@ export function MaterialsPanel({
         </div>
       ) : null}
 
-      {/* catalog */}
-      <div className="space-y-1">
-        <label htmlFor={`${targetId}-q`} className="block text-xs font-medium text-stone-700">
-          Caută material
-        </label>
-        <input
-          id={`${targetId}-q`}
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="ex. parchet, gresie, alb"
-          className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
-          data-testid="materials-search"
-        />
-      </div>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Categorii de materiale">
-        <button
-          type="button"
-          className={chip(category === null)}
-          aria-pressed={category === null}
-          onClick={() => setCategory(null)}
-          data-testid="materials-category-all"
+      {/* Căutare + categorii */}
+      <div className="space-y-2">
+        <div className="relative">
+          <label htmlFor={`${targetId}-q`} className="sr-only">
+            Caută material
+          </label>
+          <IconSearch
+            size={14}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-stone-400"
+          />
+          <input
+            id={`${targetId}-q`}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Caută parchet, gresie, stejar…"
+            className="min-h-8 w-full rounded-lg border border-stone-200 bg-surface-subtle py-1 pr-2.5 pl-8 text-xs text-stone-900 placeholder:text-stone-400 focus-visible:border-teal-600 focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+            data-testid="materials-search"
+          />
+        </div>
+        <div
+          className="studio-scroll flex gap-1 overflow-x-auto pb-1"
+          role="group"
+          aria-label="Categorii de materiale"
         >
-          Toate
-        </button>
-        {MATERIAL_CATEGORIES.map((c) => (
           <button
-            key={c.id}
             type="button"
-            className={chip(category === c.id)}
-            aria-pressed={category === c.id}
-            onClick={() => setCategory(c.id)}
-            data-testid={`materials-category-${c.id}`}
+            className={chip(category === null)}
+            aria-pressed={category === null}
+            onClick={() => setCategory(null)}
+            data-testid="materials-category-all"
           >
-            {c.label}
+            Toate
           </button>
-        ))}
+          {MATERIAL_CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={chip(category === c.id)}
+              aria-pressed={category === c.id}
+              onClick={() => setCategory(c.id)}
+              data-testid={`materials-category-${c.id}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <p className="text-xs text-stone-600" role="status" data-testid="materials-count">
+
+      <p
+        className="text-[11px] tabular-nums text-stone-500"
+        role="status"
+        data-testid="materials-count"
+      >
         {list.length} {list.length === 1 ? 'material' : 'materiale'}
       </p>
+
       {list.length === 0 ? (
         <p
-          className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"
+          className="rounded-xl border border-stone-200 bg-surface-subtle p-3 text-xs text-stone-600"
           data-testid="materials-empty"
         >
           Niciun material compatibil găsit{query ? ` pentru „${query}”` : ''}. Schimbă ținta,
           categoria sau termenul căutat.
         </p>
       ) : (
-        <ul
-          className="grid max-h-[26rem] grid-cols-2 gap-2 overflow-y-auto pr-1"
-          data-testid="materials-list"
-        >
+        <ul className="grid grid-cols-2 gap-1.5" data-testid="materials-list">
           {list.map((m) => (
             <li key={m.id}>
               <button
@@ -471,17 +485,16 @@ export function MaterialsPanel({
                 title={`Aplică „${m.name.ro}” (compatibil: ${finishSurfaces(m)
                   .map((s) => SURFACE_NAMES[s])
                   .join(', ')})`}
-                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-surface p-2 text-center hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-teal-700 aria-pressed:bg-teal-50"
+                className="flex h-full w-full flex-col items-center gap-1 rounded-xl border border-stone-200 bg-surface-subtle p-2 text-center transition-all hover:border-teal-600 hover:bg-surface hover:shadow-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-teal-700 aria-pressed:bg-teal-50"
                 aria-pressed={applied.some((a) => a.finishId === m.id)}
                 data-testid={`material-${m.id}`}
               >
                 <Swatch finish={m} />
-                <span className="text-xs font-medium text-stone-900">{m.name.ro}</span>
-                <span className="text-[11px] text-stone-600">
-                  {finishSurfaces(m)
-                    .map((s) => SURFACE_NAMES[s])
-                    .join(' · ')}{' '}
-                  · {priceLabel(m, currency)}
+                <span className="line-clamp-2 text-[11px] leading-tight font-medium text-stone-900">
+                  {m.name.ro}
+                </span>
+                <span className="text-[10px] tabular-nums text-stone-500">
+                  {priceLabel(m, currency)}
                 </span>
               </button>
             </li>
@@ -489,51 +502,52 @@ export function MaterialsPanel({
         </ul>
       )}
 
-      {/* estimare */}
-      <div
-        className="rounded-lg border border-stone-200 bg-surface p-3 text-xs text-stone-700"
-        data-testid="materials-budget"
-      >
-        <h3 className="mb-1 text-xs font-semibold text-stone-900">
-          Estimare pentru materialele aplicate
-        </h3>
-        {budget.error ? (
-          <p role="alert" className="text-red-800">
-            {budget.error}
-          </p>
-        ) : budget.rows.length === 0 ? (
-          <p>Niciun material aplicat încă.</p>
-        ) : (
-          <>
-            <ul className="space-y-0.5">
-              {budget.rows.map((l) => (
-                <li
-                  key={l.key}
-                  className="flex justify-between gap-2"
-                  data-testid={`materials-budget-${l.key.slice(7)}`}
-                >
-                  <span>
-                    {l.description} — {l.effective.quantity} {l.unit}
-                  </span>
-                  <span>{formatMoney(l.totals.grossMinor, currency)}</span>
-                </li>
-              ))}
-            </ul>
-            <p
-              className="mt-1 flex justify-between font-semibold text-stone-900"
-              data-testid="materials-budget-total"
-            >
-              <span>Total materiale</span>
-              <span>{formatMoney(budget.sum, currency)}</span>
+      {/* Estimare compactă */}
+      <InspectorSection title="Estimare materiale" defaultOpen>
+        <div
+          className="rounded-lg border border-stone-200/80 bg-surface-subtle p-2.5 text-xs text-stone-700"
+          data-testid="materials-budget"
+        >
+          {budget.error ? (
+            <p role="alert" className="text-red-800">
+              {budget.error}
             </p>
-          </>
-        )}
-        <p className="mt-2 text-stone-600">
-          Prețuri demonstrative, nu prețuri de piață. Cantitățile folosesc suprafețele din plan
-          (arii nete, cu rebut, rotunjite la ambalaj); manopera nu este inclusă. Finisajele de
-          mobilier sunt un supliment față de prețul obiectului.
-        </p>
-      </div>
+          ) : budget.rows.length === 0 ? (
+            <p className="text-stone-500">Niciun material aplicat încă.</p>
+          ) : (
+            <>
+              <ul className="space-y-0.5 text-[11px]">
+                {budget.rows.map((l) => (
+                  <li
+                    key={l.key}
+                    className="flex justify-between gap-2"
+                    data-testid={`materials-budget-${l.key.slice(7)}`}
+                  >
+                    <span className="truncate">
+                      {l.description} — {l.effective.quantity} {l.unit}
+                    </span>
+                    <span className="shrink-0 tabular-nums">
+                      {formatMoney(l.totals.grossMinor, currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p
+                className="mt-1.5 flex justify-between border-t border-stone-200 pt-1.5 font-semibold tabular-nums text-stone-900"
+                data-testid="materials-budget-total"
+              >
+                <span>Total materiale</span>
+                <span>{formatMoney(budget.sum, currency)}</span>
+              </p>
+            </>
+          )}
+          <p className="mt-2 text-[10px] leading-relaxed text-stone-500">
+            Prețuri demonstrative, nu prețuri de piață. Cantitățile folosesc suprafețele din plan
+            (arii nete, cu rebut, rotunjite la ambalaj); manopera nu este inclusă. Finisajele de
+            mobilier sunt un supliment față de prețul obiectului.
+          </p>
+        </div>
+      </InspectorSection>
     </section>
   );
 }
@@ -580,32 +594,36 @@ function AppliedSummary({
     onPatch(label, patch as LookPatch);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3">
-        {finish ? <Swatch finish={finish} px={44} /> : null}
-        <div className="min-w-0 text-sm">
-          <p className="font-medium text-stone-900" data-testid="materials-current-name">
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2.5">
+        {finish ? <Swatch finish={finish} px={38} /> : null}
+        <div className="min-w-0 flex-1 text-xs">
+          <p className="truncate font-semibold text-stone-900" data-testid="materials-current-name">
             {names.join(', ')}
           </p>
-          <p className="text-xs text-stone-600">
-            {total > 1 ? `${applied.length} din ${total} fețe au material` : 'Material aplicat'}
+          <p className="text-[11px] text-stone-500">
+            {total > 1 ? `${applied.length} din ${total} fețe` : 'Material aplicat'}
           </p>
         </div>
+        <Button
+          variant="danger"
+          size="xs"
+          disabled={!editable}
+          onClick={onRemove}
+          aria-label="Elimină materialul"
+          title="Elimină materialul"
+          data-testid="materials-remove"
+        >
+          <IconTrash size={12} />
+        </Button>
       </div>
-      <Button
-        variant="danger"
-        disabled={!editable}
-        onClick={onRemove}
-        data-testid="materials-remove"
-      >
-        Elimină materialul
-      </Button>
 
       {single && finish && rules && effective ? (
-        <fieldset className="space-y-2" data-testid="materials-params">
-          <legend className="text-xs font-semibold text-stone-700">
-            Proprietăți ale aplicării
-          </legend>
+        <fieldset
+          className="space-y-2 border-t border-stone-200/80 pt-2"
+          data-testid="materials-params"
+        >
+          <legend className="text-[11px] font-semibold text-stone-600">Proprietăți aplicare</legend>
           {rules.color ? (
             <ColorField
               label="Culoare"
@@ -615,56 +633,64 @@ function AppliedSummary({
               onCommit={(hex) => set('Schimbă culoarea materialului', { colorHex: hex })}
             />
           ) : null}
-          {rules.textureScale ? (
-            <NumberField
-              label="Scara texturii"
-              hint="% (25–400)"
-              value={Math.round((look.textureScale ?? 1) * 100)}
-              disabled={!editable}
-              testId="material-scale"
-              min={25}
-              step={5}
-              onCommit={(v) => set('Scara texturii', { textureScale: v / 100 })}
-            />
-          ) : null}
-          {rules.textureRotation ? (
-            <NumberField
-              label="Rotația texturii"
-              hint="grade (0–359)"
-              value={look.textureRotationDeg ?? 0}
-              disabled={!editable}
-              testId="material-rotation"
-              min={0}
-              step={15}
-              onCommit={(v) => set('Rotația texturii', { textureRotationDeg: v })}
-            />
-          ) : null}
-          {rules.roughness ? (
-            <NumberField
-              label="Rugozitate"
-              hint="% (0 = lucios, 100 = mat)"
-              value={Math.round((look.roughness ?? finish.appearance.roughness) * 100)}
-              disabled={!editable}
-              testId="material-roughness"
-              min={0}
-              step={5}
-              onCommit={(v) => set('Rugozitatea materialului', { roughness: v / 100 })}
-            />
-          ) : null}
-          {rules.waste ? (
-            <NumberField
-              label="Rebut"
-              hint="% (0–100)"
-              value={single.wastePct}
-              disabled={!editable}
-              testId="material-waste"
-              min={0}
-              step={1}
-              onCommit={(v) => onPatch('Rebutul materialului', {}, v)}
-            />
-          ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            {rules.textureScale ? (
+              <NumberField
+                label="Scara texturii"
+                hint="25–400"
+                unit="%"
+                value={Math.round((look.textureScale ?? 1) * 100)}
+                disabled={!editable}
+                testId="material-scale"
+                min={25}
+                step={5}
+                onCommit={(v) => set('Scara texturii', { textureScale: v / 100 })}
+              />
+            ) : null}
+            {rules.textureRotation ? (
+              <NumberField
+                label="Rotație"
+                hint="0–359"
+                unit="°"
+                value={look.textureRotationDeg ?? 0}
+                disabled={!editable}
+                testId="material-rotation"
+                min={0}
+                step={15}
+                onCommit={(v) => set('Rotația texturii', { textureRotationDeg: v })}
+              />
+            ) : null}
+            {rules.roughness ? (
+              <NumberField
+                label="Rugozitate"
+                hint="0–100"
+                unit="%"
+                value={Math.round((look.roughness ?? finish.appearance.roughness) * 100)}
+                disabled={!editable}
+                testId="material-roughness"
+                min={0}
+                step={5}
+                onCommit={(v) => set('Rugozitatea materialului', { roughness: v / 100 })}
+              />
+            ) : null}
+            {rules.waste ? (
+              <NumberField
+                label="Rebut"
+                hint="0–100"
+                unit="%"
+                value={single.wastePct}
+                disabled={!editable}
+                testId="material-waste"
+                min={0}
+                step={1}
+                onCommit={(v) => onPatch('Rebutul materialului', {}, v)}
+              />
+            ) : null}
+          </div>
           {Object.keys(look).length > 0 ? (
             <Button
+              size="xs"
+              className="w-full"
               disabled={!editable}
               onClick={() =>
                 onPatch('Valorile materialului', {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   addObject,
   duplicateObject,
@@ -22,8 +23,8 @@ const failure = (r: Extract<CommitResult, { ok: false }>): string =>
   r.reason === 'invalid' ? describeCommitFailure(r) : r.message;
 
 /**
- * Panoul lateral al obiectelor: catalogul (dacă e deschis) și proprietățile obiectului selectat. Toate modificările trec
- * prin `session.apply` (un pas de undo, autosave). Selecția e a părintelui (comună cu planul 2D și cu 3D).
+ * Panoul obiectelor: `CatalogBrowser` (în Left Drawer prin portal dacă `browserHost` e prezent, altfel inline)
+ * și `ObjectPanel` (în Inspectorul contextual din dreapta). Toate modificările trec prin `session.apply`.
  */
 export function CatalogPanel({
   session,
@@ -35,6 +36,9 @@ export function CatalogPanel({
   genId = newId,
   items,
   scope = 'all',
+  browserHost = null,
+  onOpenMaterials,
+  onOpenCustomConfigurator,
 }: {
   session: ProjectSession;
   state: SessionState;
@@ -45,13 +49,16 @@ export function CatalogPanel({
   genId?: () => string;
   items?: readonly CatalogItem[];
   scope?: 'all' | 'exterior';
+  /** Containerul DOM al Left Drawer-ului pentru randarea CatalogBrowser în zona stângă. */
+  browserHost?: Element | null;
+  onOpenMaterials?: () => void;
+  onOpenCustomConfigurator?: (objectId: string) => void;
 }) {
   const { doc } = state;
   const editable = !state.readOnly && !state.conflict && state.status !== 'closed';
   const [error, setError] = useState<string | null>(null);
   const object = selectedObjectId ? doc.objects[selectedObjectId] : undefined;
 
-  /** Pentru câmpurile panoului de proprietăți: eroarea se arată la câmp (valoarea revine), nu și în banda de sus. */
   const edit = useCallback(
     (label: string, operation: (d: ProjectDocument) => Result<ProjectDocument>): string | null => {
       const r = session.apply(label, operation);
@@ -60,7 +67,6 @@ export function CatalogPanel({
     },
     [session],
   );
-  /** Pentru acțiunile fără câmp (adăugare, duplicare, ștergere): eroarea apare într-o alertă. */
   const run = useCallback(
     (label: string, operation: (d: ProjectDocument) => Result<ProjectDocument>): string | null => {
       const err = edit(label, operation);
@@ -106,37 +112,43 @@ export function CatalogPanel({
   };
 
   if (!catalogOpen && !object && !error) return null;
+
+  const browser = catalogOpen ? (
+    <CatalogBrowser
+      items={items}
+      unit={doc.settings.displayUnit}
+      editable={editable}
+      scope={scope}
+      onAdd={add}
+      onClose={onCloseCatalog}
+    />
+  ) : null;
+
   return (
-    <div className="space-y-4" data-testid="objects-side">
-      {error ? (
-        <Alert tone="error" title="Nu s-a putut aplica" testId="catalog-error">
-          {error}
-        </Alert>
-      ) : null}
-      {catalogOpen ? (
-        <div className="rounded-xl border border-stone-200 bg-surface p-4">
-          <CatalogBrowser
-            items={items}
-            unit={doc.settings.displayUnit}
-            editable={editable}
-            scope={scope}
-            onAdd={add}
-            onClose={onCloseCatalog}
-          />
+    <>
+      {browser && browserHost ? createPortal(browser, browserHost) : null}
+      {error || object || (browser && !browserHost) ? (
+        <div className="space-y-3" data-testid="objects-side">
+          {error ? (
+            <Alert tone="error" title="Nu s-a putut aplica" testId="catalog-error">
+              {error}
+            </Alert>
+          ) : null}
+          {browser && !browserHost ? browser : null}
+          {object ? (
+            <ObjectPanel
+              doc={doc}
+              object={object}
+              editable={editable}
+              run={edit}
+              onDuplicate={duplicate}
+              onDelete={remove}
+              onOpenMaterials={onOpenMaterials}
+              onOpenCustomConfigurator={onOpenCustomConfigurator}
+            />
+          ) : null}
         </div>
       ) : null}
-      {object ? (
-        <div className="rounded-xl border border-stone-200 bg-surface p-4">
-          <ObjectPanel
-            doc={doc}
-            object={object}
-            editable={editable}
-            run={edit}
-            onDuplicate={duplicate}
-            onDelete={remove}
-          />
-        </div>
-      ) : null}
-    </div>
+    </>
   );
 }

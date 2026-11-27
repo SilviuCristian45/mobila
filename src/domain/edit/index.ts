@@ -733,6 +733,36 @@ export function resizeRoomSide(
   return { ok: true, value: keepObjectsInRooms(doc, withNodePositions(doc, r.value)) };
 }
 
+export interface PlanSettingsPatch {
+  displayUnit?: 'mm' | 'cm' | 'm';
+  gridMm?: number;
+  defaultWallHeightMm?: number;
+}
+
+/** Modifică setările rapide de plan (unitate afișare, pas grilă, înălțime implicită pereți). */
+export function updatePlanSettings(
+  doc: ProjectDocument,
+  patch: PlanSettingsPatch,
+): Result<ProjectDocument> {
+  const next = { ...doc.settings };
+  if (patch.displayUnit !== undefined) next.displayUnit = patch.displayUnit;
+  if (patch.gridMm !== undefined) {
+    if (!Number.isInteger(patch.gridMm) || patch.gridMm < 10 || patch.gridMm > 1000)
+      return { ok: false, error: 'Pasul grilei trebuie să fie între 10 și 1000 mm.' };
+    next.gridMm = patch.gridMm;
+  }
+  if (patch.defaultWallHeightMm !== undefined) {
+    if (
+      !Number.isInteger(patch.defaultWallHeightMm) ||
+      patch.defaultWallHeightMm < 1500 ||
+      patch.defaultWallHeightMm > 10000
+    )
+      return { ok: false, error: 'Înălțimea implicită trebuie să fie între 1500 și 10000 mm.' };
+    next.defaultWallHeightMm = patch.defaultWallHeightMm;
+  }
+  return { ok: true, value: { ...doc, settings: next } };
+}
+
 export * from './shared';
 export { keepObjectsInRooms } from './keepInside';
 export * from './roomEdges';

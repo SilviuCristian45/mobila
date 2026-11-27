@@ -7,9 +7,13 @@
  * rămân corecte în ambele teme. `data-theme` e pus pe <html> înainte de prima afișare (src/lib/theme.ts).
  */
 @theme {
-  --color-surface: #fff;
+  --color-canvas: #f4f3ef;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #faf9f7;
   --color-primary: oklch(51.1% 0.096 186.391);
   --color-primary-hover: oklch(43.7% 0.078 188.216);
+  --color-exterior-accent: #2f6f4e;
+  --color-custom-accent: #9a5b25;
   --color-danger: oklch(50.5% 0.213 27.518);
   --color-danger-hover: oklch(44.4% 0.177 26.899);
 }
@@ -20,7 +24,11 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --color-canvas: #121110;
   --color-surface: oklch(21.6% 0.006 56.043);
+  --color-surface-subtle: #242220;
+  --color-exterior-accent: #34d399;
+  --color-custom-accent: #f59e0b;
   --color-stone-50: oklch(14.7% 0.004 49.25);
   --color-stone-950: oklch(98.5% 0.001 106.423);
   --color-stone-100: oklch(21.6% 0.006 56.043);
@@ -81,6 +89,12 @@
   --color-sky-700: oklch(82.8% 0.111 230.318);
   --color-sky-400: oklch(58.8% 0.158 241.966);
   --color-sky-600: oklch(74.6% 0.16 232.661);
+}
+
+/* Bare de derulare discrete în panourile studioului */
+.studio-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-stone-300) transparent;
 }
 
 /* Preferințe de accesibilitate ale sistemului (F-12) */

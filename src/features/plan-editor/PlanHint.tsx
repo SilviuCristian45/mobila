@@ -1,41 +1,32 @@
-import { Button } from '@/ui/Button';
 import type { Tool } from './types';
 
-/** Textul-ajutor al planului (descrie zona planului pentru tehnologii asistive) și butonul de rotire din timpul plasării. */
+/** Micro-indicație contextuală discretă (1 linie, colțul stânga-jos al canvas-ului); păstrează `id="plan-hint"` pentru `aria-describedby`. */
 export function PlanHint({
   placing,
   tool,
   drawing,
-  onRotatePlacing,
 }: {
   placing: boolean;
   tool: Tool;
   /** Un fir de perete e început (unealta „Perete nou”)? */
   drawing: boolean;
-  onRotatePlacing: () => void;
 }) {
+  const text = placing
+    ? 'Click pe plan pentru a plasa · R rotește · Esc anulează'
+    : tool === 'wall'
+      ? drawing
+        ? 'Click pentru capătul peretelui · Esc oprește desenarea'
+        : 'Click pe un nod sau punct din grilă pentru începutul peretelui'
+      : 'Trage camere din panoul stâng · Drag pe fundal: pan · Scroll: zoom · Săgeți: mutare';
+
   return (
-    <>
-      <p id="plan-hint" className="min-h-8 text-xs text-stone-600" data-testid="plan-hint">
-        {placing
-          ? 'Mută cursorul pe plan: camera se lipește de grilă și împarte peretele cu o cameră vecină (roșu = nu încape). R o rotește, apasă ca s-o plasezi, Esc anulează.'
-          : tool === 'wall'
-            ? drawing
-              ? 'Alege sfârșitul peretelui. Esc oprește desenarea.'
-              : 'Alege începutul peretelui (un nod existent sau un punct din grilă).'
-            : 'Trage o cameră din paletă pe plan. Trage nodurile ca să muți pereții, golurile ca să le repoziționezi, o cameră deja selectată ca s-o muți întreagă; trage fundalul ca să deplasezi planul. Săgețile mută elementul selectat.'}
-      </p>
-      {placing ? (
-        <div>
-          <Button
-            onClick={onRotatePlacing}
-            title="Rotește camera din paletă cu 90° (R)"
-            data-testid="placing-rotate"
-          >
-            Rotește camera (R)
-          </Button>
-        </div>
-      ) : null}
-    </>
+    <p
+      id="plan-hint"
+      className="pointer-events-none max-w-[32rem] truncate rounded-full border border-stone-200/80 bg-surface/85 px-3 py-1 text-[11px] text-stone-600 shadow-xs backdrop-blur-md"
+      data-testid="plan-hint"
+      title={text}
+    >
+      {text}
+    </p>
   );
 }

@@ -8,11 +8,11 @@ import {
   type ProjectDocument,
   type Result,
 } from '@/domain';
-import { optionLabel, paramLabel } from '@/catalog';
+import { optionLabel, paramLabel, type SlotLooks } from '@/catalog';
 import { Button } from '@/ui/Button';
 import { ColorField } from '@/ui/ColorField';
-import { NumberField, SelectField, TextField } from '@/ui/fields';
-import type { SlotLooks } from '@/catalog';
+import { InspectorSection, NumberField, SelectField, TextField } from '@/ui/fields';
+import { IconCopy, IconCustomFurniture, IconMaterials, IconTrash } from '@/ui/icons';
 import { ItemPreview } from './ItemPreview';
 
 export type RunEdit = (
@@ -22,7 +22,7 @@ export type RunEdit = (
 
 const MOUNTING_LABEL = {
   floor: 'Pe podea',
-  wall: 'Montat pe perete / suspendat',
+  wall: 'Montat pe perete',
   ceiling: 'Montat pe tavan',
 } as const;
 
@@ -40,13 +40,13 @@ function CheckField({
   testId: string;
 }) {
   return (
-    <label className="flex min-h-10 items-center gap-2 text-sm text-stone-800">
+    <label className="flex min-h-8 cursor-pointer items-center gap-2 text-xs text-stone-800">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 accent-teal-700"
+        className="h-3.5 w-3.5 accent-teal-700"
         data-testid={testId}
       />
       {label}
@@ -55,8 +55,7 @@ function CheckField({
 }
 
 /**
- * Proprietățile obiectului selectat: denumire, poziție, rotație, dimensiuni (în limitele itemului), culoare și parametrii
- * specifici. Fiecare modificare trece prin `run` (sesiune: validare, undo/redo, autosave); câmpurile arată mesajul de eroare.
+ * Proprietățile obiectului selectat, organizate în secțiuni colapsabile curate pentru Inspectorul din dreapta.
  */
 export function ObjectPanel({
   doc,
@@ -65,6 +64,8 @@ export function ObjectPanel({
   run,
   onDuplicate,
   onDelete,
+  onOpenMaterials,
+  onOpenCustomConfigurator,
 }: {
   doc: ProjectDocument;
   object: PlacedObject;
@@ -72,6 +73,8 @@ export function ObjectPanel({
   run: RunEdit;
   onDuplicate: () => void;
   onDelete: () => void;
+  onOpenMaterials?: () => void;
+  onOpenCustomConfigurator?: (objectId: string) => void;
 }) {
   const item = doc.catalogSnapshot.items[object.catalogItemId];
   const apply = (label: string, patch: ObjectPatch): string | null =>
@@ -85,11 +88,17 @@ export function ObjectPanel({
         data-testid="object-panel"
         className="space-y-2"
       >
-        <h2 className="text-sm font-semibold text-stone-900">Obiect</h2>
-        <p className="text-sm text-red-800" role="alert">
+        <h2 className="text-[13px] font-semibold text-stone-900">Obiect</h2>
+        <p className="text-xs text-red-800" role="alert">
           Itemul de catalog „{object.catalogItemId}” lipsește din proiect. Obiectul se poate șterge.
         </p>
-        <Button variant="danger" disabled={off} onClick={onDelete} data-testid="object-delete">
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={off}
+          onClick={onDelete}
+          data-testid="object-delete"
+        >
           Șterge
         </Button>
       </section>
@@ -109,8 +118,9 @@ export function ObjectPanel({
     };
   }
   const L = item.sizeLimits;
-  const range = (r: { min: number; max: number }) => `(${r.min}–${r.max} mm)`;
+  const range = (r: { min: number; max: number }) => `${r.min}–${r.max}`;
   const catalogName = item.name.ro;
+  const isCustomFurniture = item.category === 'mobila-comanda';
 
   return (
     <section
@@ -119,44 +129,66 @@ export function ObjectPanel({
       data-testid="object-panel"
       data-object-id={object.id}
     >
-      <div className="flex items-center gap-3">
+      {/* Card antet obiect */}
+      <div className="flex items-center gap-2.5 rounded-xl border border-stone-200/80 bg-surface-subtle p-2">
         <ItemPreview
           item={item}
           size={object.size}
           params={object.params}
           colorHex={object.colorHex}
           slots={slotLooks}
-          px={64}
+          px={52}
         />
-        <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-stone-900" data-testid="object-title">
+        <div className="min-w-0 flex-1">
+          <h2
+            className="truncate text-[13px] font-semibold text-stone-900"
+            data-testid="object-title"
+          >
             {object.name ?? catalogName}
           </h2>
-          <p className="text-xs text-stone-600">
+          <p className="truncate text-[11px] text-stone-500">
             {catalogName} · {MOUNTING_LABEL[item.mounting]}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      {/* Acțiuni rapide */}
+      <div className="grid grid-cols-2 gap-1.5">
         <Button
+          size="sm"
           disabled={off}
           onClick={onDuplicate}
           title="Duplică (Ctrl+D)"
           data-testid="object-duplicate"
         >
+          <IconCopy size={13} />
           Duplică
         </Button>
         <Button
           variant="danger"
+          size="sm"
           disabled={off}
           onClick={onDelete}
           title="Șterge (Delete)"
           data-testid="object-delete"
         >
+          <IconTrash size={13} />
           Șterge
         </Button>
       </div>
+
+      {isCustomFurniture && onOpenCustomConfigurator ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100"
+          onClick={() => onOpenCustomConfigurator(object.id)}
+          data-testid="open-in-custom-configurator"
+        >
+          <IconCustomFurniture size={14} />
+          Deschide în Configurator
+        </Button>
+      ) : null}
 
       <TextField
         label="Denumire"
@@ -168,41 +200,92 @@ export function ObjectPanel({
         }
       />
 
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField
-          label="Poziție X"
-          hint="mm"
-          value={object.position.x}
-          disabled={off}
-          testId="object-x"
-          step={10}
-          onCommit={(x) => apply('Mută obiectul', { position: { x, y: object.position.y } })}
-        />
-        <NumberField
-          label="Poziție Y"
-          hint="mm"
-          value={object.position.y}
-          disabled={off}
-          testId="object-y"
-          step={10}
-          onCommit={(y) => apply('Mută obiectul', { position: { x: object.position.x, y } })}
-        />
-      </div>
+      <InspectorSection title="Dimensiuni (L × A × H)" defaultOpen>
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField
+            label="Lățime"
+            hint={range(L.widthMm)}
+            unit="mm"
+            value={object.size.widthMm}
+            disabled={off}
+            testId="object-width"
+            min={L.widthMm.min}
+            step={10}
+            onCommit={(v) => apply('Modifică dimensiunile', { size: { widthMm: v } })}
+          />
+          <NumberField
+            label="Adâncime"
+            hint={range(L.depthMm)}
+            unit="mm"
+            value={object.size.depthMm}
+            disabled={off}
+            testId="object-depth"
+            min={L.depthMm.min}
+            step={10}
+            onCommit={(v) => apply('Modifică dimensiunile', { size: { depthMm: v } })}
+          />
+          <NumberField
+            label="Înălțime"
+            hint={range(L.heightMm)}
+            unit="mm"
+            value={object.size.heightMm}
+            disabled={off}
+            testId="object-height"
+            min={L.heightMm.min}
+            step={10}
+            onCommit={(v) => apply('Modifică dimensiunile', { size: { heightMm: v } })}
+          />
+          {item.mounting !== 'floor' ? (
+            <NumberField
+              label="Elevație"
+              hint="de la podea"
+              unit="mm"
+              value={object.elevationMm}
+              disabled={off}
+              testId="object-elevation"
+              min={0}
+              step={10}
+              onCommit={(v) => apply('Modifică elevația', { elevationMm: v })}
+            />
+          ) : null}
+        </div>
+      </InspectorSection>
 
-      <div className="space-y-1">
+      <InspectorSection title="Poziție & rotație" defaultOpen>
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField
+            label="Poziție X"
+            unit="mm"
+            value={object.position.x}
+            disabled={off}
+            testId="object-x"
+            step={10}
+            onCommit={(x) => apply('Mută obiectul', { position: { x, y: object.position.y } })}
+          />
+          <NumberField
+            label="Poziție Y"
+            unit="mm"
+            value={object.position.y}
+            disabled={off}
+            testId="object-y"
+            step={10}
+            onCommit={(y) => apply('Mută obiectul', { position: { x: object.position.x, y } })}
+          />
+        </div>
         <NumberField
           label="Rotație"
-          hint="grade"
+          unit="°"
           value={object.rotationDeg}
           disabled={off}
           testId="object-rotation"
           step={15}
           onCommit={(deg) => apply('Rotește obiectul', { rotationDeg: deg })}
         />
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {[-90, -15, 15, 90].map((delta) => (
             <Button
               key={delta}
+              size="xs"
               disabled={off}
               onClick={() => apply('Rotește obiectul', { rotationDeg: object.rotationDeg + delta })}
               data-testid={`object-rotate-${delta}`}
@@ -212,72 +295,10 @@ export function ObjectPanel({
             </Button>
           ))}
         </div>
-      </div>
-
-      <fieldset className="space-y-2">
-        <legend className="text-xs font-semibold text-stone-700">Dimensiuni</legend>
-        <NumberField
-          label="Lățime"
-          hint={range(L.widthMm)}
-          value={object.size.widthMm}
-          disabled={off}
-          testId="object-width"
-          min={L.widthMm.min}
-          step={10}
-          onCommit={(v) => apply('Modifică dimensiunile', { size: { widthMm: v } })}
-        />
-        <NumberField
-          label="Adâncime"
-          hint={range(L.depthMm)}
-          value={object.size.depthMm}
-          disabled={off}
-          testId="object-depth"
-          min={L.depthMm.min}
-          step={10}
-          onCommit={(v) => apply('Modifică dimensiunile', { size: { depthMm: v } })}
-        />
-        <NumberField
-          label="Înălțime"
-          hint={range(L.heightMm)}
-          value={object.size.heightMm}
-          disabled={off}
-          testId="object-height"
-          min={L.heightMm.min}
-          step={10}
-          onCommit={(v) => apply('Modifică dimensiunile', { size: { heightMm: v } })}
-        />
-        {item.mounting !== 'floor' ? (
-          <NumberField
-            label="Elevație (de la podea)"
-            hint="mm"
-            value={object.elevationMm}
-            disabled={off}
-            testId="object-elevation"
-            min={0}
-            step={10}
-            onCommit={(v) => apply('Modifică elevația', { elevationMm: v })}
-          />
-        ) : null}
-      </fieldset>
-
-      <ColorField
-        value={object.colorHex ?? item.defaultColorHex ?? '#bbbbbb'}
-        disabled={off}
-        onCommit={(hex) => apply('Schimbă culoarea', { colorHex: hex })}
-      />
-      {object.colorHex ? (
-        <Button
-          disabled={off}
-          onClick={() => apply('Culoare implicită', { colorHex: null })}
-          data-testid="object-color-reset"
-        >
-          Culoarea implicită a itemului
-        </Button>
-      ) : null}
+      </InspectorSection>
 
       {Object.keys(item.paramSpecs).length > 0 ? (
-        <fieldset className="space-y-2" data-testid="object-params">
-          <legend className="text-xs font-semibold text-stone-700">Configurare</legend>
+        <InspectorSection title="Configurare rețetă" defaultOpen testId="object-params">
           {Object.entries(item.paramSpecs).map(([key, spec]) => {
             const current = object.params[key] ?? spec.default;
             const set = (value: number | string | boolean) =>
@@ -287,7 +308,8 @@ export function ObjectPanel({
                 <NumberField
                   key={key}
                   label={paramLabel(key)}
-                  hint={`(${spec.min}–${spec.max})`}
+                  hint={`${spec.min}–${spec.max}`}
+                  unit={spec.unit === 'mm' ? 'mm' : spec.unit === 'deg' ? '°' : undefined}
                   value={Number(current)}
                   disabled={off}
                   testId={`param-${key}`}
@@ -321,8 +343,34 @@ export function ObjectPanel({
               />
             );
           })}
-        </fieldset>
+        </InspectorSection>
       ) : null}
+
+      <InspectorSection title="Culoare & finisaje" defaultOpen>
+        <ColorField
+          value={object.colorHex ?? item.defaultColorHex ?? '#bbbbbb'}
+          disabled={off}
+          onCommit={(hex) => apply('Schimbă culoarea', { colorHex: hex })}
+        />
+        <div className="flex flex-wrap gap-1.5">
+          {object.colorHex ? (
+            <Button
+              size="xs"
+              disabled={off}
+              onClick={() => apply('Culoare implicită', { colorHex: null })}
+              data-testid="object-color-reset"
+            >
+              Culoarea implicită
+            </Button>
+          ) : null}
+          {onOpenMaterials ? (
+            <Button size="xs" onClick={onOpenMaterials}>
+              <IconMaterials size={13} />
+              Finisaje pe zone
+            </Button>
+          ) : null}
+        </div>
+      </InspectorSection>
     </section>
   );
 }

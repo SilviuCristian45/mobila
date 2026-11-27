@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   addOpening,
   addRectRoom,
-  footprintOfObject,
-  moveRoomEdge,
   addWall,
+  footprintOfObject,
   moveNode,
-  moveRoom,
   moveObjects,
+  moveRoom,
+  moveRoomEdge,
   resizeRoomSide,
   updateObject,
   updateOpening,
@@ -22,30 +22,41 @@ import { formatLength } from '@/lib/format';
 import { describeCommitFailure } from '@/lib/messages';
 import { selectGeometry } from '@/state/selectors';
 import type { CommitResult, ProjectSession, SessionState } from '@/state/session';
+import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { Alert } from '@/ui/feedback';
-import { PlanCanvas } from './PlanCanvas';
-import { DEFAULT_SIZE, defaultGenId, exists, type Confirm, type Gesture } from './editorSupport';
-import { PropertiesPanel, type RunEdit } from './PropertiesPanel';
+import {
+  IconCopy,
+  IconFit,
+  IconMinus,
+  IconPanelRight,
+  IconPlus,
+  IconRotateCw,
+  IconTrash,
+  IconX,
+} from '@/ui/icons';
 import { ElementList } from './ElementList';
+import { PlanCanvas } from './PlanCanvas';
 import { PlanHint } from './PlanHint';
-import { PlanToolbar } from './PlanToolbar';
-import { STATUS_TONE_CLASS, selectionAnnouncement, sessionStatusLine } from './planStatus';
-import { useSelectionActions } from './useSelectionActions';
-import { usePlacement } from './usePlacement';
-import { useCanvasHandlers } from './useCanvasHandlers';
-import { usePlanKeyboard } from './usePlanKeyboard';
+import { PlanToolbar, type LeftDrawerTab } from './PlanToolbar';
+import { PropertiesPanel, type RunEdit } from './PropertiesPanel';
 import { RoomList } from './RoomList';
 import { RoomPalette } from './RoomPalette';
+import { DEFAULT_SIZE, defaultGenId, exists, type Confirm, type Gesture } from './editorSupport';
+import { STATUS_TONE_CLASS, selectionAnnouncement, sessionStatusLine } from './planStatus';
 import { orient } from './roomPresets';
 import type { Drag, Notice, RoomPreset, Selection, SelectionKind, Tool, WallDraft } from './types';
+import { useCanvasHandlers } from './useCanvasHandlers';
+import { usePlacement } from './usePlacement';
+import { usePlanKeyboard } from './usePlanKeyboard';
+import { useSelectionActions } from './useSelectionActions';
 import { ZOOM_STEP, fitView, zoomAt, type Size, type View } from './view';
 
 /**
- * Editorul 2D (Etapa 2b): plan SVG cu zoom/deplasare, selecție, tragere de noduri și goluri, desenare de pereți,
- * panou de proprietăți și comenzi de tastatură. Nu ține nimic din document: toate modificările trec prin
- * `session.apply` (validare completă, undo/redo, autosave). Gesturile (tragere) lucrează pe un document temporar
- * și confirmă O SINGURĂ dată, la final.
+ * Editorul 2D în arhitectura „Full-Viewport Studio” (3 zone):
+ * - Stânga: Tool Rail vertical (52px) + Left Drawer retractabil (Camere/Zone, Catalog, Materiale, Structură).
+ * - Centru: Canvas full-bleed + Floating HUD (Contextual Top Action Pill, Bottom-Left Micro-Hint, Bottom-Right Zoom Pill).
+ * - Dreapta: Inspector Contextual retractabil (296px).
  */
 export function PlanEditor({
   session,
@@ -55,6 +66,10 @@ export function PlanEditor({
   onSelectObject,
   onSelectionChange,
   sidePanel,
+  side = null,
+  onSideChange,
+  leftDrawerContent,
+  leftDrawerRef,
   scope = 'interior',
 }: {
   session: ProjectSession;
@@ -65,9 +80,16 @@ export function PlanEditor({
   onSelectObject?: (id: string | null) => void;
   /** Raportează selecția de nod/perete/cameră/gol (folosită de panoul de materiale ca țintă sugerată). */
   onSelectionChange?: (s: Selection) => void;
-  /** Conținut deasupra panoului de proprietăți (catalogul și proprietățile obiectului, compuse în `app/`). */
+  /** Conținut contextual în inspectorul din dreapta (ex. ObjectPanel / ErrorBoundary din `app/`). */
   sidePanel?: ReactNode;
-  /** Modul de lucru al paletei: camere interioare sau zone exterioare (curte, fundație, parcare, hală). */
+  /** Tab extern activ în Left Drawer (`catalog` sau `materials`), controlat de `app/`. */
+  side?: 'catalog' | 'materials' | null;
+  onSideChange?: (s: 'catalog' | 'materials' | null) => void;
+  /** Conținutul panoului extern din Left Drawer (ex. MaterialsPanel). */
+  leftDrawerContent?: ReactNode;
+  /** Callback ref pe containerul Left Drawer pentru portalul CatalogBrowser. */
+  leftDrawerRef?: (el: HTMLDivElement | null) => void;
+  /** Modul de lucru al paletei: camere interioare sau zone exterioare. */
   scope?: 'interior' | 'exterior';
 }) {
   const { doc } = state;
@@ -83,6 +105,8 @@ export function PlanEditor({
   const [view, setView] = useState<View>(() => fitView(fitPoints(doc), DEFAULT_SIZE));
   const autoFit = useRef(true);
   const [selectionRaw, setSelection] = useState<Selection>(null);
+  const [localDrawer, setLocalDrawer] = useState<'rooms' | 'structure' | null>('rooms');
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   /** Obiecte selectate în plus față de cel principal (`selectedObjectId`): selecție multiplă cu Shift / Ctrl + clic. */
   const [extra, setExtra] = useState<{ owner: string | null; ids: string[] }>({
     owner: null,
@@ -94,7 +118,6 @@ export function PlanEditor({
   );
   const [toolRaw, setToolRaw] = useState<Tool>('select');
   const [drag, setDragState] = useState<Drag | null>(null);
-  /** Ultima poziție propusă de gest, citită SINCRON la eliberare (starea React poate fi încă neactualizată după ultimul pointermove). */
   const dragRef = useRef<Drag | null>(null);
   const setDrag = useCallback((d: Drag | null) => {
     dragRef.current = d;
@@ -104,22 +127,33 @@ export function PlanEditor({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const gesture = useRef<Gesture | null>(null);
-  /** Camera din paletă care se plasează (trasă cu mouse-ul sau armată cu un clic) și poziția cursorului în lume. */
   const [placing, setPlacing] = useState<RoomPreset | null>(null);
   const [pointerWorld, setPointerWorld] = useState<Pt | null>(null);
-  /** Camera din paletă e rotită cu 90° (lățimea și adâncimea inversate); tasta R o comută cât timp se plasează. */
   const [turns, setTurns] = useState(0);
   const oriented = useCallback((p: RoomPreset): RoomPreset => orient(p, turns), [turns]);
-  /** Apăsarea care a pornit de pe paletă: după ea decidem între „trage și lasă” și „armat, apoi clic pe plan”. */
   const press = useRef<{ x: number; y: number; moved: boolean } | null>(null);
 
-  // fără drept de editare nu există unealtă de desenare și nici fir în curs (derivat, nu efect)
+  const activeDrawer: LeftDrawerTab = side ?? localDrawer;
+  const handleSelectDrawer = useCallback(
+    (tab: LeftDrawerTab) => {
+      if (tab === 'catalog' || tab === 'materials') {
+        onSideChange?.(tab);
+      } else {
+        onSideChange?.(null);
+        setLocalDrawer(tab);
+      }
+    },
+    [onSideChange],
+  );
+
+  // fără drept de editare nu există unealtă de desenare și nici fir în curs
   const tool: Tool = editable ? toolRaw : 'select';
   const draft = tool === 'wall' ? draftRaw : null;
   const setTool = useCallback((t: Tool) => {
     setToolRaw(t);
     setDraft(null);
   }, []);
+
   /** Scurtături cu o singură tastă (W, V, R, +, −, 0): comutator (WCAG 2.1.4), memorat în browser. */
   const [shortcuts, setShortcutsState] = useState<boolean>(() => {
     try {
@@ -133,16 +167,15 @@ export function PlanEditor({
     try {
       localStorage.setItem('rc:shortcuts', on ? 'on' : 'off');
     } catch {
-      /* fără stocare: comutatorul rămâne valabil doar în această sesiune */
+      /* fără stocare */
     }
   }, []);
+
   const selection = exists(doc, selectionRaw) ? selectionRaw : null;
   const selectedObjectId =
     selectedObjectIdProp && selectedObjectIdProp in doc.objects ? selectedObjectIdProp : null;
   const grid = doc.settings.gridMm;
-  // grupul = obiectul principal + cele adăugate; fără obiect principal nu există grup (extrasele vechi nu reapar)
-  // extrasele aparțin obiectului principal pentru care au fost alese: dacă principalul se schimbă din altă parte
-  // (panou, 3D), ele nu mai contează
+
   const groupIds = useMemo(
     () =>
       selectedObjectId
@@ -156,7 +189,7 @@ export function PlanEditor({
     [selectedObjectId, extra, doc.objects],
   );
   const groupSet = useMemo(() => new Set(groupIds), [groupIds]);
-  // o selecție de nod/perete/cameră/gol elimină selecția de obiect (și invers, în gesturi)
+
   useEffect(() => {
     if (selection) onSelectObject?.(null);
   }, [selection, onSelectObject]);
@@ -208,7 +241,6 @@ export function PlanEditor({
 
   useEffect(() => {
     if (autoFit.current) setView(fitView(fitPoints(doc), size));
-    // doar la schimbarea dimensiunii: modificările documentului nu mută planul sub mâna utilizatorului
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size]);
 
@@ -246,7 +278,6 @@ export function PlanEditor({
     [session],
   );
 
-  /** Ca `run`, dar raportează eșecul în banda de mesaje (pentru gesturi și taste, care nu au un câmp de formular). */
   const runNotice = useCallback(
     (label: string, operation: (d: ProjectDocument) => Result<ProjectDocument>): boolean => {
       const err = run(label, operation);
@@ -314,7 +345,6 @@ export function PlanEditor({
     [addAndSelect, genId],
   );
 
-  /** Selectează o cameră din listă; dacă e în afara ferestrei, centrează vederea pe ea (zoom neschimbat). */
   const focusRoom = useCallback(
     (roomId: string) => {
       setSelection({ kind: 'room', id: roomId });
@@ -451,11 +481,12 @@ export function PlanEditor({
     groupIds,
   });
   const statusLine = sessionStatusLine(state);
+  const scaleLabel = formatLength(100 / view.zoom, unit);
 
   return (
     <section
       aria-label="Editor plan 2D"
-      className="space-y-3"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
       data-testid="plan-editor"
       data-editable={editable}
     >
@@ -468,65 +499,172 @@ export function PlanEditor({
       >
         {announcement}
       </div>
-      {statusLine ? (
-        <p
-          role="status"
-          data-testid="plan-status"
-          className={`rounded-lg border px-3 py-2 text-sm ${STATUS_TONE_CLASS[statusLine.tone]}`}
-        >
-          {statusLine.text}
-        </p>
+
+      {/* Benzi de avertisment/stare critică (doar-citire, conflict, eroare geometrică) */}
+      {statusLine || (issues.length > 0 && !drag) ? (
+        <div className="shrink-0 space-y-1.5 border-b border-stone-200 bg-surface px-3 py-1.5">
+          {statusLine ? (
+            <p
+              role="status"
+              data-testid="plan-status"
+              className={`rounded-lg border px-3 py-1.5 text-xs ${STATUS_TONE_CLASS[statusLine.tone]}`}
+            >
+              {statusLine.text}
+            </p>
+          ) : null}
+          {issues.length > 0 && !drag ? (
+            <Alert tone="error" title="Planul conține probleme geometrice" testId="plan-invalid">
+              <ul className="list-disc pl-5">
+                {issues.slice(0, 5).map((i) => (
+                  <li key={`${i.code}-${i.path}`}>{i.message}</li>
+                ))}
+              </ul>
+              {issues.length > 5 ? <p>… și încă {issues.length - 5}.</p> : null}
+            </Alert>
+          ) : null}
+        </div>
       ) : null}
 
-      {issues.length > 0 && !drag ? (
-        <Alert tone="error" title="Planul conține probleme geometrice" testId="plan-invalid">
-          <ul className="list-disc pl-5">
-            {issues.slice(0, 5).map((i) => (
-              <li key={`${i.code}-${i.path}`}>{i.message}</li>
-            ))}
-          </ul>
-          {issues.length > 5 ? <p>… și încă {issues.length - 5}.</p> : null}
-        </Alert>
-      ) : null}
+      {/* 3-Zone Studio Shell */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        {/* ZONA 1A: Left Tool Rail (52px) */}
+        <PlanToolbar
+          tool={tool}
+          setTool={setTool}
+          editable={editable}
+          canDelete={
+            editable && ((!!selection && selection.kind !== 'node') || groupIds.length > 0)
+          }
+          onDelete={deleteSelected}
+          activeDrawer={activeDrawer}
+          onSelectDrawer={handleSelectDrawer}
+          scope={scope}
+        />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-2 lg:sticky lg:top-2 lg:h-[calc(100dvh-12rem)] lg:min-h-[28rem]">
-          <PlanToolbar
-            tool={tool}
-            setTool={setTool}
-            editable={editable}
-            zoomBy={zoomBy}
-            fit={fit}
-            scaleLabel={formatLength(100 / view.zoom, unit)}
-            shortcuts={shortcuts}
-            setShortcuts={setShortcuts}
-            canDelete={editable && !!selection && selection.kind !== 'node'}
-            onDelete={deleteSelected}
-          />
+        {/* ZONA 1B: Left Retractable Drawer (284px) */}
+        {activeDrawer !== null ? (
+          <div
+            aria-label={
+              activeDrawer === 'catalog'
+                ? 'Catalog de obiecte'
+                : activeDrawer === 'materials'
+                  ? 'Materiale și finisaje'
+                  : activeDrawer === 'structure'
+                    ? 'Structură proiect'
+                    : scope === 'exterior'
+                      ? 'Zone exterioare'
+                      : 'Camere și structură'
+            }
+            className="studio-scroll max-h-72 shrink-0 overflow-y-auto border-b border-stone-200 bg-surface p-3 lg:max-h-none lg:w-[284px] lg:border-r lg:border-b-0"
+            data-testid="studio-left-drawer"
+          >
+            {/* Portal host pentru CatalogBrowser (montat de CatalogPanel în ErrorBoundary) */}
+            <div ref={leftDrawerRef} className={activeDrawer === 'catalog' ? '' : 'hidden'} />
 
-          <RoomPalette
-            unit={unit}
-            editable={editable}
-            activeId={placing?.id ?? null}
-            scope={scope}
-            onPress={startPlacing}
-            onPlaceCentered={placeCentered}
-          />
+            {activeDrawer === 'materials' ? leftDrawerContent : null}
 
-          <PlanHint
-            placing={placing !== null}
-            tool={tool}
-            drawing={draft !== null}
-            onRotatePlacing={() => setTurns((t) => (t + 1) % 4)}
-          />
+            {activeDrawer === 'rooms' ? (
+              <div className="space-y-3">
+                <RoomPalette
+                  unit={unit}
+                  editable={editable}
+                  activeId={placing?.id ?? null}
+                  scope={scope}
+                  onPress={startPlacing}
+                  onPlaceCentered={placeCentered}
+                />
+                <RoomList
+                  doc={doc}
+                  geometry={geometry}
+                  selectedId={selection?.kind === 'room' ? selection.id : null}
+                  onSelect={focusRoom}
+                />
+                <ElementList
+                  doc={doc}
+                  unit={unit}
+                  onSelect={(kind, id) => setSelection({ kind, id })}
+                />
+              </div>
+            ) : null}
 
+            {activeDrawer === 'structure' ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-[13px] font-semibold tracking-tight text-stone-900">
+                    Structură proiect
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectDrawer(null)}
+                    aria-label="Închide panoul de structură"
+                    className="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+                  >
+                    <IconX size={14} />
+                  </button>
+                </div>
+                <RoomList
+                  doc={doc}
+                  geometry={geometry}
+                  selectedId={selection?.kind === 'room' ? selection.id : null}
+                  onSelect={focusRoom}
+                />
+                <ElementList
+                  doc={doc}
+                  unit={unit}
+                  onSelect={(kind, id) => setSelection({ kind, id })}
+                />
+                {Object.keys(doc.objects).length > 0 ? (
+                  <div className="border-t border-stone-200/80 pt-3">
+                    <h3 className="mb-1.5 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
+                      Obiecte ({Object.keys(doc.objects).length})
+                    </h3>
+                    <ul className="space-y-0.5 text-xs">
+                      {Object.values(doc.objects).map((o) => {
+                        const label =
+                          o.name ?? doc.catalogSnapshot.items[o.catalogItemId]?.name.ro ?? o.id;
+                        const active = o.id === selectedObjectId;
+                        return (
+                          <li key={o.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelection(null);
+                                onSelectObject?.(o.id);
+                              }}
+                              className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left ${
+                                active
+                                  ? 'bg-teal-50 font-medium text-teal-900'
+                                  : 'text-stone-700 hover:bg-stone-100'
+                              }`}
+                            >
+                              <span className="truncate">{label}</span>
+                              <span className="ml-2 shrink-0 text-[10px] tabular-nums text-stone-400">
+                                {o.size.widthMm}×{o.size.depthMm}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          /* Păstrăm host-ul portalului în DOM chiar dacă drawer-ul e ascuns */
+          <div ref={leftDrawerRef} className="hidden" />
+        )}
+
+        {/* ZONA 2: Canvas Full-Bleed + Floating HUD */}
+        <div className="relative flex min-h-[24rem] min-w-0 flex-1 flex-col bg-canvas">
           <div
             ref={boxRef}
             tabIndex={0}
             role="group"
             aria-label="Zona planului"
             aria-describedby="plan-hint"
-            className="relative h-[60vh] min-h-80 flex-1 overflow-hidden rounded-xl border border-stone-300 bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 lg:h-auto"
+            className="relative h-full min-h-80 flex-1 overflow-hidden bg-canvas focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-teal-700"
             data-testid="plan-box"
           >
             <PlanCanvas
@@ -544,89 +682,245 @@ export function PlanEditor({
               ghost={ghost}
               handlers={handlers}
             />
-            {groupIds.length > 1 ? (
-              <p
-                className="pointer-events-none absolute inset-x-3 top-3 rounded-lg bg-teal-50/95 px-3 py-2 text-sm text-teal-900 shadow-sm"
-                data-testid="multi-selection"
+
+            {/* Floating Top-Right Inspector Toggle (când inspectorul e ascuns) */}
+            {!inspectorOpen ? (
+              <button
+                type="button"
+                onClick={() => setInspectorOpen(true)}
+                aria-label="Arată inspectorul de proprietăți"
+                title="Arată inspectorul de proprietăți"
+                className="absolute top-3 right-3 z-10 inline-flex h-8 items-center gap-1.5 rounded-full border border-stone-200/90 bg-surface/92 px-3 text-xs font-medium text-stone-700 shadow-sm backdrop-blur-md hover:bg-surface hover:text-stone-950"
               >
-                {groupIds.length} obiecte selectate. Trage-le sau folosește săgețile ca să le muți
-                împreună; Delete le șterge, Ctrl+D le duplică, Shift + clic scoate un obiect din
-                selecție.
-              </p>
+                <IconPanelRight size={14} />
+                Inspector
+              </button>
             ) : null}
-            {Object.keys(doc.nodes).length === 0 && Object.keys(doc.objects).length === 0 ? (
-              <p
-                className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-surface/90 p-3 text-center text-sm text-stone-700"
-                data-testid="plan-empty"
-              >
-                {scope === 'exterior'
-                  ? 'Planul exterior este gol. Alege o zonă exterioară (curte, fundație, parcare, hală) sau adaugă garduri, garaje, copaci și mașini din catalogul din dreapta.'
-                  : 'Planul este gol. Adaugă o cameră dreptunghiulară din panoul din dreapta sau desenează pereți cu unealta „Perete nou”.'}
-              </p>
-            ) : null}
-            {invalidLive ? (
-              <p
-                role="status"
-                className="pointer-events-none absolute inset-x-4 bottom-4 rounded-lg border border-red-300 bg-red-50 p-2 text-center text-sm text-red-900"
-                data-testid="drag-invalid"
-              >
-                Poziția aceasta ar produce un plan invalid. Dacă o eliberezi aici, mutarea se
-                anulează.
-              </p>
-            ) : null}
+
+            {/* Floating Top-Center Contextual Action Bar (plasare cameră / selecție multiplă / plan gol) */}
+            <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-col items-center gap-2">
+              {placing ? (
+                <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full border border-teal-200 bg-surface/95 px-3 py-1.5 text-xs font-medium text-stone-800 shadow-md backdrop-blur-md">
+                  <span>
+                    Plasează <strong className="text-teal-900">„{placing.label}”</strong>
+                  </span>
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => setTurns((t) => (t + 1) % 4)}
+                    title="Rotește camera din paletă cu 90° (R)"
+                    data-testid="placing-rotate"
+                    className="rounded-full"
+                  >
+                    <IconRotateCw size={12} />
+                    Rotește camera (R)
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      setPlacing(null);
+                      setPointerWorld(null);
+                      setTurns(0);
+                    }}
+                    className="rounded-full text-stone-500"
+                  >
+                    Anulează (Esc)
+                  </Button>
+                </div>
+              ) : null}
+
+              {groupIds.length > 1 ? (
+                <div
+                  className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full border border-teal-200 bg-teal-50/95 px-3.5 py-1.5 text-xs text-teal-950 shadow-md backdrop-blur-md"
+                  data-testid="multi-selection"
+                >
+                  <span className="font-semibold">{groupIds.length} obiecte selectate</span>
+                  <span className="hidden text-teal-800 sm:inline">
+                    · Trage sau folosește săgețile
+                  </span>
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    disabled={!editable}
+                    onClick={duplicateSelected}
+                    className="rounded-full"
+                  >
+                    <IconCopy size={12} />
+                    Duplică
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="danger"
+                    disabled={!editable}
+                    onClick={deleteSelected}
+                    className="rounded-full"
+                  >
+                    <IconTrash size={12} />
+                    Șterge
+                  </Button>
+                </div>
+              ) : null}
+
+              {Object.keys(doc.nodes).length === 0 && Object.keys(doc.objects).length === 0 ? (
+                <p
+                  className="max-w-lg rounded-2xl border border-stone-200/80 bg-surface/90 px-4 py-2.5 text-center text-xs text-stone-700 shadow-sm backdrop-blur-md"
+                  data-testid="plan-empty"
+                >
+                  {scope === 'exterior'
+                    ? 'Planul exterior este gol. Alege o zonă exterioară din panoul stâng sau adaugă garduri, garaje, copaci și mașini din catalog.'
+                    : 'Planul este gol. Trage o cameră din panoul stâng, desenează pereți cu unealta Perete (W) sau introdu coordonate în dreapta.'}
+                </p>
+              ) : null}
+
+              {invalidLive ? (
+                <p
+                  role="status"
+                  className="rounded-full border border-red-300 bg-red-50/95 px-4 py-1.5 text-xs font-medium text-red-900 shadow-sm backdrop-blur-md"
+                  data-testid="drag-invalid"
+                >
+                  Poziția aceasta ar produce un plan invalid. Dacă o eliberezi aici, mutarea se
+                  anulează.
+                </p>
+              ) : null}
+            </div>
+
+            {/* Floating Bottom Bar: Micro-Hint (stânga) + Zoom & Scurtături Pill (dreapta/centru) */}
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex flex-wrap items-end justify-between gap-2">
+              <PlanHint placing={placing !== null} tool={tool} drawing={draft !== null} />
+
+              <div className="pointer-events-auto ml-auto flex flex-wrap items-center gap-1 rounded-full border border-stone-200/90 bg-surface/92 px-2 py-1 text-xs shadow-md backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={() => zoomBy(1 / ZOOM_STEP)}
+                  aria-label="Micșorează"
+                  title="Micșorează (−)"
+                  data-testid="zoom-out"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-teal-700"
+                >
+                  <IconMinus size={14} />
+                </button>
+                <span
+                  className="min-w-[6.5rem] px-1 text-center text-[11px] font-medium tabular-nums text-stone-700"
+                  data-testid="zoom-level"
+                >
+                  100 px ≈ {scaleLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => zoomBy(ZOOM_STEP)}
+                  aria-label="Mărește"
+                  title="Mărește (+)"
+                  data-testid="zoom-in"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-teal-700"
+                >
+                  <IconPlus size={14} />
+                </button>
+                <span className="mx-0.5 h-4 w-px bg-stone-200" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={fit}
+                  title="Potrivește planul în fereastră (0)"
+                  data-testid="zoom-fit"
+                  className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-teal-700"
+                >
+                  <IconFit size={13} />
+                  Potrivește
+                </button>
+                <span className="mx-0.5 h-4 w-px bg-stone-200" aria-hidden="true" />
+                <label
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium text-stone-600 select-none hover:bg-stone-100"
+                  title="Scurtături cu o singură tastă: W perete, V selectare, R rotire, + − zoom, 0 potrivire. Oprește-le dacă te încurcă."
+                >
+                  <input
+                    type="checkbox"
+                    checked={shortcuts}
+                    onChange={(e) => setShortcuts(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-teal-700"
+                    data-testid="shortcuts-toggle"
+                  />
+                  <span>Scurtături</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
-        <aside
-          aria-label="Proprietăți"
-          className="space-y-4 lg:sticky lg:top-2 lg:max-h-[calc(100dvh-12rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1"
-        >
-          {sidePanel}
-          {notice ? (
-            <Alert
-              tone={notice.tone}
-              title={notice.tone === 'error' ? 'Nu s-a putut aplica' : 'Informație'}
-              testId="plan-notice"
-            >
-              {notice.text}
-            </Alert>
-          ) : null}
-          <RoomList
-            doc={doc}
-            geometry={geometry}
-            selectedId={selection?.kind === 'room' ? selection.id : null}
-            onSelect={focusRoom}
-          />
-          <div className="rounded-xl border border-stone-200 bg-surface p-4">
-            <PropertiesPanel
-              doc={doc}
-              geometry={geometry}
-              selection={selection}
-              editable={editable}
-              run={run}
-              select={(s) => {
-                setSelection(s);
-                setNotice(null);
-              }}
-              onAddOpening={onAddOpening}
-              onDelete={deleteSelected}
-              onWallFromNode={(nodeId) => {
-                const n = doc.nodes[nodeId];
-                if (!n) return;
-                setTool('wall');
-                setDraft({
-                  start: { nodeId },
-                  from: { x: n.x, y: n.y },
-                  to: { x: n.x, y: n.y },
-                  snapNodeId: nodeId,
-                });
-              }}
-              onAddRoom={onAddRoom}
-              onAddWall={onAddWall}
-            />
-          </div>
-          <ElementList doc={doc} unit={unit} onSelect={(kind, id) => setSelection({ kind, id })} />
-        </aside>
+        {/* ZONA 3: Right Contextual Inspector (296px, retractabil) */}
+        {inspectorOpen ? (
+          <aside
+            aria-label="Proprietăți"
+            className="studio-scroll flex shrink-0 flex-col border-t border-stone-200 bg-surface lg:w-[296px] lg:overflow-y-auto lg:border-t-0 lg:border-l"
+            data-testid="studio-right-inspector"
+          >
+            <div className="flex items-center justify-between border-b border-stone-200/80 px-3 py-2">
+              <span className="text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
+                {selectedObjectId
+                  ? 'Inspector obiect'
+                  : selection
+                    ? 'Inspector selecție'
+                    : 'Inspector plan'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setInspectorOpen(false)}
+                aria-label="Ascunde inspectorul de proprietăți"
+                title="Ascunde inspectorul"
+                className="rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-800"
+              >
+                <IconPanelRight size={14} />
+              </button>
+            </div>
+
+            <div className="space-y-3 p-3">
+              {notice ? (
+                <Alert
+                  tone={notice.tone}
+                  title={notice.tone === 'error' ? 'Nu s-a putut aplica' : 'Informație'}
+                  testId="plan-notice"
+                >
+                  {notice.text}
+                </Alert>
+              ) : null}
+
+              {/* CatalogPanel / ObjectPanel (montat o singură dată în ErrorBoundary) */}
+              {sidePanel}
+
+              {/* Când un obiect este selectat, inspectorul afișează strict ObjectPanel (fără zgomot); altfel PropertiesPanel */}
+              {!selectedObjectId ? (
+                <PropertiesPanel
+                  doc={doc}
+                  geometry={geometry}
+                  selection={selection}
+                  editable={editable}
+                  run={run}
+                  select={(s) => {
+                    setSelection(s);
+                    setNotice(null);
+                  }}
+                  onAddOpening={onAddOpening}
+                  onDelete={deleteSelected}
+                  onWallFromNode={(nodeId) => {
+                    const n = doc.nodes[nodeId];
+                    if (!n) return;
+                    setTool('wall');
+                    setDraft({
+                      start: { nodeId },
+                      from: { x: n.x, y: n.y },
+                      to: { x: n.x, y: n.y },
+                      snapNodeId: nodeId,
+                    });
+                  }}
+                  onAddRoom={onAddRoom}
+                  onAddWall={onAddWall}
+                />
+              ) : null}
+            </div>
+          </aside>
+        ) : (
+          /* Păstrăm sidePanel (CatalogPanel) montat pentru portalul CatalogBrowser chiar dacă inspectorul e ascuns */
+          <div className="hidden">{sidePanel}</div>
+        )}
       </div>
 
       {confirm ? (

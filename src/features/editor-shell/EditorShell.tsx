@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { dashboardHref } from '@/lib/asset';
 import { describeOpenFailure } from '@/lib/messages';
@@ -19,7 +20,13 @@ function BackLink() {
 }
 
 /** Ruta editorului: proiectul vine din `?p=<id>` (ADR-002). Toate stările (încărcare, erori) sunt vizibile. */
-export function EditorShell({ workspace }: { workspace?: WorkspaceRenderer }) {
+export function EditorShell({
+  workspace,
+  headerCenter,
+}: {
+  workspace?: WorkspaceRenderer;
+  headerCenter?: ReactNode;
+}) {
   const projectId = useSearchParams().get('p') ?? '';
   const runtime = useRuntimeState();
 
@@ -58,17 +65,26 @@ export function EditorShell({ workspace }: { workspace?: WorkspaceRenderer }) {
       </Centered>
     );
   }
-  return <OpenProject runtime={runtime.runtime} projectId={projectId} workspace={workspace} />;
+  return (
+    <OpenProject
+      runtime={runtime.runtime}
+      projectId={projectId}
+      workspace={workspace}
+      headerCenter={headerCenter}
+    />
+  );
 }
 
 function OpenProject({
   runtime,
   projectId,
   workspace,
+  headerCenter,
 }: {
   runtime: ProjectRuntime;
   projectId: string;
   workspace?: WorkspaceRenderer;
+  headerCenter?: ReactNode;
 }) {
   const { state, takeOver } = useProjectSession(runtime.manager, projectId);
 
@@ -100,14 +116,19 @@ function OpenProject({
         <p
           role="note"
           data-testid="no-tab-lock"
-          className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900"
+          className="border-b border-amber-300 bg-amber-50 px-4 py-1.5 text-center text-xs text-amber-900"
         >
           Acest browser nu poate bloca un proiect deschis în două taburi. Ține proiectul deschis
           într-un singur tab; dacă îl editezi în două, la salvare ți se va cere să alegi ce versiune
           păstrezi.
         </p>
       ) : null}
-      <SessionView session={state.session} takeOver={takeOver} workspace={workspace} />
+      <SessionView
+        session={state.session}
+        takeOver={takeOver}
+        workspace={workspace}
+        headerCenter={headerCenter}
+      />
     </>
   );
 }
