@@ -3,27 +3,28 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { MAX_IMPORT_BYTES } from '@/domain';
 import { APP_NAME, APP_NAME_NOTE } from '@/lib/app-info';
+import { asset, editorHref } from '@/lib/asset';
+import { downloadTextFile, rawBackupFileName } from '@/lib/download';
 import {
   describeImportFailure,
   describeMutationFailure,
   describeStorageFailure,
 } from '@/lib/messages';
-import { readTextFile } from '@/lib/readFile';
 import { useProjectList } from '@/lib/project-runtime/hooks';
 import { useRuntimeState } from '@/lib/project-runtime/ProjectProvider';
 import type { ProjectRuntime } from '@/lib/project-runtime/browser-runtime';
+import { readTextFile } from '@/lib/readFile';
 import type { ProjectMeta } from '@/state/types';
-import { asset, editorHref } from '@/lib/asset';
-import { downloadTextFile, rawBackupFileName } from '@/lib/download';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Alert, Spinner } from '@/ui/feedback';
+import { IconPlan2D, IconPlus, IconUpload } from '@/ui/icons';
 import { NameDialog } from '@/ui/NameDialog';
+import { ThemeToggle } from '@/ui/ThemeToggle';
 import { ProjectCard } from './ProjectCard';
 import { RecoveryDialog } from './RecoveryDialog';
 import { StorageFooter } from './StorageFooter';
-import { ThemeToggle } from '@/ui/ThemeToggle';
 
 const DEFAULT_NEW_NAME = 'Proiect nou';
 const MAX_NAME = 200;
@@ -38,24 +39,36 @@ type Dialog =
 export function Dashboard() {
   const runtime = useRuntimeState();
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6" data-testid="dashboard">
-      <header className="mb-8">
-        <ThemeToggle className="float-right" />
-        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-          {APP_NAME} <span className="text-base font-normal text-stone-500">({APP_NAME_NOTE})</span>
-        </h1>
-        <p className="mt-1 text-stone-600">
-          Proiectează, mobilează și estimează costul amenajării. Proiectele rămân pe acest
-          dispozitiv.
-        </p>
-      </header>
+    <div className="min-h-dvh bg-canvas">
+      <div className="border-b border-stone-200 bg-surface">
+        <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-white shadow-xs">
+              <IconPlan2D size={20} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+                {APP_NAME}{' '}
+                <span className="text-xs font-normal text-stone-500">({APP_NAME_NOTE})</span>
+              </h1>
+              <p className="text-xs text-stone-600 sm:text-sm">
+                Studio de proiectare 2D/3D, amenajări interior & exterior, mobilă la comandă și
+                buget. Datele rămân pe acest dispozitiv.
+              </p>
+            </div>
+          </div>
+          <ThemeToggle />
+        </header>
+      </div>
 
-      {runtime.phase === 'initializing' ? (
-        <Spinner label="Se inițializează stocarea locală…" />
-      ) : null}
-      {runtime.phase === 'unavailable' ? <UnavailableNotice failure={runtime.failure} /> : null}
-      {runtime.phase === 'ready' ? <ProjectsView runtime={runtime.runtime} /> : null}
-    </main>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6" data-testid="dashboard">
+        {runtime.phase === 'initializing' ? (
+          <Spinner label="Se inițializează stocarea locală…" />
+        ) : null}
+        {runtime.phase === 'unavailable' ? <UnavailableNotice failure={runtime.failure} /> : null}
+        {runtime.phase === 'ready' ? <ProjectsView runtime={runtime.runtime} /> : null}
+      </main>
+    </div>
   );
 }
 
@@ -72,7 +85,6 @@ function UnavailableNotice({ failure }: { failure: Parameters<typeof describeSto
   );
 }
 
-/** Rezultatul importului unui fișier, afișat până e închis (erorile trebuie să rămână vizibile, nu să dispară după câteva secunde). */
 interface ImportNotice {
   key: number;
   fileName: string;
@@ -95,7 +107,6 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
   const { state, reload } = useProjectList(manager);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  // mesajul despre backup-ul brut e mai lung și important: rămâne vizibil mai mult decât celelalte notificări
   const [rawNotice, setRawNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(
     null,
   );
@@ -122,7 +133,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
       text: `Am descărcat ${fileName}: un backup brut al proiectului „${project.name}”, cu datele exact așa cum sunt stocate (nevalidate). Proiectul nu a fost modificat. Fișierul nu e în formatul .roomcraft.json și versiunea curentă a aplicației nu îl poate deschide neapărat; păstrează-l până actualizezi aplicația.`,
     });
   }
-  /** Importă fișierele alese, pe rând; fiecare are propriul rezultat. Nimic nu se scrie dacă fișierul e respins. */
+
   async function importFiles(files: File[]) {
     if (files.length === 0 || importing) return;
     setImporting(true);
@@ -180,6 +191,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
       reload();
     }
   }
+
   const onDragOver = (e: DragEvent) => {
     if (!hasFiles(e)) return;
     e.preventDefault();
@@ -191,10 +203,11 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
     setDragging(false);
     void importFiles(Array.from(e.dataTransfer.files));
   };
+
   async function create(name: string): Promise<string | null> {
     const r = await manager.create(name);
     if (!r.ok) return describeMutationFailure(r.error);
-    void runtime.requestPersistence(); // după un gest al utilizatorului (în Firefox poate afișa o cerere de permisiune)
+    void runtime.requestPersistence();
     runtime.navigate(editorHref(r.value.id));
     return null;
   }
@@ -226,14 +239,25 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
     >
       {dragging ? (
         <div
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-teal-600 bg-teal-50/90 text-lg font-semibold text-teal-900"
+          className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-teal-600 bg-teal-50/92 text-base font-semibold text-teal-900 backdrop-blur-xs"
           data-testid="drop-overlay"
         >
+          <IconUpload size={28} />
           Lasă fișierul aici ca să importi proiectul
         </div>
       ) : null}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-stone-900">Proiectele mele</h2>
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-stone-900">Proiectele mele</h2>
+          {state.phase === 'ready' && state.projects.length > 0 ? (
+            <p className="text-xs text-stone-500 tabular-nums">
+              {state.projects.length}{' '}
+              {state.projects.length === 1 ? 'proiect salvat local' : 'proiecte salvate local'} ·
+              trage un fișier .roomcraft.json oriunde pe pagină pentru import
+            </p>
+          ) : null}
+        </div>
         <div className="flex flex-wrap gap-2">
           <input
             ref={fileInput}
@@ -246,7 +270,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
             data-testid="import-input"
             onChange={(e) => {
               const files = Array.from(e.target.files ?? []);
-              e.target.value = ''; // același fișier se poate alege din nou
+              e.target.value = '';
               void importFiles(files);
             }}
           />
@@ -256,6 +280,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
             title="Importă un proiect din fișiere .roomcraft.json (sau trage fișierele pe această pagină)"
             data-testid="import-button"
           >
+            <IconUpload size={15} />
             {importing ? 'Se importă…' : 'Importă proiect'}
           </Button>
           <Button variant="primary" onClick={() => setDialog({ kind: 'create' })}>
@@ -283,7 +308,7 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
               ) : null}
             </Alert>
           ))}
-          <Button onClick={() => setImports([])} data-testid="import-dismiss">
+          <Button size="sm" onClick={() => setImports([])} data-testid="import-dismiss">
             Închide mesajele de import
           </Button>
         </div>
@@ -317,18 +342,23 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
       {state.phase === 'ready' && state.projects.length === 0 ? (
         <div
           data-testid="empty-state"
-          className="rounded-2xl border-2 border-dashed border-stone-300 bg-surface p-10 text-center"
+          className="rounded-2xl border-2 border-dashed border-stone-300 bg-surface px-6 py-14 text-center shadow-2xs"
         >
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+            <IconPlan2D size={24} />
+          </div>
           <p className="text-lg font-semibold text-stone-900">Încă nu ai niciun proiect</p>
-          <p className="mx-auto mt-2 max-w-md text-stone-600">
-            Creează primul proiect pentru a desena camere la dimensiuni reale, a plasa mobilier și a
-            estima costurile.
+          <p className="mx-auto mt-2 max-w-md text-sm text-stone-600">
+            Creează primul proiect pentru a desena camere și zone exterioare la dimensiuni reale, a
+            configura mobilă la comandă și a estima costurile.
           </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button variant="primary" onClick={() => setDialog({ kind: 'create' })}>
+              <IconPlus size={15} />
               Creează primul proiect
             </Button>
             <Button onClick={() => fileInput.current?.click()} disabled={importing}>
+              <IconUpload size={15} />
               Importă un proiect
             </Button>
           </div>
@@ -336,10 +366,9 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
       ) : null}
 
       {state.phase === 'ready' && state.projects.length > 0 ? (
-        <ul className="grid gap-4 sm:grid-cols-2" aria-label="Lista proiectelor">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Lista proiectelor">
           {state.projects.map((p) => (
             <li key={`${p.id}:${p.revision}`}>
-              {/* un card care nu se poate afișa nu are voie să scoată din funcțiune restul listei */}
               <ErrorBoundary
                 label={`cardul proiectului ${p.id}`}
                 fallback={({ reset }) => (
@@ -373,7 +402,11 @@ function ProjectsView({ runtime }: { runtime: ProjectRuntime }) {
 
       <StorageFooter runtime={runtime} />
       <p className="mt-4 text-xs text-stone-500">
-        <a className="underline" href={asset('/despre/')} data-testid="about-link">
+        <a
+          className="underline hover:text-stone-900"
+          href={asset('/despre/')}
+          data-testid="about-link"
+        >
           Despre, licențe și confidențialitate
         </a>
       </p>
