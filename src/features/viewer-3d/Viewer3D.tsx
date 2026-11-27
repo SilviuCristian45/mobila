@@ -8,6 +8,7 @@ import {
   type SceneDescription,
 } from '@/domain';
 import { resolveRecipe } from '@/catalog';
+import { downloadBlob, export3dFileName } from '@/lib/download';
 import { selectScene } from '@/state/selectors';
 import { Button } from '@/ui/Button';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
@@ -21,6 +22,8 @@ import {
   IconPanelRight,
   IconRotateCcw,
 } from '@/ui/icons';
+import { Export3DLoadingOverlay, Export3DMenu, type ExportMenuOptions } from './Export3DMenu';
+import type { Export3DFormat, Export3DStage } from './export3d';
 import type { SceneStats } from './ViewerCanvas';
 import { webglAvailable } from './webgl';
 
@@ -109,6 +112,9 @@ export function Viewer3D({
   const [retryNonce, setRetryNonce] = useState(0);
   const [stats, setStats] = useState<SceneStats | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [exportStage, setExportStage] = useState<Export3DStage | null>(null);
+  const [exportFormat, setExportFormat] = useState<Export3DFormat | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const empty =
     result.ok &&
@@ -120,6 +126,23 @@ export function Viewer3D({
         .length
     : 0;
   const controlsOff = !result.ok || empty || webgl !== 'ok';
+
+  const handleExport = async (opts: ExportMenuOptions) => {
+    if (!result.ok || empty) return;
+    setExportError(null);
+    setExportFormat(opts.format);
+    setExportStage({ label: 'Încarc modulul de export 3D…', progress: 10 });
+    try {
+      const { exportProject3D } = await import('./export3d');
+      const out = await exportProject3D(doc, result.scene, { ...opts, cutaway }, setExportStage);
+      downloadBlob(export3dFileName(doc.name, opts.format), out.blob);
+    } catch {
+      setExportError('Exportul 3D a eșuat. Încearcă din nou sau alege alt format.');
+    } finally {
+      setExportStage(null);
+      setExportFormat(null);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -241,6 +264,15 @@ export function Viewer3D({
                 <IconFocus size={13} />
                 Centrează pe selecție
               </Button>
+              <span className="mx-0.5 h-4 w-px bg-stone-200" aria-hidden="true" />
+              <Export3DMenu
+                disabled={!result.ok || empty}
+                showScopeOptions
+                busyStage={exportStage}
+                error={exportError}
+                onClearError={() => setExportError(null)}
+                onExport={handleExport}
+              />
             </div>
           </div>
 
@@ -375,6 +407,8 @@ export function Viewer3D({
               Drag: rotește · Scroll: zoom · Click dreapta: pan · Click pe suprafață: materiale
             </span>
           </div>
+
+          <Export3DLoadingOverlay stage={exportStage} format={exportFormat} />
         </div>
       </section>
 

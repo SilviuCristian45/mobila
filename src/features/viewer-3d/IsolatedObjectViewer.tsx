@@ -1,9 +1,12 @@
 'use client';
 
-import { Suspense, lazy, useMemo, useSyncExternalStore } from 'react';
+import { Suspense, lazy, useMemo, useState, useSyncExternalStore } from 'react';
 import { buildParts, buildPreview, type Params } from '@/catalog';
+import { downloadBlob, export3dFileName } from '@/lib/download';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Spinner } from '@/ui/feedback';
+import { Export3DLoadingOverlay, Export3DMenu, type ExportMenuOptions } from './Export3DMenu';
+import type { Export3DFormat, Export3DStage } from './export3d';
 import type { IsolatedCanvasProps, IsolatedViewPreset } from './IsolatedObjectCanvas';
 import { webglAvailable } from './webgl';
 
@@ -78,8 +81,40 @@ export function IsolatedObjectViewer({
   viewPreset,
   viewNonce,
   showDimensions,
-}: IsolatedCanvasProps & { showDimensions: boolean }) {
+  pieceName = 'Mobila la comanda',
+}: IsolatedCanvasProps & { showDimensions: boolean; pieceName?: string }) {
   const webgl = useSyncExternalStore(subscribeNever, webglStatus, () => 'checking' as const);
+  const [exportStage, setExportStage] = useState<Export3DStage | null>(null);
+  const [exportFormat, setExportFormat] = useState<Export3DFormat | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = async (opts: ExportMenuOptions) => {
+    setExportError(null);
+    setExportFormat(opts.format);
+    setExportStage({ label: 'Încarc modulul de export 3D…', progress: 10 });
+    try {
+      const { exportPiece3D } = await import('./export3d');
+      const out = await exportPiece3D(
+        {
+          name: pieceName,
+          recipe,
+          sizeMm,
+          params,
+          colorHex,
+          slotLooks,
+          hideFronts,
+        },
+        opts.format,
+        setExportStage,
+      );
+      downloadBlob(export3dFileName(pieceName, opts.format), out.blob);
+    } catch {
+      setExportError('Exportul 3D a eșuat. Încearcă din nou sau alege alt format.');
+    } finally {
+      setExportStage(null);
+      setExportFormat(null);
+    }
+  };
 
   return (
     <div
@@ -156,6 +191,17 @@ export function IsolatedObjectViewer({
           ))}
         </div>
       ) : null}
+      {/* Meniu flotant de export 3D pentru piesa configurată */}
+      <div className="absolute top-3 right-3 z-20 rounded-full border border-stone-200/90 bg-surface/92 px-1.5 py-1 shadow-md backdrop-blur-md">
+        <Export3DMenu
+          busyStage={exportStage}
+          error={exportError}
+          onClearError={() => setExportError(null)}
+          onExport={handleExport}
+        />
+      </div>
+
+      <Export3DLoadingOverlay stage={exportStage} format={exportFormat} />
     </div>
   );
 }

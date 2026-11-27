@@ -52,6 +52,7 @@ import {
 export type CustomPreviewPreset = 'perspective' | 'front' | 'side' | 'top';
 
 export interface CustomPreviewProps {
+  pieceName?: string;
   recipe: { id: string; version: number };
   sizeMm: ObjectSize;
   params: ObjectParams;
@@ -430,6 +431,7 @@ export function CustomFurnitureStudio({
       {/* COLOANA CENTRALĂ: Preview 3D Izolat + Floating Controls */}
       <div className="relative flex min-h-[22rem] min-w-0 flex-1 flex-col bg-canvas">
         {renderPreview({
+          pieceName: draft.name,
           recipe: draft.item.recipe,
           sizeMm: draft.size,
           params: draft.params,

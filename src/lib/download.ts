@@ -55,4 +55,8 @@ export const budgetXlsxFileName = (projectName: string): string =>
 export const cutListFileName = (pieceName: string): string =>
   `${safeFileStem(pieceName, 'mobila')}-debitare.csv`;
 
+/** Export 3D (GLB pentru Blender/3D, OBJ pentru CAD, STL pentru printare 3D/CNC). */
+export const export3dFileName = (name: string, format: 'glb' | 'obj' | 'stl'): string =>
+  `${safeFileStem(name, 'proiect')}-3d.${format}`;
+
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
