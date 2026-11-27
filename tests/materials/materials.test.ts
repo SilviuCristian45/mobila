@@ -83,6 +83,7 @@ describe('catalogul de materiale', () => {
       'pereti',
       'alte-suprafete',
       'mobilier',
+      'exterior',
     ]);
     for (const m of BUILTIN_MATERIALS)
       expect(MATERIAL_CATEGORIES.map((c) => c.id)).toContain(m.category);
@@ -189,7 +190,7 @@ describe('texturi procedurale', () => {
       expect(td.worldHeightMm).toBeGreaterThan(0);
     }
     expect([...patterns].sort()).toEqual(
-      ['flagstone', 'plank', 'marble_tile', 'speckle', 'tile_grid', 'wallpaper'].sort(),
+      ['brushed', 'flagstone', 'plank', 'marble_tile', 'speckle', 'tile_grid', 'wallpaper'].sort(),
     );
     // modelul „brushed” (metal periat) există și produce o textură validă
     const brushed: ResolvedTexture = {

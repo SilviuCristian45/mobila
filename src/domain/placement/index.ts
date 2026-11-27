@@ -12,7 +12,7 @@ import {
   type Pt,
 } from '../geometry';
 import type { CatalogItem, PlacedObject, ProjectDocument } from '../schema';
-import { normalizeRotation, type ObjectSize } from '../objects';
+import { isExteriorItem, normalizeRotation, type ObjectSize } from '../objects';
 
 const rad = (deg: number): number => (deg * Math.PI) / 180;
 const deg = (r: number): number => (r * 180) / Math.PI;
@@ -335,6 +335,8 @@ export function validatePlacement(
   const issues: PlacementIssue[] = [];
   const F = footprintOfObject(obj);
 
+  const exterior = isExteriorItem(item);
+
   let crosses = false;
   for (const fp of geometry.footprints.values())
     if (penetration(F, fp.polygon) > 3) {
@@ -344,10 +346,12 @@ export function validatePlacement(
   if (crosses)
     issues.push({
       code: 'crosses-wall',
-      severity: 'error',
-      message: 'Obiectul traversează un perete.',
+      severity: exterior ? 'warning' : 'error',
+      message: exterior
+        ? 'Elementul exterior se suprapune cu un perete.'
+        : 'Obiectul traversează un perete.',
     });
-  else if (geometry.rooms.size > 0) {
+  else if (!exterior && geometry.rooms.size > 0) {
     const inRoom = [...geometry.rooms.values()].some((r) =>
       F.every((c) => insideTol(c, r.polygon)),
     );
@@ -382,7 +386,7 @@ export function validatePlacement(
 
   const top = obj.elevationMm + obj.size.heightMm;
   const ceiling = doc.levels[obj.levelId]?.ceilingHeightMm;
-  if (ceiling !== undefined && top > ceiling)
+  if (!exterior && ceiling !== undefined && top > ceiling)
     issues.push({
       code: 'taller-than-ceiling',
       severity: 'warning',

@@ -34,6 +34,7 @@ export function CatalogPanel({
   onSelectObject,
   genId = newId,
   items,
+  scope = 'all',
 }: {
   session: ProjectSession;
   state: SessionState;
@@ -43,6 +44,7 @@ export function CatalogPanel({
   onSelectObject: (id: string | null) => void;
   genId?: () => string;
   items?: readonly CatalogItem[];
+  scope?: 'all' | 'exterior';
 }) {
   const { doc } = state;
   const editable = !state.readOnly && !state.conflict && state.status !== 'closed';
@@ -117,6 +119,7 @@ export function CatalogPanel({
             items={items}
             unit={doc.settings.displayUnit}
             editable={editable}
+            scope={scope}
             onAdd={add}
             onClose={onCloseCatalog}
           />

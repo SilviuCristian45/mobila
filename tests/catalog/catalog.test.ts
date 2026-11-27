@@ -41,9 +41,9 @@ const sizesOf = (item: Item) => {
 };
 
 describe('catalogul încorporat', () => {
-  it('are ~40 de itemi, ID-uri unice și stabile, în categoriile așteptate', () => {
-    expect(BUILTIN_ITEMS.length).toBeGreaterThanOrEqual(38);
-    expect(BUILTIN_ITEMS.length).toBeLessThanOrEqual(44);
+  it('are itemi interior + exterior, ID-uri unice și stabile, în categoriile așteptate', () => {
+    expect(BUILTIN_ITEMS.length).toBeGreaterThanOrEqual(55);
+    expect(BUILTIN_ITEMS.length).toBeLessThanOrEqual(70);
     const ids = BUILTIN_ITEMS.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(id).toMatch(/^[a-z]+\.[a-z0-9-]+$/);

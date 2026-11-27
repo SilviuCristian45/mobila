@@ -1,34 +1,38 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { formatLength } from '@/lib/format';
-import { ROOM_PRESETS } from './roomPresets';
+import { EXTERIOR_ZONE_PRESETS, ROOM_PRESETS } from './roomPresets';
 import type { RoomPreset } from './types';
 
 /**
- * Paleta de camere: trage o cameră pe plan (sau apasă-o și apoi apasă pe plan). Cu tastatura, Enter o plasează în
- * centrul vizibil al planului. Dimensiunile sunt interioare; se pot schimba după plasare.
+ * Paleta de camere / zone exterioare: trage un preset pe plan (sau apasă-l și apoi apasă pe plan). Cu tastatura,
+ * Enter îl plasează în centrul vizibil al planului. Dimensiunile sunt interioare; se pot schimba după plasare.
  */
 export function RoomPalette({
   unit,
   editable,
   activeId,
+  scope = 'interior',
   onPress,
   onPlaceCentered,
 }: {
   unit: 'mm' | 'cm' | 'm';
   editable: boolean;
   activeId: string | null;
+  scope?: 'interior' | 'exterior';
   onPress: (preset: RoomPreset, e: ReactPointerEvent<HTMLButtonElement>) => void;
   onPlaceCentered: (preset: RoomPreset) => void;
 }) {
+  const presets = scope === 'exterior' ? EXTERIOR_ZONE_PRESETS : ROOM_PRESETS;
+  const heading = scope === 'exterior' ? 'Adaugă zonă exterioară:' : 'Adaugă cameră:';
   return (
     <div
       className="flex flex-wrap items-center gap-2"
       role="group"
-      aria-label="Adaugă cameră"
+      aria-label={scope === 'exterior' ? 'Adaugă zonă exterioară' : 'Adaugă cameră'}
       data-testid="room-palette"
     >
-      <span className="text-xs font-medium text-stone-700">Adaugă cameră:</span>
-      {ROOM_PRESETS.map((p) => (
+      <span className="text-xs font-medium text-stone-700">{heading}</span>
+      {presets.map((p) => (
         <button
           key={p.id}
           type="button"

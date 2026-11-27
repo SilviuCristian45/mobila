@@ -840,6 +840,542 @@ const plant: Recipe = {
   },
 };
 
+// ───────────── exterior: fundație, garduri, porți, parcare, garaj, hală, copaci, mașini ─────────────
+
+const foundation: Recipe = {
+  id: 'foundation',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const style = str(p, 'style', 'slab');
+    const stairs = bool(p, 'stairs', true);
+    const footingH = lim(0.12, h * 0.35);
+    const stepD = stairs ? lim(0.6, d * 0.18) : 0;
+    const slabD = d - stepD;
+    // talpă/bază pe toată amprenta w × d
+    b.box(0, 0, 0, w, footingH, d, 'dark');
+    // placa principală de beton
+    const deckT = style === 'terrace' ? lim(0.05, (h - footingH) * 0.35) : 0;
+    b.box(0, footingH, 0, w, h - deckT, slabD, 'body');
+    if (deckT > 0) b.box(0, h - deckT, 0, w, h, slabD, 'wood');
+    if (style === 'raised') {
+      const curb = lim(0.14, Math.min(w, slabD) * 0.06);
+      b.box(0, footingH, 0, curb, h, slabD, 'accent');
+      b.box(w - curb, footingH, 0, w, h, slabD, 'accent');
+      b.box(0, footingH, 0, w, h, curb, 'accent');
+    }
+    if (stairs && stepD > 0.05) {
+      const sw = lim(1.8, w * 0.45);
+      const sx0 = (w - sw) / 2;
+      const sx1 = sx0 + sw;
+      const n = 2;
+      for (let i = 0; i < n; i++) {
+        const y1 = footingH + ((h - footingH) * (n - i)) / (n + 1);
+        const z0 = slabD + (stepD * i) / n;
+        const z1 = slabD + (stepD * (i + 1)) / n;
+        b.box(sx0, footingH, z0, sx1, y1, z1, 'accent');
+      }
+    }
+    return b.parts;
+  },
+};
+
+const fence: Recipe = {
+  id: 'fence',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const style = str(p, 'style', 'slats');
+    const posts = int(p, 'posts', 2, 2, 8);
+    const plinth = bool(p, 'plinth', true);
+    const plinthH = plinth ? lim(0.28, h * 0.22) : 0;
+    const postW = lim(0.1, w / (posts * 3));
+    if (plinthH > 0) b.box(0, 0, 0, w, plinthH, d, 'dark');
+    // stâlpi (inclusiv capetele: acoperă exact [0, w] × [0, h] × [0, d])
+    const postXs: number[] = [];
+    for (let i = 0; i < posts; i++) {
+      const x0 = ((w - postW) * i) / (posts - 1);
+      postXs.push(x0);
+      b.box(x0, 0, 0, x0 + postW, h, d, 'dark');
+    }
+    const y0 = plinthH;
+    const y1 = h - lim(0.04, h * 0.04);
+    const pz0 = d * 0.25;
+    const pz1 = d * 0.75;
+    for (let i = 0; i < posts - 1; i++) {
+      const xA = postXs[i]! + postW;
+      const xB = postXs[i + 1]!;
+      const span = xB - xA;
+      if (span <= 0.02) continue;
+      if (style === 'solid') {
+        b.box(xA, y0, pz0, xB, y1, pz1, 'body');
+      } else if (style === 'mesh') {
+        const rail = lim(0.035, (y1 - y0) * 0.08);
+        b.box(xA, y0, pz0, xB, y0 + rail, pz1, 'metal');
+        b.box(xA, y1 - rail, pz0, xB, y1, pz1, 'metal');
+        const bars = Math.max(3, Math.min(10, Math.round(span / 0.25)));
+        const bw = lim(0.018, span / (bars * 3));
+        for (let k = 1; k < bars; k++) {
+          const bx = xA + (span * k) / bars - bw / 2;
+          b.box(bx, y0 + rail, pz0, bx + bw, y1 - rail, pz1, 'metal');
+        }
+      } else {
+        // șipci orizontale
+        const slats = Math.max(4, Math.min(12, Math.round((y1 - y0) / 0.18)));
+        const step = (y1 - y0) / slats;
+        const sh = step * 0.72;
+        for (let k = 0; k < slats; k++) {
+          const sy = y0 + k * step + (step - sh) / 2;
+          b.box(xA, sy, pz0, xB, sy + sh, pz1, 'body');
+        }
+      }
+    }
+    return b.parts;
+  },
+};
+
+const gate: Recipe = {
+  id: 'gate',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const opening = str(p, 'opening', 'double');
+    const style = str(p, 'style', 'slats');
+    const pilW = lim(0.18, w * 0.12);
+    // stâlpi laterali
+    b.box(0, 0, 0, pilW, h, d, 'dark');
+    b.box(w - pilW, 0, 0, w, h, d, 'dark');
+    const xA = pilW + 0.02;
+    const xB = w - pilW - 0.02;
+    const y0 = lim(0.08, h * 0.08);
+    const y1 = h - lim(0.06, h * 0.06);
+    const z0 = d * 0.28;
+    const z1 = d * 0.72;
+    const frame = lim(0.05, (xB - xA) * 0.06);
+    const drawLeaf = (lx0: number, lx1: number) => {
+      if (lx1 - lx0 <= frame * 2) return;
+      b.box(lx0, y0, z0, lx1, y0 + frame, z1, 'metal');
+      b.box(lx0, y1 - frame, z0, lx1, y1, z1, 'metal');
+      b.box(lx0, y0, z0, lx0 + frame, y1, z1, 'metal');
+      b.box(lx1 - frame, y0, z0, lx1, y1, z1, 'metal');
+      if (style === 'solid') {
+        b.box(lx0 + frame, y0 + frame, z0 + 0.005, lx1 - frame, y1 - frame, z1 - 0.005, 'body');
+      } else {
+        const slats = Math.max(4, Math.min(10, Math.round((y1 - y0) / 0.2)));
+        const step = (y1 - y0 - 2 * frame) / slats;
+        const sh = step * 0.7;
+        for (let k = 0; k < slats; k++) {
+          const sy = y0 + frame + k * step + (step - sh) / 2;
+          b.box(lx0 + frame, sy, z0 + 0.005, lx1 - frame, sy + sh, z1 - 0.005, 'body');
+        }
+      }
+    };
+    if (opening === 'double') {
+      const mid = (xA + xB) / 2;
+      drawLeaf(xA, mid - 0.015);
+      drawLeaf(mid + 0.015, xB);
+    } else {
+      // poartă culisantă + șină jos
+      b.box(xA, 0, z0, xB, y0 * 0.5, z1, 'metal');
+      drawLeaf(xA, xB);
+    }
+    return b.parts;
+  },
+};
+
+const parking: Recipe = {
+  id: 'parking',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const spots = int(p, 'spots', 2, 1, 6);
+    const wheelStops = bool(p, 'wheelStops', true);
+    const padH = lim(h * 0.55, 0.06);
+    b.box(0, 0, 0, w, padH, d, 'body');
+    const lineW = lim(0.1, w / (spots * 14));
+    const lineTop = wheelStops ? Math.min(h, padH + 0.015) : h;
+    // linii de delimitare locuri
+    for (let i = 0; i <= spots; i++) {
+      const x0 = ((w - lineW) * i) / spots;
+      b.box(x0, padH, d * 0.06, x0 + lineW, lineTop, d * 0.94, 'ceramic');
+    }
+    b.box(0, padH, d * 0.06, w, lineTop, d * 0.06 + lineW, 'ceramic');
+    if (wheelStops) {
+      const spotW = w / spots;
+      const stopW = spotW * 0.62;
+      const stopD = lim(0.16, d * 0.06);
+      for (let i = 0; i < spots; i++) {
+        const cx = spotW * (i + 0.5);
+        b.box(cx - stopW / 2, padH, d * 0.14, cx + stopW / 2, h, d * 0.14 + stopD, 'accent');
+      }
+    }
+    return b.parts;
+  },
+};
+
+const garage: Recipe = {
+  id: 'garage',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const roof = str(p, 'roof', 'gable');
+    const doors = int(p, 'doors', 1, 1, 2);
+    const sideWindow = bool(p, 'sideWindow', true);
+    const slabH = lim(0.12, h * 0.06);
+    const roofH = roof === 'gable' ? h * 0.26 : lim(0.24, h * 0.12);
+    const wallH = h - roofH;
+    const t = lim(0.2, Math.min(w, d) * 0.06);
+    // placă
+    b.box(0, 0, 0, w, slabH, d, 'dark');
+    // pereți (stânga, dreapta, spate)
+    b.box(0, slabH, 0, t, wallH, d, 'body');
+    b.box(w - t, slabH, 0, w, wallH, d, 'body');
+    b.box(t, slabH, 0, w - t, wallH, t, 'body');
+    // fațadă cu 1 sau 2 uși secționale
+    const pierW = lim(0.35, w * 0.1);
+    const doorH = Math.min(wallH - slabH - 0.15, 2.3);
+    const span = w - pierW * (doors + 1);
+    const dw = span / doors;
+    for (let i = 0; i <= doors; i++) {
+      const px = i * (pierW + dw);
+      b.box(px, slabH, d - t, px + pierW, wallH, d, 'body');
+    }
+    b.box(0, slabH + doorH, d - t, w, wallH, d, 'body');
+    for (let i = 0; i < doors; i++) {
+      const dx0 = pierW + i * (dw + pierW);
+      b.box(dx0, slabH, d - t * 0.65, dx0 + dw, slabH + doorH, d - t * 0.25, 'accent');
+      // nervuri orizontale pe ușa secțională
+      for (let r = 1; r <= 3; r++) {
+        const ry = slabH + (doorH * r) / 4;
+        b.box(dx0 + 0.04, ry - 0.015, d - t * 0.25, dx0 + dw - 0.04, ry + 0.015, d - 0.01, 'metal');
+      }
+    }
+    if (sideWindow) {
+      const ww = lim(1.2, d * 0.3);
+      const wy0 = slabH + (wallH - slabH) * 0.45;
+      const wy1 = Math.min(wallH - 0.2, wy0 + 0.75);
+      b.box(w - t * 0.4, wy0, (d - ww) / 2, w, wy1, (d + ww) / 2, 'glass');
+    }
+    // acoperiș
+    if (roof === 'gable') {
+      const steps = 5;
+      for (let i = 0; i < steps; i++) {
+        const frac = i / steps;
+        const inset = (w * 0.48 * i) / steps;
+        const y0 = wallH + roofH * frac;
+        const y1 = wallH + (roofH * (i + 1)) / steps;
+        b.box(inset, y0, 0, w - inset, y1, d, 'accent');
+      }
+    } else {
+      b.box(0, wallH, 0, w, h, d, 'accent');
+    }
+    return b.parts;
+  },
+};
+
+const carport: Recipe = {
+  id: 'carport',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const roof = str(p, 'roof', 'flat');
+    const posts = int(p, 'posts', 4, 4, 6);
+    const roofH = roof === 'gable' ? h * 0.22 : lim(0.22, h * 0.12);
+    const clearH = h - roofH;
+    const pw = lim(0.14, Math.min(w, d) * 0.05);
+    const perSide = posts >= 6 ? 3 : 2;
+    for (const px of [0, w - pw]) {
+      for (let i = 0; i < perSide; i++) {
+        const pz = ((d - pw) * i) / (perSide - 1);
+        b.box(px, 0, pz, px + pw, clearH, pz + pw, 'dark');
+      }
+      // grindă longitudinală
+      b.box(px, clearH - pw, 0, px + pw, clearH, d, 'metal');
+    }
+    // grinzi transversale
+    b.box(0, clearH - pw, 0, w, clearH, pw, 'metal');
+    b.box(0, clearH - pw, d - pw, w, clearH, d, 'metal');
+    if (roof === 'gable') {
+      const steps = 4;
+      for (let i = 0; i < steps; i++) {
+        const inset = (w * 0.46 * i) / steps;
+        b.box(
+          inset,
+          clearH + (roofH * i) / steps,
+          0,
+          w - inset,
+          clearH + (roofH * (i + 1)) / steps,
+          d,
+          'body',
+        );
+      }
+    } else {
+      b.box(0, clearH, 0, w, h, d, 'body');
+    }
+    return b.parts;
+  },
+};
+
+const hall: Recipe = {
+  id: 'hall',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const roof = str(p, 'roof', 'gable');
+    const gates = int(p, 'gates', 1, 1, 3);
+    const windows = bool(p, 'windows', true);
+    const sideDoor = bool(p, 'sideDoor', true);
+    const slabH = lim(0.18, h * 0.05);
+    const roofH = roof === 'gable' ? h * 0.24 : lim(0.32, h * 0.1);
+    const wallH = h - roofH;
+    const t = lim(0.24, Math.min(w, d) * 0.04);
+    // placă industrială
+    b.box(0, 0, 0, w, slabH, d, 'dark');
+    // pereți exteriori din panouri sandwich
+    b.box(0, slabH, 0, t, wallH, d, 'body');
+    b.box(w - t, slabH, 0, w, wallH, d, 'body');
+    b.box(t, slabH, 0, w - t, wallH, t, 'body');
+    // stâlpi metalici exteriori pe laterale
+    const bays = Math.max(3, Math.min(6, Math.round(d / 3)));
+    const colW = lim(0.18, d / (bays * 6));
+    for (let i = 0; i <= bays; i++) {
+      const cz = ((d - colW) * i) / bays;
+      b.box(0, slabH, cz, t + 0.04, wallH, cz + colW, 'metal');
+      b.box(w - t - 0.04, slabH, cz, w, wallH, cz + colW, 'metal');
+    }
+    // fațada frontală cu porți industriale secționale
+    const gateH = Math.min(wallH - slabH - 0.4, 3.8);
+    const pierW = lim(0.6, w / (gates * 4));
+    const gw = (w - pierW * (gates + 1)) / gates;
+    for (let i = 0; i <= gates; i++) {
+      const px = i * (pierW + gw);
+      b.box(px, slabH, d - t, px + pierW, wallH, d, 'body');
+    }
+    b.box(0, slabH + gateH, d - t, w, wallH, d, 'body');
+    for (let i = 0; i < gates; i++) {
+      const gx0 = pierW + i * (gw + pierW);
+      b.box(gx0, slabH, d - t * 0.6, gx0 + gw, slabH + gateH, d - t * 0.2, 'accent');
+      for (let r = 1; r <= 4; r++) {
+        const ry = slabH + (gateH * r) / 5;
+        b.box(gx0 + 0.05, ry - 0.02, d - t * 0.2, gx0 + gw - 0.05, ry + 0.02, d - 0.01, 'metal');
+      }
+    }
+    // ferestre bandă sus pe laterale
+    if (windows) {
+      const wy0 = slabH + (wallH - slabH) * 0.65;
+      const wy1 = Math.min(wallH - 0.25, wy0 + 0.8);
+      b.box(0, wy0, d * 0.12, t * 0.3, wy1, d * 0.88, 'glass');
+      b.box(w - t * 0.3, wy0, d * 0.12, w, wy1, d * 0.88, 'glass');
+    }
+    // ușă pietonală laterală
+    if (sideDoor) {
+      const dh = Math.min(wallH - slabH - 0.2, 2.1);
+      const dw = lim(1.0, d * 0.18);
+      b.box(0, slabH, d * 0.72, t * 0.35, slabH + dh, d * 0.72 + dw, 'metal');
+    }
+    // acoperiș
+    if (roof === 'gable') {
+      const steps = 5;
+      for (let i = 0; i < steps; i++) {
+        const inset = (w * 0.48 * i) / steps;
+        b.box(
+          inset,
+          wallH + (roofH * i) / steps,
+          0,
+          w - inset,
+          wallH + (roofH * (i + 1)) / steps,
+          d,
+          'metal',
+        );
+      }
+    } else {
+      b.box(0, wallH, 0, w, h, d, 'metal');
+    }
+    return b.parts;
+  },
+};
+
+const tree: Recipe = {
+  id: 'tree',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const species = str(p, 'species', 'deciduous');
+    const cx = w / 2;
+    const cz = d / 2;
+    // bază sol
+    const baseR = Math.min(w, d) * 0.24;
+    b.cyl(cx - baseR, 0, cz - baseR, cx + baseR, lim(0.08, h * 0.03), cz + baseR, 'soil');
+    if (species === 'conifer') {
+      const trW = Math.min(w, d) * 0.16;
+      const trunkTop = h * 0.26;
+      b.cyl(cx - trW / 2, 0.04, cz - trW / 2, cx + trW / 2, trunkTop, cz + trW / 2, 'wood', {
+        taper: 0.75,
+      });
+      // 3 coroane conice suprapuse
+      b.cyl(0, trunkTop * 0.75, 0, w, h * 0.56, d, 'foliage', { taper: 0.25 });
+      b.cyl(w * 0.12, h * 0.44, d * 0.12, w * 0.88, h * 0.78, d * 0.88, 'foliage', { taper: 0.22 });
+      b.cyl(w * 0.24, h * 0.68, d * 0.24, w * 0.76, h, d * 0.76, 'foliage', { taper: 0.05 });
+    } else {
+      const trW = Math.min(w, d) * 0.18;
+      const trunkTop = h * 0.45;
+      b.cyl(cx - trW / 2, 0.04, cz - trW / 2, cx + trW / 2, trunkTop, cz + trW / 2, 'wood', {
+        taper: 0.7,
+      });
+      // coroană foios: sferă principală + 2 volume secundare în interiorul casetei
+      b.sph(0, h * 0.34, 0, w, h, d, 'foliage');
+      b.sph(w * 0.06, h * 0.3, d * 0.08, w * 0.72, h * 0.84, d * 0.76, 'foliage');
+      b.sph(w * 0.28, h * 0.38, d * 0.22, w * 0.94, h * 0.92, d * 0.92, 'foliage');
+    }
+    return b.parts;
+  },
+};
+
+const hedge: Recipe = {
+  id: 'hedge',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const segments = int(p, 'segments', 3, 1, 8);
+    const soilH = lim(0.1, h * 0.1);
+    b.box(0, 0, 0, w, soilH, d, 'soil');
+    const segW = w / segments;
+    const gap = segments > 1 ? Math.min(0.04, segW * 0.05) : 0;
+    for (let i = 0; i < segments; i++) {
+      const x0 = i * segW + (i === 0 ? 0 : gap / 2);
+      const x1 = (i + 1) * segW - (i === segments - 1 ? 0 : gap / 2);
+      b.box(x0, soilH, 0, x1, h * 0.86, d, 'foliage');
+      b.sph(x0, h * 0.7, 0, x1, h, d, 'foliage');
+    }
+    return b.parts;
+  },
+};
+
+const vehicle: Recipe = {
+  id: 'vehicle',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const kind = str(p, 'vehicleType', 'sedan');
+    const wheelR = lim(h * 0.24, Math.min(w * 0.22, d * 0.1));
+    const wheelD = wheelR * 2;
+    const wheelW = lim(0.24, w * 0.14);
+    const clearance = wheelR * 0.65;
+    const wzF = d * 0.76;
+    const wzR = d * 0.22;
+    // 4 roți (ating y=0 și x=0 / x=w)
+    for (const wz of [wzR, wzF]) {
+      b.cyl(0, 0, wz - wheelR, wheelW, wheelD, wz + wheelR, 'dark', { axis: 'x' });
+      b.cyl(w - wheelW, 0, wz - wheelR, w, wheelD, wz + wheelR, 'dark', { axis: 'x' });
+    }
+    if (kind === 'truck') {
+      // platformă / camion: cabină în față + benă/caroserie în spate
+      const cabZ0 = d * 0.68;
+      const bedH = h * 0.96;
+      b.box(w * 0.03, clearance, 0, w * 0.97, clearance + h * 0.22, d, 'dark');
+      b.box(0, clearance + h * 0.2, 0, w, bedH, cabZ0 - 0.12, 'light');
+      b.box(w * 0.04, clearance + h * 0.18, cabZ0, w * 0.96, h, d, 'body');
+      b.box(w * 0.08, h * 0.58, d - 0.08, w * 0.92, h * 0.9, d, 'glass');
+    } else if (kind === 'van') {
+      // dubă / utilitară
+      const hoodZ = d * 0.84;
+      b.box(0, clearance, 0, w, h * 0.52, d, 'body');
+      b.box(w * 0.03, h * 0.5, 0, w * 0.97, h, hoodZ, 'body');
+      b.box(w * 0.08, h * 0.56, hoodZ - 0.04, w * 0.92, h * 0.92, hoodZ + 0.06, 'glass');
+      b.box(w * 0.03, h * 0.56, d * 0.55, w * 0.97, h * 0.88, hoodZ - 0.08, 'glass');
+    } else {
+      // sedan sau SUV
+      const isSuv = kind === 'suv';
+      const waistH = isSuv ? h * 0.56 : h * 0.54;
+      const cabZ0 = isSuv ? d * 0.14 : d * 0.22;
+      const cabZ1 = isSuv ? d * 0.72 : d * 0.68;
+      b.box(0, clearance, 0, w, waistH, d, 'body');
+      b.box(w * 0.08, waistH, cabZ0, w * 0.92, h, cabZ1, 'body');
+      // parbriz, lunetă și geamuri laterale
+      b.box(w * 0.12, waistH + 0.03, cabZ1 - 0.05, w * 0.88, h - 0.05, cabZ1 + 0.06, 'glass');
+      b.box(w * 0.12, waistH + 0.03, cabZ0 - 0.05, w * 0.88, h - 0.05, cabZ0 + 0.05, 'glass');
+      b.box(w * 0.06, waistH + 0.04, cabZ0 + 0.1, w * 0.94, h - 0.06, cabZ1 - 0.1, 'glass');
+    }
+    // faruri față (+Z) și stopuri spate (0)
+    const lh = lim(0.14, h * 0.1);
+    const lw = lim(0.28, w * 0.18);
+    const ly = clearance + h * 0.18;
+    b.box(w * 0.08, ly, d - 0.04, w * 0.08 + lw, ly + lh, d, 'glow');
+    b.box(w * 0.92 - lw, ly, d - 0.04, w * 0.92, ly + lh, d, 'glow');
+    b.box(w * 0.08, ly, 0, w * 0.08 + lw, ly + lh, 0.04, 'accent');
+    b.box(w * 0.92 - lw, ly, 0, w * 0.92, ly + lh, 0.04, 'accent');
+    return b.parts;
+  },
+};
+
+const gazebo: Recipe = {
+  id: 'gazebo',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const railings = bool(p, 'railings', true);
+    const deckH = lim(0.16, h * 0.08);
+    const roofH = h * 0.28;
+    const clearH = h - roofH;
+    const pw = lim(0.12, Math.min(w, d) * 0.05);
+    // platformă lemn
+    b.box(0, 0, 0, w, deckH, d, 'wood');
+    // 4 stâlpi
+    for (const px of [0, w - pw])
+      for (const pz of [0, d - pw]) b.box(px, deckH, pz, px + pw, clearH, pz + pw, 'wood');
+    if (railings) {
+      const rh = deckH + lim(0.85, (clearH - deckH) * 0.42);
+      const rt = lim(0.06, pw * 0.6);
+      b.box(pw, rh - rt, 0, w - pw, rh, rt, 'wood');
+      b.box(0, rh - rt, pw, rt, rh, d - pw, 'wood');
+      b.box(w - rt, rh - rt, pw, w, rh, d - pw, 'wood');
+    }
+    // acoperiș piramidal în trepte
+    const steps = 4;
+    for (let i = 0; i < steps; i++) {
+      const ix = (w * 0.44 * i) / steps;
+      const iz = (d * 0.44 * i) / steps;
+      b.box(
+        ix,
+        clearH + (roofH * i) / steps,
+        iz,
+        w - ix,
+        clearH + (roofH * (i + 1)) / steps,
+        d - iz,
+        'body',
+      );
+    }
+    return b.parts;
+  },
+};
+
+const streetLamp: Recipe = {
+  id: 'street-lamp',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const style = str(p, 'style', 'modern');
+    const cx = w / 2;
+    const cz = d / 2;
+    const baseH = lim(0.14, h * 0.06);
+    b.cyl(0, 0, 0, w, baseH, d, 'dark');
+    const poleR = Math.min(w, d) * 0.14;
+    const headH = lim(0.42, h * 0.16);
+    const poleTop = h - headH;
+    b.cyl(cx - poleR, baseH, cz - poleR, cx + poleR, poleTop, cz + poleR, 'metal', { taper: 0.75 });
+    if (style === 'classic') {
+      b.cyl(w * 0.15, poleTop, d * 0.15, w * 0.85, h - headH * 0.25, d * 0.85, 'glow', {
+        taper: 1.2,
+      });
+      b.cyl(w * 0.1, h - headH * 0.25, d * 0.1, w * 0.9, h, d * 0.9, 'dark', { taper: 0.2 });
+    } else {
+      b.box(w * 0.1, poleTop, d * 0.1, w * 0.9, h - headH * 0.35, d * 0.9, 'glow');
+      b.box(w * 0.05, h - headH * 0.35, d * 0.05, w * 0.95, h, d * 0.95, 'dark');
+    }
+    return b.parts;
+  },
+};
+
 export const RECIPES: Readonly<Record<string, Recipe>> = Object.fromEntries(
   [
     sofa,
@@ -868,6 +1404,18 @@ export const RECIPES: Readonly<Record<string, Recipe>> = Object.fromEntries(
     mirror,
     picture,
     plant,
+    foundation,
+    fence,
+    gate,
+    parking,
+    garage,
+    carport,
+    hall,
+    tree,
+    hedge,
+    vehicle,
+    gazebo,
+    streetLamp,
   ].map((r) => [r.id, r]),
 );
 

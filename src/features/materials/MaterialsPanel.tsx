@@ -112,6 +112,7 @@ export function MaterialsPanel({
   onClose,
   genId = newId,
   materials = BUILTIN_MATERIALS,
+  defaultCategory = null,
 }: {
   session: ProjectSession;
   state: SessionState;
@@ -124,13 +125,14 @@ export function MaterialsPanel({
   onClose: () => void;
   genId?: () => string;
   materials?: readonly Finish[];
+  defaultCategory?: string | null;
 }) {
   const { doc } = state;
   const editable = !state.readOnly && !state.conflict && state.status !== 'closed';
   const geometry = selectGeometry(doc);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(defaultCategory);
   const targetId = useId();
 
   // ───────────── ținte disponibile ─────────────

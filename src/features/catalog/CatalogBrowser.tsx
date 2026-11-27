@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from 'react';
 import type { CatalogItem } from '@/domain';
-import { BUILTIN_ITEMS, CATEGORIES, searchCatalog } from '@/catalog';
+import { BUILTIN_ITEMS, CATEGORIES, isExteriorCategory, searchCatalog } from '@/catalog';
 import { formatLength } from '@/lib/format';
 import { Button } from '@/ui/Button';
 import { ItemPreview } from './ItemPreview';
@@ -14,32 +14,67 @@ const chip = (active: boolean) =>
       : 'border-stone-300 bg-surface text-stone-800 hover:bg-stone-50'
   }`;
 
-/** Catalogul încorporat: căutare, categorii, miniaturi și „Adaugă în cameră”. Nu modifică documentul: `onAdd` o face. */
+/** Catalogul încorporat: căutare, categorii, miniaturi și „Adaugă în cameră / exterior”. Nu modifică documentul: `onAdd` o face. */
 export function CatalogBrowser({
   items = BUILTIN_ITEMS,
   unit,
   editable,
+  scope = 'all',
   onAdd,
   onClose,
 }: {
   items?: readonly CatalogItem[];
   unit: 'mm' | 'cm' | 'm';
   editable: boolean;
+  scope?: 'all' | 'exterior';
   onAdd: (item: CatalogItem) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const exteriorOnly = scope === 'exterior' && !showAll;
   const searchId = useId();
-  const found = useMemo(() => searchCatalog(query, category, items), [query, category, items]);
+  const visibleCategories = useMemo(
+    () => (exteriorOnly ? CATEGORIES.filter((c) => isExteriorCategory(c.id)) : CATEGORIES),
+    [exteriorOnly],
+  );
+  const scopedItems = useMemo(
+    () => (exteriorOnly ? items.filter((i) => isExteriorCategory(i.category)) : items),
+    [exteriorOnly, items],
+  );
+  const activeCategory =
+    category && visibleCategories.some((c) => c.id === category) ? category : null;
+  const found = useMemo(
+    () => searchCatalog(query, activeCategory, scopedItems),
+    [query, activeCategory, scopedItems],
+  );
 
   return (
-    <section aria-label="Catalog de obiecte" className="space-y-3" data-testid="catalog-panel">
+    <section
+      aria-label={exteriorOnly ? 'Catalog exterior' : 'Catalog de obiecte'}
+      className="space-y-3"
+      data-testid="catalog-panel"
+    >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-stone-900">Catalog de obiecte</h2>
-        <Button onClick={onClose} aria-label="Închide catalogul" data-testid="catalog-close">
-          Închide
-        </Button>
+        <h2 className="text-sm font-semibold text-stone-900">
+          {exteriorOnly ? 'Catalog Build Exterior' : 'Catalog de obiecte'}
+        </h2>
+        <div className="flex items-center gap-1.5">
+          {scope === 'exterior' ? (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="rounded-lg border border-stone-300 bg-surface px-2.5 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50"
+              data-testid="catalog-scope-toggle"
+            >
+              {showAll ? 'Doar exterior' : 'Tot catalogul'}
+            </button>
+          ) : null}
+          <Button onClick={onClose} aria-label="Închide catalogul" data-testid="catalog-close">
+            Închide
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -51,7 +86,9 @@ export function CatalogBrowser({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ex. canapea, dulap, WC"
+          placeholder={
+            exteriorOnly ? 'ex. fundație, gard, hală, copac, mașină' : 'ex. canapea, dulap, WC'
+          }
           className="min-h-10 w-full rounded-lg border border-stone-300 bg-surface px-3 py-1.5 text-sm text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
           data-testid="catalog-search"
         />
@@ -60,19 +97,19 @@ export function CatalogBrowser({
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Categorii">
         <button
           type="button"
-          className={chip(category === null)}
-          aria-pressed={category === null}
+          className={chip(activeCategory === null)}
+          aria-pressed={activeCategory === null}
           onClick={() => setCategory(null)}
           data-testid="catalog-category-all"
         >
-          Toate
+          {exteriorOnly ? 'Toate (exterior)' : 'Toate'}
         </button>
-        {CATEGORIES.map((c) => (
+        {visibleCategories.map((c) => (
           <button
             key={c.id}
             type="button"
-            className={chip(category === c.id)}
-            aria-pressed={category === c.id}
+            className={chip(activeCategory === c.id)}
+            aria-pressed={activeCategory === c.id}
             onClick={() => setCategory(c.id)}
             data-testid={`catalog-category-${c.id}`}
           >

@@ -13,7 +13,7 @@ export interface Size {
   h: number;
 }
 
-export const MIN_ZOOM = 0.02;
+export const MIN_ZOOM = 0.004;
 export const MAX_ZOOM = 2;
 export const ZOOM_STEP = 1.25;
 

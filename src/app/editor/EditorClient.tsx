@@ -12,10 +12,11 @@ import { Button } from '@/ui/Button';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { Alert } from '@/ui/feedback';
 
-type Mode = '2d' | '3d' | 'budget';
+type Mode = '2d' | 'exterior' | '3d' | 'budget';
 type Side = 'catalog' | 'materials' | null;
 const TABS: ReadonlyArray<{ mode: Mode; label: string }> = [
   { mode: '2d', label: 'Plan 2D' },
+  { mode: 'exterior', label: 'Build Exterior' },
   { mode: '3d', label: 'Vizualizare 3D' },
   { mode: 'budget', label: 'Buget' },
 ];
@@ -63,11 +64,17 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
     if (s) setSurface(null);
   }, []);
 
+  const switchMode = useCallback((next: Mode) => {
+    setMode(next);
+    if (next === 'exterior') setSide((s) => s ?? 'catalog');
+  }, []);
+
   const sidePanelContent = (
     <>
       {side === 'materials' ? (
         <div className="rounded-xl border border-stone-200 bg-surface p-4">
           <MaterialsPanel
+            key={mode === 'exterior' ? 'ext-mat' : 'all-mat'}
             session={session}
             state={state}
             selectedObjectId={selected}
@@ -75,6 +82,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
             surfaceTarget={surface}
             onSurfaceTarget={selectSurface}
             onClose={() => setSide(null)}
+            defaultCategory={mode === 'exterior' ? 'exterior' : null}
           />
         </div>
       ) : null}
@@ -85,6 +93,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
         onCloseCatalog={() => setSide(null)}
         selectedObjectId={selected}
         onSelectObject={selectObject}
+        scope={mode === 'exterior' ? 'exterior' : 'all'}
       />
     </>
   );
@@ -130,7 +139,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
             if (next < 0) return;
             e.preventDefault();
             const target = TABS[next]!.mode;
-            setMode(target);
+            switchMode(target);
             document.getElementById(`tab-${target}`)?.focus();
           }}
         >
@@ -144,7 +153,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
               aria-controls="workspace-panel"
               tabIndex={mode === t.mode ? 0 : -1}
               data-testid={`mode-${t.mode}`}
-              onClick={() => setMode(t.mode)}
+              onClick={() => switchMode(t.mode)}
               className={`rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
                 mode === t.mode
                   ? 'border-primary bg-primary text-white'
@@ -196,7 +205,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
           >
             <BudgetPanel session={session} state={state} />
           </ErrorBoundary>
-        ) : mode === '2d' ? (
+        ) : mode === '2d' || mode === 'exterior' ? (
           <PlanEditor
             session={session}
             state={state}
@@ -204,6 +213,7 @@ function Workspace({ session, state }: { session: ProjectSession; state: Session
             onSelectObject={selectObject}
             onSelectionChange={onPlanSelection}
             sidePanel={sidePanel}
+            scope={mode === 'exterior' ? 'exterior' : 'interior'}
           />
         ) : (
           <Viewer3D

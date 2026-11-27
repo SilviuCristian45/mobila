@@ -22,6 +22,20 @@ import { MaterialCache } from './materialCache';
 const SELECT_COLOR = '#0f766e';
 
 const FOV = 45;
+const EXTERIOR_RECIPES = new Set([
+  'foundation',
+  'fence',
+  'gate',
+  'parking',
+  'garage',
+  'carport',
+  'hall',
+  'tree',
+  'hedge',
+  'vehicle',
+  'gazebo',
+  'street-lamp',
+]);
 
 export interface SceneStats {
   walls: number;
@@ -190,12 +204,49 @@ function Scene({
     });
   }, [objects, onStats]);
 
+  const hasExterior = useMemo(
+    () => scene.boxes.some((b) => b.recipe !== null && EXTERIOR_RECIPES.has(b.recipe.id)),
+    [scene.boxes],
+  );
+  const groundPlane = useMemo(() => {
+    if (!hasExterior || !objects.bounds) return null;
+    const b = objects.bounds;
+    const cx = (b.min[0] + b.max[0]) / 2;
+    const cz = (b.min[2] + b.max[2]) / 2;
+    const w = Math.max(24, b.max[0] - b.min[0] + 16);
+    const d = Math.max(24, b.max[2] - b.min[2] + 16);
+    return { cx, cz, w, d };
+  }, [hasExterior, objects.bounds]);
+
   return (
     <>
-      <color attach="background" args={[theme === 'dark' ? '#1c1917' : '#f5f5f4']} />
-      <hemisphereLight args={['#ffffff', '#a8a29e', theme === 'dark' ? 0.9 : 1.1]} />
+      <color
+        attach="background"
+        args={[
+          hasExterior
+            ? theme === 'dark'
+              ? '#17202a'
+              : '#dcebf7'
+            : theme === 'dark'
+              ? '#1c1917'
+              : '#f5f5f4',
+        ]}
+      />
+      <hemisphereLight
+        args={[
+          hasExterior ? '#f0f7ff' : '#ffffff',
+          hasExterior ? '#5d7a4f' : '#a8a29e',
+          theme === 'dark' ? 0.9 : 1.1,
+        ]}
+      />
       <directionalLight position={[6, 10, 4]} intensity={1.6} />
       <directionalLight position={[-5, 6, -6]} intensity={0.6} />
+      {groundPlane ? (
+        <mesh position={[groundPlane.cx, -0.015, groundPlane.cz]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[groundPlane.w, groundPlane.d]} />
+          <meshStandardMaterial color={theme === 'dark' ? '#2c3e2a' : '#7ba45b'} roughness={0.95} />
+        </mesh>
+      ) : null}
       {objects.floors.map((f) => (
         <mesh
           key={f.id}

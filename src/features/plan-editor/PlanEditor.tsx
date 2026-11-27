@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   addOpening,
   addRectRoom,
+  footprintOfObject,
   moveRoomEdge,
   addWall,
   moveNode,
@@ -54,6 +55,7 @@ export function PlanEditor({
   onSelectObject,
   onSelectionChange,
   sidePanel,
+  scope = 'interior',
 }: {
   session: ProjectSession;
   state: SessionState;
@@ -65,14 +67,20 @@ export function PlanEditor({
   onSelectionChange?: (s: Selection) => void;
   /** Conținut deasupra panoului de proprietăți (catalogul și proprietățile obiectului, compuse în `app/`). */
   sidePanel?: ReactNode;
+  /** Modul de lucru al paletei: camere interioare sau zone exterioare (curte, fundație, parcare, hală). */
+  scope?: 'interior' | 'exterior';
 }) {
   const { doc } = state;
   const editable = !state.readOnly && !state.conflict && state.status !== 'closed';
+  const fitPoints = (d: ProjectDocument): Pt[] => [
+    ...Object.values(d.nodes),
+    ...Object.values(d.objects).flatMap((o) => footprintOfObject(o)),
+  ];
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<Size>(DEFAULT_SIZE);
-  const [view, setView] = useState<View>(() => fitView(Object.values(doc.nodes), DEFAULT_SIZE));
+  const [view, setView] = useState<View>(() => fitView(fitPoints(doc), DEFAULT_SIZE));
   const autoFit = useRef(true);
   const [selectionRaw, setSelection] = useState<Selection>(null);
   /** Obiecte selectate în plus față de cel principal (`selectedObjectId`): selecție multiplă cu Shift / Ctrl + clic. */
@@ -184,8 +192,8 @@ export function PlanEditor({
   // ───────────── vizualizare ─────────────
   const fit = useCallback(() => {
     autoFit.current = true;
-    setView(fitView(Object.values(doc.nodes), size));
-  }, [doc.nodes, size]);
+    setView(fitView(fitPoints(doc), size));
+  }, [doc, size]);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -199,7 +207,7 @@ export function PlanEditor({
   }, []);
 
   useEffect(() => {
-    if (autoFit.current) setView(fitView(Object.values(doc.nodes), size));
+    if (autoFit.current) setView(fitView(fitPoints(doc), size));
     // doar la schimbarea dimensiunii: modificările documentului nu mută planul sub mâna utilizatorului
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size]);
@@ -500,6 +508,7 @@ export function PlanEditor({
             unit={unit}
             editable={editable}
             activeId={placing?.id ?? null}
+            scope={scope}
             onPress={startPlacing}
             onPlaceCentered={placeCentered}
           />
@@ -545,13 +554,14 @@ export function PlanEditor({
                 selecție.
               </p>
             ) : null}
-            {Object.keys(doc.nodes).length === 0 ? (
+            {Object.keys(doc.nodes).length === 0 && Object.keys(doc.objects).length === 0 ? (
               <p
                 className="pointer-events-none absolute inset-x-4 top-4 rounded-lg bg-surface/90 p-3 text-center text-sm text-stone-700"
                 data-testid="plan-empty"
               >
-                Planul este gol. Adaugă o cameră dreptunghiulară din panoul din dreapta sau
-                desenează pereți cu unealta „Perete nou”.
+                {scope === 'exterior'
+                  ? 'Planul exterior este gol. Alege o zonă exterioară (curte, fundație, parcare, hală) sau adaugă garduri, garaje, copaci și mașini din catalogul din dreapta.'
+                  : 'Planul este gol. Adaugă o cameră dreptunghiulară din panoul din dreapta sau desenează pereți cu unealta „Perete nou”.'}
               </p>
             ) : null}
             {invalidLive ? (

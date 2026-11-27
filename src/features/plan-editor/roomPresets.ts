@@ -28,6 +28,16 @@ export const ROOM_PRESETS: readonly RoomPreset[] = [
   },
 ];
 
+/** Zone exterioare predefinite (dimensiuni în mm): teren, fundație, parcare, garaj, hală, terasă. */
+export const EXTERIOR_ZONE_PRESETS: readonly RoomPreset[] = [
+  { id: 'ext-yard', label: 'Curte / Teren', type: 'other', widthMm: 15000, depthMm: 12000 },
+  { id: 'ext-foundation', label: 'Fundație casă', type: 'other', widthMm: 10000, depthMm: 8000 },
+  { id: 'ext-parking', label: 'Zonă parcare', type: 'other', widthMm: 8000, depthMm: 6000 },
+  { id: 'ext-garage', label: 'Garaj', type: 'storage', widthMm: 6000, depthMm: 6000 },
+  { id: 'ext-hall', label: 'Hală / Depozit', type: 'storage', widthMm: 14000, depthMm: 10000 },
+  { id: 'ext-terrace', label: 'Terasă / Alee', type: 'other', widthMm: 6000, depthMm: 3000 },
+];
+
 /** Poligonul interior (orar pe ecran) al unui L în orientarea de bază: caseta fără colțul de nord-est. */
 function lPolygon(w: number, d: number, cw: number, cd: number): Pt[] {
   return [

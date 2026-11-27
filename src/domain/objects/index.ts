@@ -22,6 +22,10 @@ export type ParamSpec = CatalogItem['paramSpecs'][string];
 /** Distanța implicită (mm) la care se așază o copie față de original. */
 export const DUPLICATE_OFFSET_MM = 300;
 
+/** Indică dacă un item aparține secțiunii de build exterior (fundație, gard, garaj, hală, copac, mașină etc.). */
+export const isExteriorItem = (item: CatalogItem | undefined): boolean =>
+  !!item && (item.category.startsWith('exterior') || (item.tags ?? []).includes('exterior'));
+
 // ───────────── parametri ─────────────
 
 export const paramDefault = (spec: ParamSpec): ParamValue => spec.default;
@@ -145,6 +149,39 @@ export function suggestPlacement(
   size: ObjectSize = item.defaultSize,
   geometry: GeometryModel = analyzeGeometry(doc),
 ): Placement {
+  const free = (p: Pt) =>
+    !Object.values(doc.objects).some(
+      (o) =>
+        Math.abs(o.position.x - p.x) < (o.size.widthMm + size.widthMm) / 2 &&
+        Math.abs(o.position.y - p.y) < (o.size.depthMm + size.depthMm) / 2,
+    );
+
+  if (isExteriorItem(item)) {
+    const allPts = [...geometry.rooms.values()].flatMap((r) => r.polygon);
+    const hasRooms = allPts.length > 0;
+    const base: Pt = hasRooms
+      ? {
+          x: Math.round(Math.max(...allPts.map((q) => q.x)) + 1000 + size.widthMm / 2),
+          y: Math.round(
+            (Math.min(...allPts.map((q) => q.y)) + Math.max(...allPts.map((q) => q.y))) / 2,
+          ),
+        }
+      : { x: 0, y: 0 };
+    const stepX = Math.max(500, Math.round(size.widthMm + 600));
+    const stepY = Math.max(500, Math.round(size.depthMm + 600));
+    const outsideRooms = (p: Pt) =>
+      ![...geometry.rooms.values()].some((r) => pointInPolygon(p, r.polygon));
+    for (let ring = 0; ring <= 6; ring++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        for (let dx = 0; dx <= ring; dx++) {
+          const cand = { x: base.x + dx * stepX, y: base.y + dy * stepY };
+          if (free(cand) && outsideRooms(cand)) return { position: cand, rotationDeg: 0 };
+        }
+      }
+    }
+    return { position: base, rotationDeg: 0 };
+  }
+
   const rooms = [...geometry.rooms.values()].sort((a, b) => (a.roomId < b.roomId ? -1 : 1));
   const room = rooms[0];
   if (!room) return { position: { x: 0, y: 0 }, rotationDeg: 0 };
@@ -170,12 +207,6 @@ export function suggestPlacement(
   }
 
   const c = roomAnchor(room);
-  const free = (p: Pt) =>
-    !Object.values(doc.objects).some(
-      (o) =>
-        Math.abs(o.position.x - p.x) < (o.size.widthMm + size.widthMm) / 2 &&
-        Math.abs(o.position.y - p.y) < (o.size.depthMm + size.depthMm) / 2,
-    );
   const fits = (p: Pt) =>
     [
       [-1, -1],

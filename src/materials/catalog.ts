@@ -11,6 +11,7 @@ export const MATERIAL_CATEGORIES: readonly MaterialCategory[] = [
   { id: 'pereti', label: 'Pereți' },
   { id: 'alte-suprafete', label: 'Alte suprafețe' },
   { id: 'mobilier', label: 'Mobilier' },
+  { id: 'exterior', label: 'Exterior' },
 ];
 
 const provenance = { origin: 'original', license: 'proprietar-proiect' } as const;
@@ -112,7 +113,8 @@ function furniture(c: Common): Finish {
 const P = 'pardoseli',
   W = 'pereti',
   A = 'alte-suprafete',
-  M = 'mobilier';
+  M = 'mobilier',
+  E = 'exterior';
 
 export const BUILTIN_MATERIALS: readonly Finish[] = [
   // ───────────── Pardoseli ─────────────
@@ -528,4 +530,107 @@ export const BUILTIN_MATERIALS: readonly Finish[] = [
     metalness: 0.9,
     price: 300,
   }),
+
+  // ───────────── Exterior (curte, fundație, parcare, hală) ─────────────
+  surface(
+    {
+      id: 'mat.ext.grass',
+      name: 'Gazon / Iarbă',
+      category: E,
+      color: '#5c8d45',
+      roughness: 0.95,
+      price: 35,
+      tex: { pattern: 'speckle', accent: '#3d662d', tone: 0.65, seed: 81 },
+    },
+    ['floor'],
+  ),
+  surface(
+    {
+      id: 'mat.ext.asphalt',
+      name: 'Asfalt parcare',
+      category: E,
+      color: '#3d3f43',
+      roughness: 0.88,
+      price: 120,
+      tex: { pattern: 'speckle', accent: '#232528', tone: 0.45, seed: 82 },
+    },
+    ['floor'],
+  ),
+  tiled(
+    'tile',
+    {
+      id: 'mat.ext.pavers',
+      name: 'Pavele curte',
+      category: E,
+      color: '#9b9389',
+      roughness: 0.78,
+      price: 95,
+      tex: { pattern: 'tile_grid', accent: '#5f5a54', offset: 50, tone: 0.4, seed: 83 },
+      surfaces: ['floor'],
+    },
+    200,
+    100,
+    4,
+  ),
+  surface(
+    {
+      id: 'mat.ext.gravel',
+      name: 'Pietriș / Balast',
+      category: E,
+      color: '#b5aea4',
+      roughness: 0.92,
+      price: 45,
+      tex: { pattern: 'speckle', accent: '#7c756b', tone: 0.75, seed: 84 },
+    },
+    ['floor'],
+  ),
+  surface(
+    {
+      id: 'mat.ext.concrete-foundation',
+      name: 'Beton fundație',
+      category: E,
+      color: '#8d8c88',
+      roughness: 0.85,
+      price: 115,
+      tex: { pattern: 'speckle', accent: '#62615d', tone: 0.55, seed: 85 },
+    },
+    ['floor', 'wall'],
+  ),
+  surface(
+    {
+      id: 'mat.ext.corrugated-metal',
+      name: 'Tablă cutată / Hală',
+      category: E,
+      color: '#6d7680',
+      roughness: 0.42,
+      metalness: 0.75,
+      price: 140,
+      tex: { pattern: 'brushed', accent: '#485058', tone: 0.45, seed: 86 },
+    },
+    ['wall'],
+  ),
+  surface(
+    {
+      id: 'mat.ext.wood-deck',
+      name: 'Deck lemn exterior',
+      category: E,
+      color: '#9b6e44',
+      roughness: 0.68,
+      price: 180,
+      tex: { pattern: 'plank', accent: '#5e3f23', offset: 50, tone: 0.5, seed: 87 },
+    },
+    ['floor', 'wall'],
+  ),
+  surface(
+    {
+      id: 'mat.ext.plaster-facade',
+      name: 'Tencuială decorativă exterior',
+      category: E,
+      color: '#e6dfd1',
+      roughness: 0.9,
+      price: 85,
+      tex: { pattern: 'speckle', accent: '#c2b9a7', tone: 0.35, seed: 88 },
+    },
+    ['wall'],
+  ),
 ];

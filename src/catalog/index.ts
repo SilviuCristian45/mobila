@@ -36,7 +36,12 @@ export const CATEGORIES: readonly CatalogCategory[] = [
   { id: 'electrocasnice', label: 'Electrocasnice' },
   { id: 'iluminat-decor', label: 'Iluminat și decorațiuni' },
   { id: 'diverse', label: 'Diverse' },
+  { id: 'exterior-structuri', label: 'Exterior — Structuri' },
+  { id: 'exterior-curte', label: 'Exterior — Curte & Garduri' },
+  { id: 'exterior-vehicule', label: 'Exterior — Mașini' },
 ];
+
+export const isExteriorCategory = (id: string): boolean => id.startsWith('exterior');
 
 export const categoryLabel = (id: string): string =>
   CATEGORIES.find((c) => c.id === id)?.label ?? id;
@@ -103,6 +108,22 @@ const PARAM_LABELS: Record<string, string> = {
   kind: 'Specie',
   backrest: 'Spătar',
   upholstered: 'Tapițat',
+  stairs: 'Trepte acces',
+  posts: 'Număr de stâlpi',
+  plinth: 'Soclu de beton',
+  opening: 'Deschidere',
+  spots: 'Locuri de parcare',
+  wheelStops: 'Opritoare roți',
+  roof: 'Acoperiș',
+  doors: 'Număr uși garaj',
+  sideWindow: 'Fereastră laterală',
+  gates: 'Porți industriale',
+  windows: 'Ferestre laterale',
+  sideDoor: 'Ușă pietonală',
+  species: 'Specie',
+  segments: 'Număr segmente',
+  vehicleType: 'Tip vehicul',
+  railings: 'Balustrade',
 };
 const OPTION_LABELS: Record<string, string> = {
   straight: 'Dreaptă',
@@ -146,6 +167,23 @@ const OPTION_LABELS: Record<string, string> = {
   ficus: 'Ficus',
   palm: 'Palmier',
   cactus: 'Cactus',
+  slab: 'Placă simplă',
+  raised: 'Cu bordură / elevată',
+  terrace: 'Terasă finisată',
+  slats: 'Șipci / lamele',
+  solid: 'Plin',
+  mesh: 'Plasă / grilaj',
+  sliding: 'Culisantă',
+  double: 'Batantă (2 canate)',
+  gable: 'În 2 ape',
+  deciduous: 'Foios',
+  conifer: 'Conifer / Brad',
+  sedan: 'Sedan',
+  suv: 'SUV',
+  van: 'Dubă / Utilitară',
+  truck: 'Camion / Platformă',
+  modern: 'Modern',
+  classic: 'Clasic',
 };
 
 export const paramLabel = (key: string): string => PARAM_LABELS[key] ?? key;

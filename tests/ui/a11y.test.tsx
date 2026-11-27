@@ -220,16 +220,25 @@ describe('accesibilitate (F-12): comportamentul editorului 2D', () => {
     const e = uiEnv();
     await open(e);
     const tabs = () => screen.getAllByRole('tab');
-    expect(tabs().map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+    expect(tabs().map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1']);
     const list = screen.getByRole('tablist');
-    fireEvent.keyDown(list, { key: 'ArrowRight' });
-    await screen.findByTestId('viewer-3d');
-    expect(tabs().map((t) => t.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false']);
-    expect(tabs().map((t) => t.getAttribute('tabindex'))).toEqual(['-1', '0', '-1']);
+    fireEvent.keyDown(list, { key: 'ArrowRight' }); // Build Exterior
+    await screen.findByTestId('catalog-panel');
+    expect(tabs().map((t) => t.getAttribute('aria-selected'))).toEqual([
+      'false',
+      'true',
+      'false',
+      'false',
+    ]);
+    expect(tabs().map((t) => t.getAttribute('tabindex'))).toEqual(['-1', '0', '-1', '-1']);
     expect(document.activeElement).toBe(tabs()[1]);
+    expect(a11yIssues(document.body, 'build exterior')).toEqual([]);
+    fireEvent.keyDown(list, { key: 'ArrowRight' }); // Vizualizare 3D
+    await screen.findByTestId('viewer-3d');
+    expect(document.activeElement).toBe(tabs()[2]);
     fireEvent.keyDown(list, { key: 'End' });
     await screen.findByTestId('budget-panel');
-    expect(document.activeElement).toBe(tabs()[2]);
+    expect(document.activeElement).toBe(tabs()[3]);
     fireEvent.keyDown(list, { key: 'ArrowRight' }); // din ultimul, revine la primul
     await screen.findByTestId('plan-editor');
     expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
