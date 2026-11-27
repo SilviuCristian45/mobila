@@ -51,4 +51,8 @@ export const budgetFileName = (projectName: string): string =>
 export const budgetXlsxFileName = (projectName: string): string =>
   `${safeFileStem(projectName)}-buget.xlsx`;
 
+/** Export CSV al fișei de debitare pentru mobilă la comandă. */
+export const cutListFileName = (pieceName: string): string =>
+  `${safeFileStem(pieceName, 'mobila')}-debitare.csv`;
+
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

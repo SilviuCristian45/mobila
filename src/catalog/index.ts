@@ -39,9 +39,11 @@ export const CATEGORIES: readonly CatalogCategory[] = [
   { id: 'exterior-structuri', label: 'Exterior — Structuri' },
   { id: 'exterior-curte', label: 'Exterior — Curte & Garduri' },
   { id: 'exterior-vehicule', label: 'Exterior — Mașini' },
+  { id: 'mobila-comanda', label: 'Mobilă la comandă' },
 ];
 
 export const isExteriorCategory = (id: string): boolean => id.startsWith('exterior');
+export const isCustomFurnitureCategory = (id: string): boolean => id === 'mobila-comanda';
 
 export const categoryLabel = (id: string): string =>
   CATEGORIES.find((c) => c.id === id)?.label ?? id;
@@ -124,6 +126,19 @@ const PARAM_LABELS: Record<string, string> = {
   segments: 'Număr segmente',
   vehicleType: 'Tip vehicul',
   railings: 'Balustrade',
+  columns: 'Număr coloane',
+  doorStyle: 'Tip uși',
+  hangingRod: 'Bară de haine',
+  boardMm: 'Grosime placă',
+  unitType: 'Tip corp',
+  frontStyle: 'Configurație fronturi',
+  rows: 'Număr rânduri',
+  tvNiche: 'Nișă TV centrală',
+  lowerStorage: 'Zonă inferioară',
+  drawersSide: 'Corp sertare',
+  drawersCount: 'Număr sertare',
+  frameStyle: 'Structură picioare',
+  thickTop: 'Blat gros (36 mm)',
 };
 const OPTION_LABELS: Record<string, string> = {
   straight: 'Dreaptă',
@@ -184,6 +199,16 @@ const OPTION_LABELS: Record<string, string> = {
   truck: 'Camion / Platformă',
   modern: 'Modern',
   classic: 'Clasic',
+  hinged: 'Batante',
+  '18': '18 mm (standard)',
+  '36': '36 mm (dublat)',
+  base: 'Bază (podea)',
+  wall: 'Suspendat',
+  tall: 'Coloană înaltă',
+  combo: 'Sertar + Uși',
+  push: 'Fără (push-to-open)',
+  both: 'Stânga + Dreapta',
+  metal: 'Cadru metalic',
 };
 
 export const paramLabel = (key: string): string => PARAM_LABELS[key] ?? key;

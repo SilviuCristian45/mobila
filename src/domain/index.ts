@@ -19,3 +19,4 @@ export * from './finishes';
 export * from './placement';
 export { stableHash } from './hash';
 export * from './io';
+export * from './custom-furniture';

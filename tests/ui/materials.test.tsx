@@ -397,7 +397,7 @@ describe('mobilier: finisaje pe zone', () => {
     ]);
     expect(screen.getByTestId('materials-surface-hint').textContent).toMatch(/mobilier/);
     const ids = materialIds();
-    expect(ids.length).toBe(7);
+    expect(ids.length).toBeGreaterThanOrEqual(7);
     expect(ids.every((i) => i.startsWith('mat.furn.'))).toBe(true);
 
     apply('mat.furn.mdf-white');

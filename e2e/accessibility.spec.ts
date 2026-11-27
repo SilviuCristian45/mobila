@@ -36,6 +36,11 @@ test.describe('accesibilitate (build static)', () => {
     // tab-uri: focus pe tabul activ, apoi săgeți
     await page.getByTestId('mode-2d').focus();
     await page.keyboard.press('ArrowRight');
+    await expect(page.getByTestId('mode-exterior')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('mode-exterior')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByTestId('mode-custom')).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByTestId('mode-3d')).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('mode-3d')).toBeFocused();
     await page.keyboard.press('End');

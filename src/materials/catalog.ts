@@ -530,6 +530,40 @@ export const BUILTIN_MATERIALS: readonly Finish[] = [
     metalness: 0.9,
     price: 300,
   }),
+  furniture({
+    id: 'mat.furn.sonoma-oak',
+    name: 'PAL Stejar Sonoma',
+    category: M,
+    color: '#c8a87e',
+    roughness: 0.65,
+    price: 110,
+    tex: { pattern: 'plank', accent: '#96774f', offset: 33, tone: 0.45, seed: 73 },
+  }),
+  furniture({
+    id: 'mat.furn.cashmere',
+    name: 'MDF Cashmere mat',
+    category: M,
+    color: '#d5ccc2',
+    roughness: 0.88,
+    price: 140,
+  }),
+  furniture({
+    id: 'mat.furn.anthracite',
+    name: 'PAL Gri Antracit',
+    category: M,
+    color: '#3f4348',
+    roughness: 0.82,
+    price: 120,
+  }),
+  furniture({
+    id: 'mat.furn.walnut',
+    name: 'PAL Nuc',
+    category: M,
+    color: '#6e4c34',
+    roughness: 0.6,
+    price: 150,
+    tex: { pattern: 'plank', accent: '#442d1d', offset: 50, tone: 0.5, seed: 74 },
+  }),
 
   // ───────────── Exterior (curte, fundație, parcare, hală) ─────────────
   surface(

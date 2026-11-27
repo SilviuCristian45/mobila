@@ -1376,6 +1376,449 @@ const streetLamp: Recipe = {
   },
 };
 
+// ───────────── mobilă la comandă (parametrice cu interior detaliat + _hideFronts) ─────────────
+
+const customWardrobe: Recipe = {
+  id: 'custom-wardrobe',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const cols = int(p, 'columns', 3, 1, 6);
+    const doorStyle = str(p, 'doorStyle', 'hinged');
+    const shelves = int(p, 'shelves', 4, 1, 8);
+    const drawers = int(p, 'drawers', 3, 0, 8);
+    const hangingRod = bool(p, 'hangingRod', true);
+    const base = str(p, 'base', 'plinth');
+    const hideFronts = bool(p, '_hideFronts', false);
+    const t = lim(str(p, 'boardMm', '18') === '36' ? 0.036 : 0.018, Math.min(w / (cols * 4), 0.04));
+
+    const baseH = base === 'none' ? 0 : lim(base === 'legs' ? 0.12 : 0.1, h * 0.15);
+    const hasDoors = doorStyle !== 'open';
+    const frontZone = hasDoors ? lim(doorStyle === 'sliding' ? 0.055 : 0.028, d * 0.14) : 0;
+    const carcassD = hasDoors && !hideFronts ? d - frontZone : d;
+    const backT = 0.008;
+
+    // bază: soclu sau picioare (atinge y=0)
+    if (base === 'plinth') {
+      b.box(0.015, 0, 0.01, w - 0.015, baseH, Math.max(0.05, carcassD - 0.025), 'dark');
+    } else if (base === 'legs') {
+      const ls = lim(0.04, w * 0.05);
+      for (const x of [0.02, w - 0.02 - ls])
+        for (const z of [0.02, Math.max(0.03, carcassD - 0.02 - ls)])
+          b.box(x, 0, z, x + ls, baseH, z + ls, 'metal');
+    }
+
+    // carcasă: laterale (x=0..w), fund, capac (y=..h), spate (z=0)
+    b.box(0, baseH, 0, t, h, carcassD, 'body');
+    b.box(w - t, baseH, 0, w, h, carcassD, 'body');
+    b.box(t, baseH, 0, w - t, baseH + t, carcassD, 'body');
+    b.box(t, h - t, 0, w - t, h, carcassD, 'body');
+    b.box(t, baseH + t, 0, w - t, h - t, backT, 'light');
+
+    // despărțitoare verticale & compartimentare interioară
+    const innerW = w - 2 * t;
+    const colW = (innerW - (cols - 1) * t) / cols;
+    const innerY0 = baseH + t;
+    const innerY1 = h - t;
+    const innerH = innerY1 - innerY0;
+
+    for (let c = 1; c < cols; c++) {
+      const x = t + c * colW + (c - 1) * t;
+      b.box(x, innerY0, backT, x + t, innerY1, carcassD - 0.01, 'body');
+    }
+
+    // sertare interioare în prima coloană (sau împărțite)
+    const drawerColX0 = t;
+    const drawerColX1 = t + colW;
+    const drawerStackH = drawers > 0 ? lim(drawers * 0.19, innerH * 0.55) : 0;
+    if (drawers > 0) {
+      const dh = drawerStackH / drawers;
+      for (let i = 0; i < drawers; i++) {
+        const y0 = innerY0 + i * dh + 0.004;
+        const y1 = innerY0 + (i + 1) * dh - 0.004;
+        b.box(
+          drawerColX0 + 0.006,
+          y0,
+          backT + 0.02,
+          drawerColX1 - 0.006,
+          y1,
+          carcassD - 0.02,
+          'wood',
+        );
+        b.box(
+          drawerColX0 + colW * 0.35,
+          (y0 + y1) / 2 - 0.006,
+          carcassD - 0.02,
+          drawerColX0 + colW * 0.65,
+          (y0 + y1) / 2 + 0.006,
+          carcassD - 0.008,
+          'metal',
+        );
+      }
+    }
+
+    // polițe și bară de haine
+    for (let c = 0; c < cols; c++) {
+      const x0 = t + c * (colW + t);
+      const x1 = x0 + colW;
+      const isHangingCol = hangingRod && (cols === 1 || c === Math.min(1, cols - 1));
+      if (isHangingCol) {
+        const topShelfY = innerY1 - lim(0.38, innerH * 0.22);
+        b.box(x0, topShelfY - t / 2, backT, x1, topShelfY + t / 2, carcassD - 0.015, 'body');
+        const rodY = topShelfY - 0.07;
+        b.cyl(
+          x0 + 0.01,
+          rodY - 0.014,
+          carcassD * 0.5 - 0.014,
+          x1 - 0.01,
+          rodY + 0.014,
+          carcassD * 0.5 + 0.014,
+          'metal',
+          { axis: 'x' },
+        );
+      } else {
+        const startY = c === 0 ? innerY0 + drawerStackH : innerY0;
+        const avail = innerY1 - startY;
+        const nShelves = Math.max(1, Math.min(shelves, Math.floor(avail / 0.22)));
+        for (let s = 1; s <= nShelves; s++) {
+          const y = startY + (avail * s) / (nShelves + 1);
+          b.box(x0, y - t / 2, backT, x1, y + t / 2, carcassD - 0.015, 'body');
+        }
+      }
+    }
+
+    // uși batante sau culisante (ascunse când _hideFronts = true pentru vederea interioară)
+    if (hasDoors && !hideFronts) {
+      const gap = 0.004;
+      if (doorStyle === 'sliding') {
+        const doorCount = Math.max(2, Math.min(4, cols));
+        const dw = w / doorCount + 0.015;
+        const trackT = frontZone * 0.42;
+        // șină sus & jos
+        b.box(0, baseH, carcassD, w, baseH + 0.018, d, 'metal');
+        b.box(0, h - 0.018, carcassD, w, h, d, 'metal');
+        for (let i = 0; i < doorCount; i++) {
+          const x0 = Math.max(0, Math.min(w - dw, (i * (w - dw)) / Math.max(1, doorCount - 1)));
+          const z0 = i % 2 === 0 ? carcassD + 0.004 : d - trackT;
+          const z1 = Math.min(d, z0 + trackT);
+          b.box(x0, baseH + 0.018, z0, x0 + dw, h - 0.018, z1, 'accent');
+          b.box(x0, baseH + 0.018, z0, x0 + 0.012, h - 0.018, z1, 'metal');
+          b.box(x0 + dw - 0.012, baseH + 0.018, z0, x0 + dw, h - 0.018, z1, 'metal');
+        }
+      } else {
+        const doorCount = cols;
+        const dw = w / doorCount;
+        const handleT = lim(0.01, frontZone * 0.4);
+        const fz0 = carcassD;
+        const fz1 = d - handleT;
+        for (let i = 0; i < doorCount; i++) {
+          const x0 = i * dw + gap / 2;
+          const x1 = (i + 1) * dw - gap / 2;
+          b.box(x0, baseH + gap / 2, fz0, x1, h - gap / 2, fz1, 'accent');
+          const hx = i % 2 === 0 ? x1 - 0.045 : x0 + 0.045;
+          const hy = baseH + (h - baseH) * 0.48;
+          b.box(hx - 0.007, hy - 0.12, fz1, hx + 0.007, hy + 0.12, d, 'metal');
+        }
+      }
+    }
+    return b.parts;
+  },
+};
+
+const customKitchen: Recipe = {
+  id: 'custom-kitchen',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const unitType = str(p, 'unitType', 'base');
+    const frontStyle = str(p, 'frontStyle', 'combo');
+    const fronts = int(p, 'fronts', 2, 1, 4);
+    const handles = str(p, 'handles', 'classic');
+    const worktop = unitType === 'base' && bool(p, 'worktop', true);
+    const sink = worktop && bool(p, 'sink', false);
+    const hideFronts = bool(p, '_hideFronts', false);
+    const t = lim(str(p, 'boardMm', '18') === '36' ? 0.036 : 0.018, w * 0.08);
+
+    const baseH = unitType === 'wall' ? 0 : lim(0.1, h * 0.18);
+    const topT = worktop ? lim(0.038, h * 0.08) : 0;
+    const carcassTop = h - topT;
+    const hasFronts = frontStyle !== 'open' && !hideFronts;
+    const handleT = hasFronts && handles === 'classic' ? 0.012 : 0;
+    const frontT = hasFronts ? lim(0.02, d * 0.1) : 0;
+    const carcassD = d - frontT - handleT;
+    const backT = 0.008;
+    const gap = 0.004;
+
+    if (baseH > 0) {
+      b.box(0.015, 0, 0.015, w - 0.015, baseH, Math.max(0.05, carcassD - 0.03), 'dark');
+    }
+    // carcasă deschisă (cu polițe interioare vizibile când _hideFronts = true sau open)
+    b.box(0, baseH, 0, t, carcassTop, carcassD, 'body');
+    b.box(w - t, baseH, 0, w, carcassTop, carcassD, 'body');
+    b.box(t, baseH, 0, w - t, baseH + t, carcassD, 'body');
+    b.box(t, carcassTop - t, 0, w - t, carcassTop, carcassD, 'body');
+    b.box(t, baseH + t, 0, w - t, carcassTop - t, backT, 'light');
+
+    const innerH = carcassTop - t - (baseH + t);
+    const shelfCount = unitType === 'tall' ? 4 : unitType === 'wall' ? 2 : 1;
+    for (let i = 1; i <= shelfCount; i++) {
+      const y = baseH + t + (innerH * i) / (shelfCount + 1);
+      b.box(t, y - t / 2, backT, w - t, y + t / 2, carcassD - 0.02, 'body');
+    }
+
+    if (hasFronts) {
+      const fz0 = carcassD;
+      const fz1 = carcassD + frontT;
+      if (frontStyle === 'drawers') {
+        const rh = (carcassTop - baseH) / fronts;
+        for (let i = 0; i < fronts; i++) {
+          const y0 = baseH + i * rh + gap / 2;
+          const y1 = baseH + (i + 1) * rh - gap / 2;
+          b.box(gap / 2, y0, fz0, w - gap / 2, y1, fz1, 'accent');
+          if (handles === 'classic') {
+            const hw = lim(0.16, w * 0.4);
+            b.box(
+              w / 2 - hw / 2,
+              (y0 + y1) / 2 - 0.007,
+              fz1,
+              w / 2 + hw / 2,
+              (y0 + y1) / 2 + 0.007,
+              d,
+              'metal',
+            );
+          }
+        }
+      } else if (frontStyle === 'combo') {
+        const topDrH = lim(0.18, (carcassTop - baseH) * 0.28);
+        const splitY = carcassTop - topDrH;
+        // sertar sus
+        b.box(gap / 2, splitY + gap / 2, fz0, w - gap / 2, carcassTop - gap / 2, fz1, 'accent');
+        if (handles === 'classic') {
+          const hw = lim(0.16, w * 0.4);
+          b.box(
+            w / 2 - hw / 2,
+            splitY + topDrH / 2 - 0.007,
+            fz1,
+            w / 2 + hw / 2,
+            splitY + topDrH / 2 + 0.007,
+            d,
+            'metal',
+          );
+        }
+        // uși jos
+        const dw = w / fronts;
+        for (let i = 0; i < fronts; i++) {
+          const x0 = i * dw + gap / 2;
+          const x1 = (i + 1) * dw - gap / 2;
+          b.box(x0, baseH + gap / 2, fz0, x1, splitY - gap / 2, fz1, 'accent');
+          if (handles === 'classic') {
+            const hx = i % 2 === 0 ? x1 - 0.04 : x0 + 0.04;
+            const hy = splitY - lim(0.12, (splitY - baseH) * 0.25);
+            b.box(hx - 0.006, hy - 0.06, fz1, hx + 0.006, hy + 0.06, d, 'metal');
+          }
+        }
+      } else {
+        const dw = w / fronts;
+        for (let i = 0; i < fronts; i++) {
+          const x0 = i * dw + gap / 2;
+          const x1 = (i + 1) * dw - gap / 2;
+          b.box(x0, baseH + gap / 2, fz0, x1, carcassTop - gap / 2, fz1, 'accent');
+          if (handles === 'classic') {
+            const hx = i % 2 === 0 ? x1 - 0.04 : x0 + 0.04;
+            const hy = baseH + (carcassTop - baseH) * 0.55;
+            b.box(hx - 0.006, hy - 0.07, fz1, hx + 0.006, hy + 0.07, d, 'metal');
+          }
+        }
+      }
+    }
+
+    if (worktop) {
+      if (!sink) {
+        b.box(0, carcassTop, 0, w, h, d, 'wood');
+      } else {
+        const bw = lim(w * 0.55, 0.72);
+        const bd = lim(d * 0.58, 0.42);
+        const x0 = (w - bw) / 2;
+        const z0 = (d - bd) / 2;
+        b.box(0, carcassTop, 0, w, h, z0, 'wood');
+        b.box(0, carcassTop, z0 + bd, w, h, d, 'wood');
+        b.box(0, carcassTop, z0, x0, h, z0 + bd, 'wood');
+        b.box(x0 + bw, carcassTop, z0, w, h, z0 + bd, 'wood');
+        b.box(x0, carcassTop, z0, x0 + bw, carcassTop + topT * 0.35, z0 + bd, 'metal');
+      }
+    }
+    return b.parts;
+  },
+};
+
+const customBookcase: Recipe = {
+  id: 'custom-bookcase',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const cols = int(p, 'columns', 3, 1, 6);
+    const rows = int(p, 'rows', 5, 2, 8);
+    const tvNiche = bool(p, 'tvNiche', true) && cols >= 3 && rows >= 3;
+    const lowerStorage = str(p, 'lowerStorage', 'doors');
+    const back = bool(p, 'back', true);
+    const hideFronts = bool(p, '_hideFronts', false);
+    const t = lim(str(p, 'boardMm', '18') === '36' ? 0.036 : 0.018, Math.min(w / (cols * 4), 0.04));
+
+    const hasLowerFronts = lowerStorage !== 'none' && !hideFronts;
+    const frontT = hasLowerFronts ? lim(0.022, d * 0.1) : 0;
+    const carcassD = d - frontT;
+    const backT = back ? 0.008 : 0;
+
+    // carcasă exterioară (acoperă 0..w, 0..h, 0..d)
+    b.box(0, 0, 0, t, h, d, 'body');
+    b.box(w - t, 0, 0, w, h, d, 'body');
+    b.box(t, 0, 0, w - t, t, carcassD, 'body');
+    b.box(t, h - t, 0, w - t, h, d, 'body');
+    if (back) b.box(t, t, 0, w - t, h - t, backT, 'light');
+
+    const innerW = w - 2 * t;
+    const colW = (innerW - (cols - 1) * t) / cols;
+    const innerH = h - 2 * t;
+    const rowH = innerH / rows;
+
+    // polițe orizontale
+    for (let r = 1; r < rows; r++) {
+      const y = t + r * rowH;
+      if (tvNiche && r > 1 && r < rows - 1) {
+        // păstrăm nișa TV liberă în zona centrală (coloanele interioare)
+        b.box(t, y - t / 2, backT, t + colW, y + t / 2, carcassD, 'body');
+        b.box(w - t - colW, y - t / 2, backT, w - t, y + t / 2, carcassD, 'body');
+      } else {
+        b.box(t, y - t / 2, backT, w - t, y + t / 2, carcassD, 'body');
+      }
+    }
+
+    // montanți verticali
+    for (let c = 1; c < cols; c++) {
+      const x = t + c * colW + (c - 1) * t;
+      const inNiche = tvNiche && c > 1 && c < cols - 1;
+      if (inNiche) {
+        b.box(x, t, backT, x + t, t + rowH, carcassD, 'body');
+        b.box(x, h - t - rowH, backT, x + t, h - t, carcassD, 'body');
+      } else {
+        b.box(x, t, backT, x + t, h - t, carcassD, 'body');
+      }
+    }
+
+    // uși / sertare pe rândul inferior
+    if (hasLowerFronts) {
+      const gap = 0.004;
+      const y0 = t + gap;
+      const y1 = t + rowH - gap;
+      const fz0 = carcassD;
+      const fz1 = d - 0.008;
+      for (let c = 0; c < cols; c++) {
+        const x0 = t + c * (colW + t) + gap / 2;
+        const x1 = x0 + colW - gap;
+        b.box(x0, y0, fz0, x1, y1, fz1, 'accent');
+        const hw = lowerStorage === 'drawers' ? lim(0.12, colW * 0.35) : 0.016;
+        const hh = lowerStorage === 'drawers' ? 0.012 : lim(0.08, (y1 - y0) * 0.3);
+        const hx = lowerStorage === 'drawers' ? (x0 + x1) / 2 : x1 - 0.035;
+        b.box(
+          hx - hw / 2,
+          (y0 + y1) / 2 - hh / 2,
+          fz1,
+          hx + hw / 2,
+          (y0 + y1) / 2 + hh / 2,
+          d,
+          'metal',
+        );
+      }
+    }
+    return b.parts;
+  },
+};
+
+const customDesk: Recipe = {
+  id: 'custom-desk',
+  version: 1,
+  build: ([w, h, d], p) => {
+    const b = builder(w, h, d);
+    const drawersSide = str(p, 'drawersSide', 'right');
+    const drawersCount = int(p, 'drawersCount', 3, 1, 5);
+    const frameStyle = str(p, 'frameStyle', 'panels');
+    const thickTop = bool(p, 'thickTop', true);
+    const hideFronts = bool(p, '_hideFronts', false);
+    const t = lim(str(p, 'boardMm', '18') === '36' ? 0.036 : 0.018, w * 0.05);
+
+    const topT = lim(thickTop ? 0.036 : t, h * 0.1);
+    const legH = h - topT;
+    // blat (acoperă 0..w, h-topT..h, 0..d)
+    b.box(0, legH, 0, w, h, d, 'wood');
+
+    const pedW = lim(0.44, w * 0.3);
+    const hasLeftPed = drawersSide === 'left' || drawersSide === 'both';
+    const hasRightPed = drawersSide === 'right' || drawersSide === 'both';
+    const pedD = d - 0.02;
+
+    const buildPedestal = (x0: number, x1: number) => {
+      b.box(x0, 0, 0, x0 + t, legH, pedD, 'body');
+      b.box(x1 - t, 0, 0, x1, legH, pedD, 'body');
+      b.box(x0 + t, 0, 0, x1 - t, t, pedD, 'body');
+      b.box(x0 + t, t, 0, x1 - t, legH, 0.008, 'light');
+      const innerH = legH - t;
+      const rh = innerH / drawersCount;
+      for (let i = 0; i < drawersCount; i++) {
+        const y0 = t + i * rh + 0.004;
+        const y1 = t + (i + 1) * rh - 0.004;
+        if (hideFronts) {
+          b.box(x0 + t + 0.008, y0, 0.015, x1 - t - 0.008, y0 + 0.014, pedD - 0.015, 'wood');
+        } else {
+          b.box(x0 + 0.004, y0, pedD, x1 - 0.004, y1, d - 0.008, 'accent');
+          const hw = lim(0.12, (x1 - x0) * 0.35);
+          b.box(
+            (x0 + x1) / 2 - hw / 2,
+            (y0 + y1) / 2 - 0.006,
+            d - 0.008,
+            (x0 + x1) / 2 + hw / 2,
+            (y0 + y1) / 2 + 0.006,
+            d,
+            'metal',
+          );
+        }
+      }
+    };
+
+    const buildSupport = (x0: number, x1: number) => {
+      if (frameStyle === 'metal') {
+        const s = lim(0.04, (x1 - x0) * 0.8);
+        b.box(x0, 0, 0.02, x0 + s, legH, 0.02 + s, 'metal');
+        b.box(x0, 0, d - 0.02 - s, x0 + s, legH, d - 0.02, 'metal');
+        b.box(x0, 0, 0.02, x0 + s, s, d - 0.02, 'metal');
+      } else {
+        b.box(x0, 0, 0.02, x0 + t, legH, d - 0.02, 'body');
+      }
+    };
+
+    if (hasLeftPed) buildPedestal(0, pedW);
+    else buildSupport(0, t);
+
+    if (hasRightPed) buildPedestal(w - pedW, w);
+    else buildSupport(w - t, w);
+
+    // panou legătură spate (modesty panel)
+    const spanX0 = hasLeftPed ? pedW : t;
+    const spanX1 = hasRightPed ? w - pedW : w - t;
+    if (spanX1 - spanX0 > 0.1) {
+      b.box(
+        spanX0,
+        legH * 0.5,
+        0.02,
+        spanX1,
+        legH,
+        0.02 + t,
+        frameStyle === 'metal' ? 'metal' : 'body',
+      );
+    }
+    return b.parts;
+  },
+};
+
 export const RECIPES: Readonly<Record<string, Recipe>> = Object.fromEntries(
   [
     sofa,
@@ -1416,6 +1859,10 @@ export const RECIPES: Readonly<Record<string, Recipe>> = Object.fromEntries(
     vehicle,
     gazebo,
     streetLamp,
+    customWardrobe,
+    customKitchen,
+    customBookcase,
+    customDesk,
   ].map((r) => [r.id, r]),
 );
 
